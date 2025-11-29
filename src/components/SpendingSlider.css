@@ -1,0 +1,138 @@
+/* src/components/SpendingSlider.css */
+
+.spending-slider {
+  background: var(--blanc);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
+  box-shadow: var(--shadow-sm);
+  border-left: 4px solid var(--grey-400);
+  transition: box-shadow 0.2s ease;
+}
+
+.spending-slider:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.spending-slider.adjustability-high {
+  border-left-color: var(--surplus-green);
+}
+
+.spending-slider.adjustability-medium {
+  border-left-color: var(--warning-orange);
+}
+
+.spending-slider.adjustability-low {
+  border-left-color: var(--deficit-red);
+}
+
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-xs);
+}
+
+.slider-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.slider-title h4 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--grey-900);
+}
+
+.adjustability-indicator {
+  font-size: 0.7rem;
+  cursor: help;
+  letter-spacing: 1px;
+}
+
+.slider-value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.amount-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--grey-800);
+}
+
+.amount-change {
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.amount-change.increased {
+  color: var(--deficit-red);
+}
+
+.amount-change.decreased {
+  color: var(--surplus-green);
+}
+
+.slider-description {
+  font-size: 0.85rem;
+  color: var(--grey-600);
+  margin-bottom: var(--space-md);
+}
+
+.slider-control {
+  margin-bottom: var(--space-sm);
+}
+
+.slider-control input[type="range"] {
+  width: 100%;
+}
+
+/* Different track color for spending (to differentiate from taxes) */
+.spending-slider input[type="range"] {
+  background: linear-gradient(to right, var(--surplus-green), var(--grey-200), var(--deficit-red));
+}
+
+.slider-marks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--grey-500);
+  margin-top: var(--space-xs);
+}
+
+.baseline-mark {
+  color: var(--grey-700);
+  font-weight: 500;
+}
+
+.slider-tooltip {
+  margin-top: var(--space-sm);
+  font-size: 0.85rem;
+}
+
+.slider-tooltip summary {
+  cursor: pointer;
+  color: var(--bleu-france);
+  font-weight: 500;
+}
+
+.slider-tooltip summary:hover {
+  text-decoration: underline;
+}
+
+.slider-tooltip p {
+  margin: var(--space-sm) 0 0 0;
+  color: var(--grey-700);
+  padding: var(--space-sm);
+  background: var(--grey-50);
+  border-radius: var(--radius-sm);
+}
+
+.adjustability-note {
+  border-top: 1px solid var(--grey-200);
+  padding-top: var(--space-sm);
+  margin-top: var(--space-sm);
+}

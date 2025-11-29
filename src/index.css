@@ -1,0 +1,155 @@
+/* src/index.css */
+/* French Budget Simulator - Global Styles */
+
+:root {
+  /* French Republic colors - tricolore inspired but muted for professionalism */
+  --bleu-france: #000091;
+  --bleu-france-light: #6a6af4;
+  --rouge-marianne: #e1000f;
+  --blanc: #ffffff;
+  
+  /* Functional colors */
+  --deficit-red: #c9191e;
+  --surplus-green: #18753c;
+  --warning-orange: #d64d00;
+  
+  /* Neutral palette */
+  --grey-950: #1e1e1e;
+  --grey-900: #2a2a2a;
+  --grey-800: #3a3a3a;
+  --grey-700: #4a4a4a;
+  --grey-600: #666666;
+  --grey-500: #888888;
+  --grey-400: #ababab;
+  --grey-300: #cecece;
+  --grey-200: #e5e5e5;
+  --grey-100: #f0f0f0;
+  --grey-50: #f8f8f8;
+  
+  /* Typography */
+  --font-heading: 'Marianne', 'Segoe UI', system-ui, sans-serif;
+  --font-body: 'Marianne', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'Source Code Pro', 'Consolas', monospace;
+  
+  /* Spacing */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+  
+  /* Border radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--grey-100);
+  color: var(--grey-900);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--grey-950);
+}
+
+h1 { font-size: 2rem; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.125rem; }
+
+p {
+  margin-bottom: var(--space-md);
+}
+
+/* Focus states for accessibility */
+:focus-visible {
+  outline: 3px solid var(--bleu-france-light);
+  outline-offset: 2px;
+}
+
+/* Slider styling */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  background: var(--grey-200);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: var(--bleu-france);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: var(--bleu-france);
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+
+/* Button reset */
+button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+/* Utility classes */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

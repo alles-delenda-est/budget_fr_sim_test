@@ -1,0 +1,47 @@
+/* src/components/ModeToggle.css */
+
+.mode-toggle {
+  background: var(--blanc);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  margin-bottom: var(--space-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.mode-label {
+  font-weight: 600;
+  color: var(--grey-700);
+  margin-right: var(--space-md);
+}
+
+.toggle-buttons {
+  display: inline-flex;
+  gap: 0;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--grey-300);
+  margin-bottom: var(--space-sm);
+}
+
+.toggle-btn {
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--blanc);
+  color: var(--grey-700);
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.toggle-btn:hover:not(.active) {
+  background: var(--grey-100);
+}
+
+.toggle-btn.active {
+  background: var(--bleu-france);
+  color: var(--blanc);
+}
+
+.mode-description {
+  font-size: 0.85rem;
+  color: var(--grey-600);
+  margin: var(--space-sm) 0 0 0;
+}

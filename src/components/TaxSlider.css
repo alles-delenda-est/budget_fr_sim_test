@@ -1,0 +1,140 @@
+/* src/components/TaxSlider.css */
+
+.tax-slider {
+  background: var(--blanc);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
+  box-shadow: var(--shadow-sm);
+  border-left: 4px solid var(--bleu-france);
+  transition: box-shadow 0.2s ease;
+}
+
+.tax-slider:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.tax-slider.employment-sensitive {
+  border-left-color: var(--warning-orange);
+}
+
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-xs);
+}
+
+.slider-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.slider-title h4 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--grey-900);
+}
+
+.employment-badge {
+  font-size: 0.7rem;
+  background: rgba(214, 77, 0, 0.1);
+  color: var(--warning-orange);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  cursor: help;
+}
+
+.slider-value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.rate-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--bleu-france);
+}
+
+.rate-change {
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.rate-change.increased {
+  color: var(--deficit-red);
+}
+
+.rate-change.decreased {
+  color: var(--surplus-green);
+}
+
+.slider-description {
+  font-size: 0.85rem;
+  color: var(--grey-600);
+  margin-bottom: var(--space-md);
+}
+
+.slider-control {
+  margin-bottom: var(--space-sm);
+}
+
+.slider-control input[type="range"] {
+  width: 100%;
+}
+
+.slider-marks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--grey-500);
+  margin-top: var(--space-xs);
+}
+
+.baseline-mark {
+  color: var(--grey-700);
+  font-weight: 500;
+}
+
+.slider-revenue {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--space-sm);
+  background: var(--grey-50);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+}
+
+.revenue-label {
+  color: var(--grey-600);
+}
+
+.revenue-value {
+  font-weight: 600;
+  color: var(--grey-900);
+}
+
+.slider-tooltip {
+  margin-top: var(--space-sm);
+  font-size: 0.85rem;
+}
+
+.slider-tooltip summary {
+  cursor: pointer;
+  color: var(--bleu-france);
+  font-weight: 500;
+}
+
+.slider-tooltip summary:hover {
+  text-decoration: underline;
+}
+
+.slider-tooltip p {
+  margin: var(--space-sm) 0 0 0;
+  color: var(--grey-700);
+  padding: var(--space-sm);
+  background: var(--grey-50);
+  border-radius: var(--radius-sm);
+}

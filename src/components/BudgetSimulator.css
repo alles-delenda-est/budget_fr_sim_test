@@ -1,0 +1,133 @@
+/* src/components/BudgetSimulator.css */
+
+.budget-simulator {
+  width: 100%;
+}
+
+.simulator-layout {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: var(--space-xl);
+  align-items: start;
+}
+
+/* Controls panel */
+.controls-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.control-section {
+  background: var(--grey-50);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+}
+
+.section-header h3 {
+  margin: 0;
+}
+
+.reset-btn {
+  background: var(--blanc);
+  border: 1px solid var(--grey-300);
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  color: var(--grey-700);
+  transition: all 0.2s ease;
+}
+
+.reset-btn:hover {
+  background: var(--grey-100);
+  border-color: var(--grey-400);
+}
+
+.control-section h3 {
+  margin-bottom: var(--space-md);
+  color: var(--grey-800);
+}
+
+.section-note {
+  font-size: 0.85rem;
+  color: var(--grey-600);
+  margin-bottom: var(--space-md);
+  padding: var(--space-sm);
+  background: rgba(0, 0, 145, 0.05);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--bleu-france);
+}
+
+.sliders-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+/* Results column */
+.results-column {
+  position: sticky;
+  top: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+/* Methodology note */
+.methodology-note {
+  background: var(--grey-50);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  font-size: 0.85rem;
+  color: var(--grey-700);
+}
+
+.methodology-note h4 {
+  font-size: 0.9rem;
+  margin-bottom: var(--space-sm);
+  color: var(--grey-800);
+}
+
+.methodology-note p {
+  margin-bottom: var(--space-sm);
+}
+
+.methodology-note ul {
+  margin: 0;
+  padding-left: var(--space-lg);
+}
+
+.methodology-note li {
+  margin-bottom: var(--space-xs);
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .simulator-layout {
+    grid-template-columns: 1fr;
+  }
+  
+  .results-column {
+    position: static;
+    order: -1; /* Show results first on mobile */
+  }
+}
+
+@media (max-width: 768px) {
+  .control-section {
+    padding: var(--space-md);
+  }
+  
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-sm);
+  }
+}
