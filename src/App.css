@@ -1,21 +1,41 @@
-/* =============================================================================
-   FRENCH BUDGET SIMULATOR - Styles
-   ============================================================================= */
+/* FRENCH BUDGET SIMULATOR v1.8 - STYLES */
 
 :root {
-  --primary: #1e40af;
-  --primary-light: #3b82f6;
-  --success: #059669;
-  --danger: #dc2626;
-  --warning: #d97706;
-  --gray-50: #f9fafb;
-  --gray-100: #f3f4f6;
-  --gray-200: #e5e7eb;
-  --gray-300: #d1d5db;
-  --gray-500: #6b7280;
-  --gray-700: #374151;
-  --gray-900: #111827;
+  /* Color palette */
+  --color-primary: #2563eb;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-neutral: #64748b;
+  
+  /* NEW v1.8: Reform colors */
+  --color-reform: #8b5cf6;
+  --color-reform-light: #c4b5fd;
+  
+  /* Background */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-card: #ffffff;
+  
+  /* Text */
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  
+  /* Borders */
+  --border-color: #e2e8f0;
+  --border-radius: 8px;
+  
+  /* Spacing */
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 1rem;
+  --spacing-md: 1.5rem;
+  --spacing-lg: 2rem;
+  --spacing-xl: 3rem;
 }
+
+/* =============================================================================
+   GLOBAL STYLES
+   ============================================================================= */
 
 * {
   box-sizing: border-box;
@@ -24,417 +44,546 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-  background-color: var(--gray-50);
-  color: var(--gray-900);
-  line-height: 1.5;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+.app {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--spacing-md);
 }
 
 /* =============================================================================
-   Layout
+   HEADER
    ============================================================================= */
 
-.app {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
 .header {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, #1e40af 100%);
   color: white;
-  padding: 1.5rem 2rem;
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius);
+  margin-bottom: var(--spacing-lg);
   text-align: center;
 }
 
 .header h1 {
-  font-size: 1.75rem;
+  font-size: 2.5rem;
+  margin-bottom: var(--spacing-sm);
   font-weight: 700;
-  margin-bottom: 0.25rem;
 }
 
 .subtitle {
-  opacity: 0.9;
-  font-size: 0.95rem;
-}
-
-.main {
-  flex: 1;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 2rem;
-  width: 100%;
-}
-
-.footer {
-  background: var(--gray-100);
-  padding: 1rem;
-  text-align: center;
-  color: var(--gray-500);
-  font-size: 0.875rem;
-}
-
-/* =============================================================================
-   Deficit Summary
-   ============================================================================= */
-
-.deficit-summary {
-  margin-bottom: 2rem;
-}
-
-.deficit-card {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem 2rem;
-  text-align: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border-left: 4px solid var(--gray-300);
-  transition: border-color 0.3s ease;
-}
-
-.deficit-card.improved {
-  border-left-color: var(--success);
-}
-
-.deficit-card.worsened {
-  border-left-color: var(--danger);
-}
-
-.deficit-card h2 {
-  font-size: 1rem;
-  color: var(--gray-500);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.5rem;
-}
-
-.deficit-value {
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: var(--gray-900);
-}
-
-.deficit-card.improved .deficit-value {
-  color: var(--success);
-}
-
-.deficit-card.worsened .deficit-value {
-  color: var(--danger);
-}
-
-.deficit-change {
   font-size: 1.1rem;
-  margin-top: 0.5rem;
-  font-weight: 500;
-}
-
-.deficit-card.improved .deficit-change {
-  color: var(--success);
-}
-
-.deficit-card.worsened .deficit-change {
-  color: var(--danger);
-}
-
-.deficit-baseline {
-  color: var(--gray-500);
-  font-size: 0.875rem;
-  margin-top: 0.25rem;
+  opacity: 0.95;
+  font-weight: 300;
 }
 
 /* =============================================================================
-   Controls & Chart Layout
+   SECTIONS
    ============================================================================= */
 
-.controls-and-chart {
+.controls-section {
+  background: var(--bg-card);
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius);
+  margin-bottom: var(--spacing-md);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.controls-section h2 {
+  font-size: 1.5rem;
+  margin-bottom: var(--spacing-md);
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: var(--spacing-sm);
+}
+
+.section-help {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin-bottom: var(--spacing-md);
+  font-style: italic;
+}
+
+/* =============================================================================
+   NEW v1.8: REFORM SECTION
+   ============================================================================= */
+
+.reform-section {
+  background: linear-gradient(135deg, #faf5ff 0%, #ffffff 100%);
+  border: 2px solid var(--color-reform-light);
+}
+
+.reform-selector {
+  margin: var(--spacing-md) 0;
+}
+
+.reform-selector label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: var(--spacing-xs);
+  color: var(--text-primary);
+}
+
+.reform-select {
+  width: 100%;
+  padding: var(--spacing-sm);
+  font-size: 1rem;
+  border: 2px solid var(--color-reform-light);
+  border-radius: var(--border-radius);
+  background-color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.reform-select:hover {
+  border-color: var(--color-reform);
+}
+
+.reform-select:focus {
+  outline: none;
+  border-color: var(--color-reform);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.reform-info {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: white;
+  border-left: 4px solid var(--color-reform);
+  border-radius: var(--border-radius);
+}
+
+.reform-info h4 {
+  color: var(--color-reform);
+  font-size: 1.2rem;
+  margin-bottom: var(--spacing-sm);
+}
+
+.reform-description {
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-md);
+}
+
+.reform-specs {
   display: grid;
-  grid-template-columns: 400px 1fr;
-  gap: 2rem;
-  align-items: start;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
 }
 
-@media (max-width: 1024px) {
-  .controls-and-chart {
-    grid-template-columns: 1fr;
-  }
+.spec {
+  font-size: 0.9rem;
+  padding: var(--spacing-xs);
+  background: var(--bg-secondary);
+  border-radius: 4px;
+}
+
+.spec strong {
+  color: var(--color-reform);
+}
+
+.confidence-note {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-style: italic;
 }
 
 /* =============================================================================
-   Controls Panel
+   CONTROLS
    ============================================================================= */
 
-.controls {
+.controls-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.slider-control {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-}
-
-.control-group {
-  background: white;
-  border-radius: 12px;
-  padding: 1.25rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.control-group h3 {
-  font-size: 1rem;
-  color: var(--gray-700);
-  margin-bottom: 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--gray-200);
-}
-
-/* Slider Controls */
-.slider-control {
-  margin-bottom: 1.25rem;
-}
-
-.slider-control:last-of-type {
-  margin-bottom: 0;
+  gap: var(--spacing-xs);
 }
 
 .slider-control label {
-  display: block;
-  font-size: 0.875rem;
   font-weight: 500;
-  color: var(--gray-700);
-  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.slider-control .value {
+  color: var(--color-primary);
+  font-weight: 600;
+  font-size: 1.1rem;
 }
 
 .slider-control input[type="range"] {
   width: 100%;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--gray-200);
+  height: 8px;
+  border-radius: 4px;
+  background: var(--bg-secondary);
   outline: none;
   -webkit-appearance: none;
-  appearance: none;
 }
 
 .slider-control input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  background: var(--primary);
+  background: var(--color-primary);
   cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  transition: transform 0.1s ease;
+  transition: all 0.2s;
 }
 
 .slider-control input[type="range"]::-webkit-slider-thumb:hover {
+  background: #1e40af;
   transform: scale(1.1);
 }
 
 .slider-control input[type="range"]::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  background: var(--primary);
+  background: var(--color-primary);
   cursor: pointer;
   border: none;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .slider-labels {
   display: flex;
   justify-content: space-between;
-  font-size: 0.75rem;
-  color: var(--gray-500);
-  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
 }
 
 /* =============================================================================
-   Pension Control - Special Styling
+   HORIZON SELECTOR
    ============================================================================= */
 
-.pension-control {
-  background: linear-gradient(135deg, #fef3c7 0%, #fef9c3 100%);
-  border: 1px solid #fcd34d;
-}
-
-.pension-control h3 {
-  color: #92400e;
-  border-bottom-color: #fcd34d;
-}
-
-/* Policy Reference Markers */
-.policy-references {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px dashed #fcd34d;
-}
-
-.reference-title {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #92400e;
-  margin-bottom: 0.5rem;
-}
-
-.reference-list {
-  list-style: none;
-  font-size: 0.8rem;
-}
-
-.reference-list li {
+.horizon-selector {
   display: flex;
-  gap: 0.5rem;
-  padding: 0.35rem 0.5rem;
-  margin-bottom: 0.25rem;
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
 }
 
-.reference-list li.active {
-  background-color: rgba(217, 119, 6, 0.15);
+.horizon-btn {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 2px solid var(--border-color);
+  background: white;
+  border-radius: var(--border-radius);
+  cursor: pointer;
   font-weight: 500;
+  transition: all 0.2s;
 }
 
-.ref-value {
-  font-weight: 600;
-  color: #b45309;
-  min-width: 60px;
-  flex-shrink: 0;
+.horizon-btn:hover {
+  border-color: var(--color-primary);
+  background: var(--bg-secondary);
 }
 
-.ref-label {
-  color: var(--gray-700);
-}
-
-.reference-list li.active .ref-label {
-  color: #92400e;
-}
-
-.reference-note {
-  margin-top: 0.75rem;
-  font-size: 0.75rem;
-  color: #78716c;
-  font-style: italic;
-  line-height: 1.4;
+.horizon-btn.active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
 }
 
 /* =============================================================================
-   Chart Section
+   WARNING SECTION
+   ============================================================================= */
+
+.warning-section {
+  background: #fef2f2;
+  border: 2px solid var(--color-danger);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.warning-section h3 {
+  color: var(--color-danger);
+  margin-bottom: var(--spacing-sm);
+}
+
+.warning-section ul {
+  margin-left: var(--spacing-md);
+  color: #991b1b;
+}
+
+/* =============================================================================
+   RESULTS
+   ============================================================================= */
+
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.result-card {
+  background: var(--bg-card);
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.result-card h3 {
+  font-size: 1.3rem;
+  margin-bottom: var(--spacing-md);
+  color: var(--text-primary);
+}
+
+.metrics {
+  display: grid;
+  gap: var(--spacing-md);
+}
+
+.metric {
+  padding: var(--spacing-sm);
+  background: var(--bg-secondary);
+  border-radius: 6px;
+}
+
+.metric-label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.metric-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.metric-diff {
+  font-size: 0.85rem;
+  margin-top: 4px;
+}
+
+.metric-better {
+  color: var(--color-success);
+}
+
+.metric-worse {
+  color: var(--color-danger);
+}
+
+/* =============================================================================
+   NEW v1.8: DOOM LOOP CARD
+   ============================================================================= */
+
+.doom-loop-card {
+  background: linear-gradient(135deg, #fef2f2 0%, #ffffff 100%);
+  border: 2px solid #fecaca;
+}
+
+.doom-loop-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.severity-badge {
+  display: inline-block;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius);
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-align: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.severity-low {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.severity-medium {
+  background: #fed7aa;
+  color: #92400e;
+}
+
+.severity-high {
+  background: #fecaca;
+  color: #991b1b;
+}
+
+.doom-metric {
+  font-size: 1rem;
+  padding: var(--spacing-xs);
+  background: white;
+  border-radius: 4px;
+}
+
+.doom-metric strong {
+  color: var(--color-danger);
+  font-size: 1.1rem;
+}
+
+.doom-warning {
+  background: #fee2e2;
+  border-left: 4px solid var(--color-danger);
+  padding: var(--spacing-sm);
+  border-radius: 4px;
+  color: #991b1b;
+  font-weight: 600;
+  margin-top: var(--spacing-sm);
+}
+
+/* =============================================================================
+   CHARTS
    ============================================================================= */
 
 .chart-section {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
+  background: var(--bg-card);
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius);
+  margin-bottom: var(--spacing-md);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.chart-section h3 {
-  font-size: 1rem;
-  color: var(--gray-700);
-  margin-bottom: 1rem;
+.chart-section h2 {
+  font-size: 1.5rem;
+  margin-bottom: var(--spacing-sm);
+  color: var(--text-primary);
 }
 
-/* Pension Savings Indicator (below chart) */
-.pension-savings-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--gray-200);
-}
-
-.savings-badge {
-  background: #fef3c7;
-  color: #92400e;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.policy-match {
-  color: var(--gray-500);
-  font-size: 0.85rem;
+.chart-help {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin-bottom: var(--spacing-md);
   font-style: italic;
 }
 
+.reform-note {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-sm);
+  background: #f0fdf4;
+  border-left: 4px solid var(--color-success);
+  border-radius: 4px;
+  color: #166534;
+}
+
+.reform-note strong {
+  color: #15803d;
+  font-size: 1.1rem;
+}
+
 /* =============================================================================
-   Sources Section
+   METHODOLOGY
    ============================================================================= */
 
-.sources {
-  margin-top: 2rem;
-  background: white;
-  border-radius: 12px;
-  padding: 1.25rem;
+.methodology {
+  background: var(--bg-card);
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius);
+  margin-bottom: var(--spacing-md);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.sources h4 {
-  font-size: 0.9rem;
-  color: var(--gray-700);
-  margin-bottom: 0.75rem;
+.methodology h2 {
+  font-size: 1.5rem;
+  margin-bottom: var(--spacing-md);
+  color: var(--text-primary);
 }
 
-.sources ul {
-  list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1.5rem;
-  font-size: 0.8rem;
-  color: var(--gray-500);
-  margin-bottom: 0.75rem;
+.method-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
 }
 
-.sources ul li::before {
-  content: "•";
-  margin-right: 0.5rem;
-  color: var(--primary-light);
+.method-card {
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+}
+
+.method-card h4 {
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-sm);
+  font-size: 1.1rem;
+}
+
+.method-card ul {
+  margin-left: var(--spacing-md);
+  color: var(--text-secondary);
+}
+
+.method-card ul li {
+  margin-bottom: var(--spacing-xs);
+}
+
+.method-card em {
+  color: var(--text-neutral);
+  font-size: 0.85rem;
 }
 
 .disclaimer {
-  font-size: 0.8rem;
-  color: var(--warning);
+  padding: var(--spacing-md);
   background: #fffbeb;
-  padding: 0.75rem;
-  border-radius: 6px;
-  border-left: 3px solid var(--warning);
+  border: 2px solid var(--color-warning);
+  border-radius: var(--border-radius);
+  color: #92400e;
+  font-size: 0.95rem;
+}
+
+.disclaimer strong {
+  color: #78350f;
 }
 
 /* =============================================================================
-   Recharts Tooltip Customization
+   FOOTER
    ============================================================================= */
 
-.recharts-tooltip-wrapper {
-  outline: none;
-}
-
-.recharts-default-tooltip {
-  background: white !important;
-  border: 1px solid var(--gray-200) !important;
-  border-radius: 8px !important;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+.footer {
+  text-align: center;
+  padding: var(--spacing-lg);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
 }
 
 /* =============================================================================
-   Responsive Adjustments
+   RESPONSIVE
    ============================================================================= */
 
 @media (max-width: 768px) {
-  .main {
-    padding: 1rem;
+  .app {
+    padding: var(--spacing-sm);
   }
-
-  .deficit-value {
-    font-size: 2rem;
+  
+  .header h1 {
+    font-size: 1.8rem;
   }
-
-  .controls-and-chart {
-    gap: 1rem;
+  
+  .subtitle {
+    font-size: 0.95rem;
   }
-
-  .sources ul {
-    flex-direction: column;
-    gap: 0.25rem;
+  
+  .controls-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .results-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .method-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .reform-specs {
+    grid-template-columns: 1fr;
   }
 }

@@ -1,454 +1,606 @@
 import { useState, useMemo } from 'react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, BarChart, Bar } from 'recharts'
 import './App.css'
 
 /**
- * FRENCH BUDGET SIMULATOR - Test Version with Pension Controls
+ * FRENCH BUDGET SIMULATOR v1.8
  * 
- * Pedagogical tool to understand French fiscal trade-offs
- * Data sources: PLF 2025, PLFSS 2025/2026, Generation Libre contre-budget
+ * NEW FEATURES:
+ * - Enhanced sovereign risk premium model
+ * - Structural reform selector with policy references
+ * - Interest rate evolution visualization
+ * - "Doom loop" assessment
  * 
- * PENSION ADJUSTMENT LEVER:
- * Combines two distinct policy mechanisms:
- * 1. Indexation changes (gel, sous-indexation) - affects pension amounts
- * 2. Tax treatment changes (abatement removal) - affects pension taxation
- * Both generate budget savings but through different channels.
+ * PEDAGOGICAL GOALS:
+ * - Show how debt levels affect borrowing costs
+ * - Demonstrate long-term benefits of structural reforms
+ * - Illustrate fiscal-financial feedback loops
  */
 
+// Import projection engine
+import {
+  MACRO_BASELINE,
+  STRUCTURAL_REFORMS,
+  projectFiscalPath,
+  getBaselineProjection,
+  compareProjections,
+  assessDoomLoop,
+  validateProjection,
+} from './projection-engine-v1.8'
+
 // =============================================================================
-// BASELINE DATA (2025)
+// BASELINE DATA (unchanged from v1.7)
 // =============================================================================
 
 const BASELINE = {
-  // Revenue (Md€)
-  revenuTotal: 308.4,        // PLF 2025 recettes nettes
-  incomeTax: 94.1,           // IR
-  vat: 97.5,                 // TVA (State share)
-  corporateTax: 51.3,        // IS
-  otherTax: 65.5,            // Other taxes
+  revenuTotal: 308.4,
+  incomeTax: 94.1,
+  vat: 97.5,
+  corporateTax: 51.3,
+  otherTax: 65.5,
   
-  // Expenditure (Md€) - Top missions
-  spendingTotal: 444.97,     // PLF 2025 charges nettes
-  education: 88.9,           // Enseignement scolaire
-  defense: 65.0,             // Defense
-  solidarity: 30.0,          // Solidarite, insertion
-  ecological: 45.0,          // Ecologie, développement
-  otherSpending: 216.07,     // Remaining missions
+  spendingTotal: 444.97,
+  education: 88.9,
+  defense: 65.0,
+  solidarity: 30.0,
+  ecological: 45.0,
+  otherSpending: 216.07,
   
-  // Social Security context (for pension lever)
-  pensionSpending: 336.0,    // ~43% of SS expenditure (~780 Md€)
-  
-  // Deficit
-  deficit: -139.0,           // PLF 2025 target
+  pensionSpending: 336.0,
+  deficit: -139.0,
 }
 
 // =============================================================================
-// POLICY REFERENCE POINTS (for pedagogical markers)
-// =============================================================================
-
-const PENSION_REFERENCES = {
-  gel_2025: { 
-    savings: 3.6, 
-    label: "PLFSS 2025: Report revalorisation Jan→Jul",
-    shortLabel: "Report 6 mois"
-  },
-  gel_2026: { 
-    savings: 3.7, 
-    label: "PLFSS 2026: Gel total (0% indexation)",
-    shortLabel: "Gel total"
-  },
-  abattement: { 
-    savings: 4.5, 
-    label: "Generation Libre: Suppression abattement 10%",
-    shortLabel: "Fin abattement 10%"
-  },
-  combined: {
-    savings: 8.2,
-    label: "Gel + suppression abattement (cumul)",
-    shortLabel: "Gel + abattement"
-  }
-}
-
-// =============================================================================
-// MAIN COMPONENT
+// MAIN APP COMPONENT
 // =============================================================================
 
 function App() {
-  // -------------------------------------------------------------------------
-  // State: Tax adjustments (percentage point changes)
-  // -------------------------------------------------------------------------
-  const [incomeTaxChange, setIncomeTaxChange] = useState(0)      // -5 to +5 pp
-  const [vatChange, setVatChange] = useState(0)                  // -2 to +2 pp
-  const [corporateTaxChange, setCorporateTaxChange] = useState(0) // -5 to +5 pp
+  // Policy levers (existing)
+  const [incomeTaxChange, setIncomeTaxChange] = useState(0)
+  const [vatChange, setVatChange] = useState(0)
+  const [corpTaxChange, setCorpTaxChange] = useState(0)
+  const [spendingEducation, setSpendingEducation] = useState(0)
+  const [spendingDefense, setSpendingDefense] = useState(0)
+  const [spendingSolidarity, setSpendingSolidarity] = useState(0)
   
-  // -------------------------------------------------------------------------
-  // State: Spending adjustments (percentage changes)
-  // -------------------------------------------------------------------------
-  const [educationChange, setEducationChange] = useState(0)      // -20% to +20%
-  const [defenseChange, setDefenseChange] = useState(0)          // -20% to +20%
-  const [solidarityChange, setSolidarityChange] = useState(0)    // -20% to +20%
+  // NEW: Structural reform selector
+  const [selectedReform, setSelectedReform] = useState('none')
   
-  // -------------------------------------------------------------------------
-  // State: Pension adjustment (Md€ savings target)
-  // -------------------------------------------------------------------------
-  const [pensionSavings, setPensionSavings] = useState(0)        // 0 to 10 Md€
-
-  // -------------------------------------------------------------------------
-  // Calculations
-  // -------------------------------------------------------------------------
-  const calculations = useMemo(() => {
-    // Revenue changes (simplified: 1pp change ≈ proportional revenue change)
-    // In reality, behavioral responses would modify these - Phase 1 will add elasticities
-    const newIncomeTax = BASELINE.incomeTax * (1 + incomeTaxChange / 14.4)  // ~14.4% effective rate
-    const newVat = BASELINE.vat * (1 + vatChange / 20)                       // 20% standard rate
-    const newCorporateTax = BASELINE.corporateTax * (1 + corporateTaxChange / 25) // 25% rate
+  // NEW: Political risk toggle (for scenarios)
+  const [politicalRisk, setPoliticalRisk] = useState(0)
+  
+  // Projection horizon
+  const [projectionYears, setProjectionYears] = useState(10)
+  
+  // Calculate policy impacts
+  const policyImpact = useMemo(() => {
+    // Revenue changes (simplified elasticities)
+    const incomeRevenue = incomeTaxChange * BASELINE.incomeTax * 0.9  // ETI = 0.1
+    const vatRevenue = vatChange * BASELINE.vat * 0.95                // Low evasion
+    const corpRevenue = corpTaxChange * BASELINE.corporateTax * 0.7   // Profit shifting
     
-    const totalRevenue = newIncomeTax + newVat + newCorporateTax + BASELINE.otherTax
+    const totalRevenueChange = incomeRevenue + vatRevenue + corpRevenue
     
     // Spending changes
-    const newEducation = BASELINE.education * (1 + educationChange / 100)
-    const newDefense = BASELINE.defense * (1 + defenseChange / 100)
-    const newSolidarity = BASELINE.solidarity * (1 + solidarityChange / 100)
+    const educationSpending = spendingEducation * BASELINE.education / 100
+    const defenseSpending = spendingDefense * BASELINE.defense / 100
+    const solidaritySpending = spendingSolidarity * BASELINE.solidarity / 100
     
-    const totalSpending = newEducation + newDefense + newSolidarity + 
-                          BASELINE.ecological + BASELINE.otherSpending
+    const totalSpendingChange = educationSpending + defenseSpending + solidaritySpending
     
-    // Pension savings reduce the deficit directly
-    // (In full model, would flow through SS accounts)
-    const adjustedSpending = totalSpending - pensionSavings
-    
-    // New deficit
-    const newDeficit = totalRevenue - adjustedSpending
-    const deficitChange = newDeficit - BASELINE.deficit
+    // Growth effects (simplified)
+    const corpGrowthEffect = corpTaxChange < 0 ? Math.abs(corpTaxChange) * 0.002 : 0
+    const spendingGrowthEffect = totalSpendingChange < 0 ? totalSpendingChange * 0.0001 : 0
+    const growthEffect = corpGrowthEffect + spendingGrowthEffect
     
     return {
-      revenue: {
-        incomeTax: newIncomeTax,
-        vat: newVat,
-        corporateTax: newCorporateTax,
-        other: BASELINE.otherTax,
-        total: totalRevenue,
-      },
-      spending: {
-        education: newEducation,
-        defense: newDefense,
-        solidarity: newSolidarity,
-        ecological: BASELINE.ecological,
-        other: BASELINE.otherSpending,
-        pensionSavings: pensionSavings,
-        total: adjustedSpending,
-      },
-      deficit: newDeficit,
-      deficitChange: deficitChange,
+      revenueChange: totalRevenueChange,
+      spendingChange: totalSpendingChange,
+      growthEffect,
     }
-  }, [incomeTaxChange, vatChange, corporateTaxChange, 
-      educationChange, defenseChange, solidarityChange, pensionSavings])
-
-  // -------------------------------------------------------------------------
-  // Chart data
-  // -------------------------------------------------------------------------
-  const chartData = [
-    {
-      name: 'Recettes',
-      'IR': calculations.revenue.incomeTax,
-      'TVA': calculations.revenue.vat,
-      'IS': calculations.revenue.corporateTax,
-      'Autres': calculations.revenue.other,
-    },
-    {
-      name: 'Dépenses',
-      'Éducation': calculations.spending.education,
-      'Defense': calculations.spending.defense,
-      'Solidarite': calculations.spending.solidarity,
-      'Ecologie': calculations.spending.ecological,
-      'Autres': calculations.spending.other,
-    },
-  ]
-
-  // -------------------------------------------------------------------------
-  // Helper: Find nearest policy reference for pension slider
-  // -------------------------------------------------------------------------
-  const getNearestPolicyReference = (value) => {
-    if (value < 1) return null
-    const refs = Object.values(PENSION_REFERENCES)
-    let nearest = refs[0]
-    let minDist = Math.abs(value - nearest.savings)
+  }, [incomeTaxChange, vatChange, corpTaxChange, spendingEducation, spendingDefense, spendingSolidarity])
+  
+  // Generate projections
+  const projections = useMemo(() => {
+    // Baseline (no policy change, no reforms)
+    const baseline = getBaselineProjection(projectionYears)
     
-    for (const ref of refs) {
-      const dist = Math.abs(value - ref.savings)
-      if (dist < minDist) {
-        minDist = dist
-        nearest = ref
-      }
-    }
-    return minDist < 1 ? nearest : null
-  }
-
-  const nearestPensionRef = getNearestPolicyReference(pensionSavings)
-
-  // -------------------------------------------------------------------------
-  // Render
-  // -------------------------------------------------------------------------
+    // Policy scenario (with current lever settings)
+    const policyScenario = projectFiscalPath(policyImpact, {
+      years: projectionYears,
+      enableRiskPremium: true,
+      politicalRiskPremium: politicalRisk / 10000,  // bps → decimal
+      structuralReform: null,
+    })
+    
+    // Policy + Reform scenario
+    const reform = selectedReform !== 'none' ? STRUCTURAL_REFORMS[selectedReform] : null
+    const fullScenario = projectFiscalPath(policyImpact, {
+      years: projectionYears,
+      enableRiskPremium: true,
+      politicalRiskPremium: politicalRisk / 10000,
+      structuralReform: reform,
+    })
+    
+    return { baseline, policyScenario, fullScenario }
+  }, [policyImpact, projectionYears, selectedReform, politicalRisk])
+  
+  // Assess doom loop risk
+  const doomLoopAssessment = useMemo(() => {
+    return assessDoomLoop(projections.fullScenario)
+  }, [projections.fullScenario])
+  
+  // Validation
+  const validation = useMemo(() => {
+    return validateProjection(projections.fullScenario)
+  }, [projections.fullScenario])
+  
   return (
     <div className="app">
       <header className="header">
-        <h1>🇫🇷 Simulateur Budget France</h1>
-        <p className="subtitle">Version test — Explorez les arbitrages budgétaires</p>
+        <h1>Simulateur Budget France v1.8</h1>
+        <p className="subtitle">
+          Nouvelles fonctionnalités : Prime de risque souverain • Réformes structurelles
+        </p>
       </header>
 
-      <main className="main">
-        {/* Deficit Summary */}
-        <section className="deficit-summary">
-          <div className={`deficit-card ${calculations.deficitChange > 0 ? 'improved' : calculations.deficitChange < 0 ? 'worsened' : ''}`}>
-            <h2>Solde budgétaire</h2>
-            <div className="deficit-value">
-              {calculations.deficit.toFixed(1)} Md€
+      <main className="main-content">
+        {/* EXISTING TAX LEVERS */}
+        <section className="controls-section">
+          <h2>Leviers fiscaux</h2>
+          <div className="controls-grid">
+            <SliderControl
+              label="Impôt sur le revenu"
+              value={incomeTaxChange}
+              onChange={setIncomeTaxChange}
+              min={-10}
+              max={10}
+              step={1}
+              unit="pp"
+            />
+            <SliderControl
+              label="TVA"
+              value={vatChange}
+              onChange={setVatChange}
+              min={-5}
+              max={5}
+              step={0.5}
+              unit="pp"
+            />
+            <SliderControl
+              label="Impôt sur les sociétés"
+              value={corpTaxChange}
+              onChange={setCorpTaxChange}
+              min={-10}
+              max={5}
+              step={1}
+              unit="pp"
+            />
+          </div>
+        </section>
+
+        {/* EXISTING SPENDING LEVERS */}
+        <section className="controls-section">
+          <h2>Dépenses publiques</h2>
+          <div className="controls-grid">
+            <SliderControl
+              label="Enseignement scolaire"
+              value={spendingEducation}
+              onChange={setSpendingEducation}
+              min={-20}
+              max={20}
+              step={1}
+              unit="%"
+            />
+            <SliderControl
+              label="Défense"
+              value={spendingDefense}
+              onChange={setSpendingDefense}
+              min={-20}
+              max={20}
+              step={1}
+              unit="%"
+            />
+            <SliderControl
+              label="Solidarité"
+              value={spendingSolidarity}
+              onChange={setSpendingSolidarity}
+              min={-20}
+              max={20}
+              step={1}
+              unit="%"
+            />
+          </div>
+        </section>
+
+        {/* NEW: STRUCTURAL REFORMS SELECTOR */}
+        <section className="controls-section reform-section">
+          <h2>🔧 Réformes structurelles (NOUVEAU v1.8)</h2>
+          <p className="section-help">
+            Les réformes structurelles augmentent le potentiel de croissance sur le long terme.
+            Effets progressifs avec délais de 2-5 ans.
+          </p>
+          
+          <div className="reform-selector">
+            <label htmlFor="reform-select">Sélectionner une réforme :</label>
+            <select
+              id="reform-select"
+              value={selectedReform}
+              onChange={(e) => setSelectedReform(e.target.value)}
+              className="reform-select"
+            >
+              <option value="none">Aucune réforme</option>
+              <optgroup label="Réformes individuelles">
+                <option value="laborMarket">Marché du travail (+0.15 pp/an)</option>
+                <option value="productMarketRegulation">Professions réglementées (+0.10 pp/an)</option>
+                <option value="planning">Droit de l'urbanisme (+0.15 pp/an)</option>
+                <option value="education">Formation professionnelle (+0.08 pp/an)</option>
+                <option value="energy">Marché de l'énergie (+0.12 pp/an)</option>
+              </optgroup>
+              <optgroup label="Scénarios combinés">
+                <option value="ambitious">Paquet ambitieux (+0.40 pp/an)</option>
+                <option value="modest">Réformes ciblées (+0.20 pp/an)</option>
+              </optgroup>
+            </select>
+          </div>
+          
+          {selectedReform !== 'none' && (
+            <div className="reform-info">
+              <h4>{STRUCTURAL_REFORMS[selectedReform].label}</h4>
+              <p className="reform-description">
+                {STRUCTURAL_REFORMS[selectedReform].description}
+              </p>
+              <div className="reform-specs">
+                <span className="spec">
+                  <strong>Effet :</strong> +{(STRUCTURAL_REFORMS[selectedReform].growthEffect * 100).toFixed(2)} pp/an
+                </span>
+                <span className="spec">
+                  <strong>Délai :</strong> {STRUCTURAL_REFORMS[selectedReform].lag} ans
+                </span>
+                <span className="spec">
+                  <strong>Durée pic :</strong> {STRUCTURAL_REFORMS[selectedReform].duration} ans
+                </span>
+                <span className="spec">
+                  <strong>Source :</strong> {STRUCTURAL_REFORMS[selectedReform].source}
+                </span>
+              </div>
+              <p className="confidence-note">
+                Confiance : <strong>{STRUCTURAL_REFORMS[selectedReform].confidence}</strong>
+              </p>
             </div>
-            <div className="deficit-change">
-              {calculations.deficitChange > 0 ? '+' : ''}{calculations.deficitChange.toFixed(1)} Md€ vs référence
+          )}
+        </section>
+
+        {/* NEW: RISK PREMIUM SCENARIO */}
+        <section className="controls-section">
+          <h2>⚠️ Risque politique (NOUVEAU v1.8)</h2>
+          <p className="section-help">
+            Simule l'impact d'une crise politique sur la prime de risque souverain
+            (référence : France 2024, +21 bps après dissolution)
+          </p>
+          <SliderControl
+            label="Prime de risque politique"
+            value={politicalRisk}
+            onChange={setPoliticalRisk}
+            min={0}
+            max={50}
+            step={5}
+            unit="bps"
+          />
+        </section>
+
+        {/* PROJECTION HORIZON */}
+        <section className="controls-section">
+          <h2>Horizon de projection</h2>
+          <div className="horizon-selector">
+            {[1, 2, 5, 10].map(y => (
+              <button
+                key={y}
+                className={`horizon-btn ${projectionYears === y ? 'active' : ''}`}
+                onClick={() => setProjectionYears(y)}
+              >
+                {y} an{y > 1 ? 's' : ''}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* VALIDATION WARNINGS */}
+        {!validation.valid && (
+          <section className="warning-section">
+            <h3>⚠️ Avertissements</h3>
+            <ul>
+              {validation.warnings.map((w, i) => (
+                <li key={i}>{w}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {/* RESULTS PANELS */}
+        <section className="results-grid">
+          {/* Key Metrics */}
+          <div className="result-card">
+            <h3>Indicateurs clés (Année {projections.fullScenario[projectionYears].year})</h3>
+            <div className="metrics">
+              <Metric
+                label="Dette publique"
+                value={projections.fullScenario[projectionYears].debtRatio}
+                unit="% PIB"
+                baseline={projections.baseline[projectionYears].debtRatio}
+              />
+              <Metric
+                label="Déficit public"
+                value={projections.fullScenario[projectionYears].deficitRatio}
+                unit="% PIB"
+                baseline={projections.baseline[projectionYears].deficitRatio}
+              />
+              <Metric
+                label="Taux d'intérêt effectif"
+                value={projections.fullScenario[projectionYears].effectiveInterestRate}
+                unit="%"
+                baseline={projections.baseline[projectionYears].effectiveInterestRate}
+                decimals={2}
+              />
+              <Metric
+                label="Prime de risque"
+                value={projections.fullScenario[projectionYears].riskPremiumBps}
+                unit="bps"
+                baseline={projections.baseline[projectionYears].riskPremiumBps}
+              />
             </div>
-            <div className="deficit-baseline">
-              (Référence PLF 2025: {BASELINE.deficit} Md€)
+          </div>
+
+          {/* Doom Loop Assessment */}
+          <div className="result-card doom-loop-card">
+            <h3>🔁 Évaluation "Doom Loop"</h3>
+            <div className="doom-loop-metrics">
+              <div className={`severity-badge severity-${doomLoopAssessment.severity}`}>
+                Sévérité : {doomLoopAssessment.severity.toUpperCase()}
+              </div>
+              <p className="doom-metric">
+                Évolution dette : <strong>{doomLoopAssessment.debtRatioChange > 0 ? '+' : ''}{doomLoopAssessment.debtRatioChange}</strong> pp
+              </p>
+              <p className="doom-metric">
+                Évolution intérêts/PIB : <strong>{doomLoopAssessment.interestRatioChange > 0 ? '+' : ''}{doomLoopAssessment.interestRatioChange}</strong> pp
+              </p>
+              <p className="doom-metric">
+                Prime de risque : <strong>+{doomLoopAssessment.premiumIncreaseBps}</strong> bps
+              </p>
+              {doomLoopAssessment.doomLoopActive && (
+                <p className="doom-warning">
+                  ⚠️ Boucle dette-intérêt activée ! La hausse de la dette alimente la hausse des taux.
+                </p>
+              )}
             </div>
           </div>
         </section>
 
-        <div className="controls-and-chart">
-          {/* Controls Panel */}
-          <section className="controls">
-            {/* Tax Controls */}
-            <div className="control-group">
-              <h3>📊 Recettes fiscales</h3>
-              
-              <div className="slider-control">
-                <label>
-                  Impôt sur le revenu: {incomeTaxChange > 0 ? '+' : ''}{incomeTaxChange} pts
-                </label>
-                <input
-                  type="range"
-                  min="-5"
-                  max="5"
-                  step="0.5"
-                  value={incomeTaxChange}
-                  onChange={(e) => setIncomeTaxChange(parseFloat(e.target.value))}
-                />
-                <span className="slider-labels">
-                  <span>-5</span>
-                  <span>0</span>
-                  <span>+5</span>
-                </span>
-              </div>
+        {/* DEBT TRAJECTORY CHART */}
+        <section className="chart-section">
+          <h2>Évolution de la dette publique</h2>
+          <ResponsiveContainer width="100%" height={400}>
+            <LineChart>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                dataKey="year"
+                type="number"
+                domain={[MACRO_BASELINE.year, MACRO_BASELINE.year + projectionYears]}
+              />
+              <YAxis
+                label={{ value: 'Dette (% PIB)', angle: -90, position: 'insideLeft' }}
+                domain={[80, 140]}
+              />
+              <Tooltip />
+              <Legend />
+              <ReferenceLine y={60} stroke="#999" strokeDasharray="3 3" label="Maastricht 60%" />
+              <ReferenceLine y={90} stroke="#f59e0b" strokeDasharray="3 3" label="Seuil risque 90%" />
+              <ReferenceLine y={120} stroke="#ef4444" strokeDasharray="3 3" label="Crise >120%" />
+              <Line
+                data={projections.baseline}
+                type="monotone"
+                dataKey="debtRatio"
+                stroke="#94a3b8"
+                strokeWidth={2}
+                name="Scénario tendanciel"
+                dot={false}
+              />
+              <Line
+                data={projections.policyScenario}
+                type="monotone"
+                dataKey="debtRatio"
+                stroke="#3b82f6"
+                strokeWidth={2}
+                name="Avec leviers fiscaux"
+                dot={false}
+              />
+              <Line
+                data={projections.fullScenario}
+                type="monotone"
+                dataKey="debtRatio"
+                stroke="#10b981"
+                strokeWidth={3}
+                name="Avec leviers + réformes"
+                dot={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </section>
 
-              <div className="slider-control">
-                <label>
-                  TVA: {vatChange > 0 ? '+' : ''}{vatChange} pts
-                </label>
-                <input
-                  type="range"
-                  min="-2"
-                  max="2"
-                  step="0.5"
-                  value={vatChange}
-                  onChange={(e) => setVatChange(parseFloat(e.target.value))}
-                />
-                <span className="slider-labels">
-                  <span>-2</span>
-                  <span>0</span>
-                  <span>+2</span>
-                </span>
-              </div>
+        {/* NEW: INTEREST RATE EVOLUTION CHART */}
+        <section className="chart-section">
+          <h2>🆕 Évolution du taux d'intérêt effectif</h2>
+          <p className="chart-help">
+            Le taux d'intérêt augmente avec le ratio dette/PIB selon le modèle IMF/EC (3-4 bps/pp au-delà de 60% PIB).
+            Accélération non-linéaire au-delà de 120%.
+          </p>
+          <ResponsiveContainer width="100%" height={350}>
+            <LineChart>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                dataKey="year"
+                type="number"
+                domain={[MACRO_BASELINE.year, MACRO_BASELINE.year + projectionYears]}
+              />
+              <YAxis
+                label={{ value: 'Taux effectif (%)', angle: -90, position: 'insideLeft' }}
+                domain={[2.5, 6]}
+              />
+              <Tooltip />
+              <Legend />
+              <ReferenceLine
+                y={MACRO_BASELINE.baseInterestRate * 100}
+                stroke="#999"
+                strokeDasharray="3 3"
+                label="Taux base 3.2%"
+              />
+              <Line
+                data={projections.baseline}
+                type="monotone"
+                dataKey="effectiveInterestRate"
+                stroke="#94a3b8"
+                strokeWidth={2}
+                name="Tendanciel"
+                dot={false}
+              />
+              <Line
+                data={projections.fullScenario}
+                type="monotone"
+                dataKey="effectiveInterestRate"
+                stroke="#ef4444"
+                strokeWidth={3}
+                name="Avec politique + réformes"
+                dot={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </section>
 
-              <div className="slider-control">
-                <label>
-                  Impôt sur les sociétés: {corporateTaxChange > 0 ? '+' : ''}{corporateTaxChange} pts
-                </label>
-                <input
-                  type="range"
-                  min="-5"
-                  max="5"
-                  step="0.5"
-                  value={corporateTaxChange}
-                  onChange={(e) => setCorporateTaxChange(parseFloat(e.target.value))}
-                />
-                <span className="slider-labels">
-                  <span>-5</span>
-                  <span>0</span>
-                  <span>+5</span>
-                </span>
-              </div>
-            </div>
-
-            {/* Spending Controls */}
-            <div className="control-group">
-              <h3>💰 Dépenses de l'État</h3>
-              
-              <div className="slider-control">
-                <label>
-                  Éducation: {educationChange > 0 ? '+' : ''}{educationChange}%
-                </label>
-                <input
-                  type="range"
-                  min="-20"
-                  max="20"
-                  step="1"
-                  value={educationChange}
-                  onChange={(e) => setEducationChange(parseFloat(e.target.value))}
-                />
-                <span className="slider-labels">
-                  <span>-20%</span>
-                  <span>0</span>
-                  <span>+20%</span>
-                </span>
-              </div>
-
-              <div className="slider-control">
-                <label>
-                  Defense: {defenseChange > 0 ? '+' : ''}{defenseChange}%
-                </label>
-                <input
-                  type="range"
-                  min="-20"
-                  max="20"
-                  step="1"
-                  value={defenseChange}
-                  onChange={(e) => setDefenseChange(parseFloat(e.target.value))}
-                />
-                <span className="slider-labels">
-                  <span>-20%</span>
-                  <span>0</span>
-                  <span>+20%</span>
-                </span>
-              </div>
-
-              <div className="slider-control">
-                <label>
-                  Solidarite: {solidarityChange > 0 ? '+' : ''}{solidarityChange}%
-                </label>
-                <input
-                  type="range"
-                  min="-20"
-                  max="20"
-                  step="1"
-                  value={solidarityChange}
-                  onChange={(e) => setSolidarityChange(parseFloat(e.target.value))}
-                />
-                <span className="slider-labels">
-                  <span>-20%</span>
-                  <span>0</span>
-                  <span>+20%</span>
-                </span>
-              </div>
-            </div>
-
-            {/* Pension Controls - NEW */}
-            <div className="control-group pension-control">
-              <h3>👴 Retraites</h3>
-              
-              <div className="slider-control">
-                <label>
-                  Économies sur les retraites: {pensionSavings.toFixed(1)} Md€
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="10"
-                  step="0.1"
-                  value={pensionSavings}
-                  onChange={(e) => setPensionSavings(parseFloat(e.target.value))}
-                />
-                <span className="slider-labels">
-                  <span>0</span>
-                  <span>5 Md€</span>
-                  <span>10 Md€</span>
-                </span>
-              </div>
-
-              {/* Policy Reference Markers */}
-              <div className="policy-references">
-                <p className="reference-title">Repères (économies annuelles) :</p>
-                <ul className="reference-list">
-                  <li className={pensionSavings >= 3.5 && pensionSavings < 4.0 ? 'active' : ''}>
-                    <span className="ref-value">~3.6 Md€</span>
-                    <span className="ref-label">Report revalorisation 6 mois (PLFSS 2025)</span>
-                  </li>
-                  <li className={pensionSavings >= 3.6 && pensionSavings < 4.2 ? 'active' : ''}>
-                    <span className="ref-value">~3.7 Md€</span>
-                    <span className="ref-label">Gel total des pensions (PLFSS 2026)</span>
-                  </li>
-                  <li className={pensionSavings >= 4.2 && pensionSavings < 5.0 ? 'active' : ''}>
-                    <span className="ref-value">~4.5 Md€</span>
-                    <span className="ref-label">Suppression abattement 10% (Generation Libre)</span>
-                  </li>
-                  <li className={pensionSavings >= 7.5 ? 'active' : ''}>
-                    <span className="ref-value">~8.2 Md€</span>
-                    <span className="ref-label">Gel + suppression abattement (cumul)</span>
-                  </li>
-                </ul>
-                <p className="reference-note">
-                  💡 Ces économies peuvent provenir de l'indexation (gel, sous-revalorisation) 
-                  ou de la fiscalité (abattement IR). Mécanismes distincts, effet budgétaire similaire.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* Chart */}
+        {/* REFORM IMPACT COMPARISON */}
+        {selectedReform !== 'none' && (
           <section className="chart-section">
-            <h3>Recettes vs Dépenses (Md€)</h3>
-            <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={chartData} layout="vertical">
+            <h2>🆕 Impact de la réforme structurelle</h2>
+            <p className="chart-help">
+              Comparaison : Politique seule vs. Politique + Réforme structurelle
+            </p>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart
+                data={[1, 2, 5, 10].map(y => {
+                  const comp = compareProjections(projections.policyScenario, projections.fullScenario, [y])[0]
+                  return {
+                    year: `${y} an${y > 1 ? 's' : ''}`,
+                    debtReduction: -comp.debtRatioDiff,  // Negative = improvement
+                  }
+                })}
+              >
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" domain={[0, 500]} />
-                <YAxis type="category" dataKey="name" width={80} />
-                <Tooltip formatter={(value) => `${value.toFixed(1)} Md€`} />
-                <Legend />
-                <Bar dataKey="IR" stackId="a" fill="#3b82f6" name="IR" />
-                <Bar dataKey="TVA" stackId="a" fill="#10b981" name="TVA" />
-                <Bar dataKey="IS" stackId="a" fill="#f59e0b" name="IS" />
-                <Bar dataKey="Autres" stackId="a" fill="#6b7280" name="Autres recettes" />
-                <Bar dataKey="Éducation" stackId="a" fill="#ef4444" name="Éducation" />
-                <Bar dataKey="Defense" stackId="a" fill="#8b5cf6" name="Defense" />
-                <Bar dataKey="Solidarite" stackId="a" fill="#ec4899" name="Solidarite" />
-                <Bar dataKey="Ecologie" stackId="a" fill="#14b8a6" name="Ecologie" />
-                <Bar dataKey="Autres" stackId="a" fill="#9ca3af" name="Autres dépenses" />
+                <XAxis dataKey="year" />
+                <YAxis label={{ value: 'Réduction dette (pp PIB)', angle: -90, position: 'insideLeft' }} />
+                <Tooltip />
+                <Bar dataKey="debtReduction" fill="#10b981" name="Réduction dette grâce aux réformes" />
               </BarChart>
             </ResponsiveContainer>
-            
-            {/* Pension savings indicator */}
-            {pensionSavings > 0 && (
-              <div className="pension-savings-indicator">
-                <span className="savings-badge">
-                  💰 Économies retraites: -{pensionSavings.toFixed(1)} Md€
-                </span>
-                {nearestPensionRef && (
-                  <span className="policy-match">
-                    ≈ {nearestPensionRef.shortLabel}
-                  </span>
-                )}
-              </div>
-            )}
+            <p className="reform-note">
+              Sur {projectionYears} ans, la réforme <em>{STRUCTURAL_REFORMS[selectedReform].label}</em> réduit la dette de{' '}
+              <strong>
+                {Math.abs(compareProjections(projections.policyScenario, projections.fullScenario, [projectionYears])[0].debtRatioDiff).toFixed(1)} pp de PIB
+              </strong>
+              {' '}par rapport au scénario sans réforme.
+            </p>
           </section>
-        </div>
+        )}
 
-        {/* Data Sources */}
-        <section className="sources">
-          <h4>Sources</h4>
-          <ul>
-            <li>PLF 2025 — Projet de Loi de Finances 2025</li>
-            <li>PLFSS 2025/2026 — Projets de Loi de Financement de la Sécurité Sociale</li>
-            <li>Generation Libre — Contre-budget libéral 2026 (39 mesures)</li>
-            <li>IPP — Institut des Politiques Publiques (chiffrages "année blanche")</li>
-          </ul>
+        {/* METHODOLOGY */}
+        <section className="methodology">
+          <h2>📚 Méthodologie v1.8</h2>
+          <div className="method-grid">
+            <div className="method-card">
+              <h4>Prime de risque souverain</h4>
+              <ul>
+                <li>Modèle par paliers (60%, 90%, 120% dette/PIB)</li>
+                <li>3-4 bps/pp jusqu'à 90%, puis accélération</li>
+                <li>Calibré sur spreads OAT-Bund 2010-2025</li>
+                <li><em>Sources : IMF (2017), EC (2018), Kumar & Baldacci (2010)</em></li>
+              </ul>
+            </div>
+            <div className="method-card">
+              <h4>Réformes structurelles</h4>
+              <ul>
+                <li>Effets progressifs avec délais (2-5 ans)</li>
+                <li>Pic pendant 8-15 ans selon réforme</li>
+                <li>Décroissance exponentielle ensuite (demi-vie 10 ans)</li>
+                <li><em>Sources : OECD (2014), IMF Article IV France (2025), BdF (2017)</em></li>
+              </ul>
+            </div>
+            <div className="method-card">
+              <h4>Boucle dette-intérêt</h4>
+              <ul>
+                <li>Taux d'intérêt endogène (fonction du ratio dette/PIB)</li>
+                <li>Feedback automatique : dette ↑ → taux ↑ → charges ↑ → dette ↑</li>
+                <li>Sévérité = part des intérêts dans le déficit</li>
+                <li><em>Concept : "Doom loop" (Gros & Alcidi, CEPR 2019)</em></li>
+              </ul>
+            </div>
+          </div>
           <p className="disclaimer">
-            ⚠️ Version test simplifiee. Les effets comportementaux (elasticites) 
-            seront integres dans la version complète.
+            <strong>Avertissement pédagogique :</strong> Ce simulateur illustre des mécanismes économiques à des fins
+            éducatives. Les élasticités et paramètres sont des consensus académiques avec incertitude significative.
+            Ne pas utiliser pour des prévisions précises.
           </p>
         </section>
       </main>
 
       <footer className="footer">
-        <p>Simulateur pedagogique — Données PLF/PLFSS 2025-2026</p>
+        <p>Simulateur Budget France v1.8 • Sources : PLF 2025, IMF, OECD, ECB</p>
       </footer>
+    </div>
+  )
+}
+
+// =============================================================================
+// UI COMPONENTS
+// =============================================================================
+
+function SliderControl({ label, value, onChange, min, max, step, unit }) {
+  const displayValue = step < 1 ? value.toFixed(1) : value
+  const sign = value > 0 ? '+' : ''
+  
+  return (
+    <div className="slider-control">
+      <label>
+        {label}: <span className="value">{sign}{displayValue} {unit}</span>
+      </label>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+      />
+      <div className="slider-labels">
+        <span>{min}</span>
+        <span>0</span>
+        <span>{max}</span>
+      </div>
+    </div>
+  )
+}
+
+function Metric({ label, value, unit, baseline, decimals = 1 }) {
+  const diff = value - baseline
+  const diffSign = diff > 0 ? '+' : ''
+  const diffColor = diff > 0 ? 'metric-worse' : 'metric-better'
+  
+  return (
+    <div className="metric">
+      <div className="metric-label">{label}</div>
+      <div className="metric-value">
+        {value.toFixed(decimals)} {unit}
+      </div>
+      <div className={`metric-diff ${diffColor}`}>
+        {diffSign}{diff.toFixed(decimals)} vs. tendanciel
+      </div>
     </div>
   )
 }
