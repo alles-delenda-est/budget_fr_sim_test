@@ -402,7 +402,7 @@ export function assessDoomLoop(projection) {
   return {
     debtRatioChange: Math.round(debtIncrease * 10) / 10,
     interestRatioChange: Math.round(interestIncrease * 100) / 100,
-    premiumIncreaseB ps: Math.round(premiumIncrease),
+    premiumIncreaseBps: Math.round(premiumIncrease),
     severity: severity > 0.3 ? "high" : severity > 0.15 ? "medium" : "low",
     doomLoopActive: premiumIncrease > 20,  // >20 bps increase = loop engaged
   }
