@@ -3,18 +3,17 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import './App.css'
 
 /**
- * FRENCH BUDGET SIMULATOR v1.8
+ * FRENCH BUDGET SIMULATOR v1.9
  * 
- * NEW FEATURES:
- * - Enhanced sovereign risk premium model
- * - Structural reform selector with policy references
- * - Interest rate evolution visualization
- * - "Doom loop" assessment
+ * NEW IN v1.9:
+ * - Always shows integrated État + Sécurité Sociale (APU total)
+ * - Added Sarah Knafo counter-budget preset
+ * - Preset buttons for major political proposals
  * 
  * PEDAGOGICAL GOALS:
- * - Show how debt levels affect borrowing costs
- * - Demonstrate long-term benefits of structural reforms
- * - Illustrate fiscal-financial feedback loops
+ * - Show complete fiscal picture (not just État)
+ * - Compare major political budget proposals
+ * - Demonstrate trade-offs between revenue and spending
  */
 
 // Import projection engine
@@ -69,11 +68,106 @@ const BASELINE = {
     deficit: -19.4,
   },
   
-  // Integrated totals (APU)
+  // Integrated totals (APU) - ALWAYS USED
   integrated: {
     revenuTotal: 967.8,      // 308.4 + 659.4
     spendingTotal: 1121.9,   // 444.97 + 676.9
     deficit: -158.4,         // -139.0 + (-19.4)
+  },
+}
+
+// =============================================================================
+// POLITICAL PRESETS
+// =============================================================================
+
+const PRESETS = {
+  plf2025: {
+    label: "PLF 2025 (Barnier)",
+    description: "Budget initial présenté par Michel Barnier",
+    levers: {
+      // Slight tax increases
+      incomeTaxChange: 0.5,
+      vatChange: 0,
+      corpTaxChange: 1,
+      // Moderate spending restraint
+      spendingEducation: -2,
+      spendingDefense: 0,
+      spendingSolidarity: -5,
+      // SS: PLFSS 2026 measures
+      pensionIndexation: -1,  // Partial gel
+      healthSpending: -2,
+      socialContributions: 0,
+      csgRate: 0,
+    },
+    reforms: [],
+  },
+  
+  generationLibre: {
+    label: "Génération Libre",
+    description: "Contre-budget libéral: baisse d'impôts, réformes structurelles",
+    levers: {
+      // Tax cuts
+      incomeTaxChange: -3,
+      vatChange: 0,
+      corpTaxChange: -5,
+      // Deep spending cuts
+      spendingEducation: -10,
+      spendingDefense: 0,
+      spendingSolidarity: -15,
+      // SS: structural reforms
+      pensionIndexation: -2,
+      healthSpending: -8,
+      socialContributions: -2,
+      csgRate: 0,
+    },
+    reforms: ['labor', 'planning'],  // Expect growth from reforms
+  },
+  
+  knafo: {
+    label: "Sarah Knafo (RN/Reconquête)",
+    description: "Contre-budget Knafo: -20 Md€ recettes, -80 Md€ dépenses",
+    levers: {
+      // Revenue cuts (-20 Md€ total)
+      // Eliminate inheritance tax + CVAE = -20 Md€
+      // Reject tax increases from PLF 2025
+      incomeTaxChange: -2,   // Reject household tax increases
+      vatChange: 0,
+      corpTaxChange: -4,     // Reject business exceptional taxes
+      
+      // Spending cuts (-80 Md€ total, major items):
+      // Reserve social prestations for French: -15 to -20 Md€
+      spendingSolidarity: -60,  // Prestations sociales, agencies, development aid
+      spendingEducation: -10,   // Admin posts, foreign students
+      spendingDefense: 0,       // Not touched
+      
+      // SS cuts
+      pensionIndexation: 0,     // Not in Knafo plan
+      healthSpending: -5,       // State medical aid cuts
+      socialContributions: 0,
+      csgRate: 0,
+    },
+    reforms: [],  // No structural reforms in Knafo plan
+  },
+  
+  nfp: {
+    label: "Nouveau Front Populaire",
+    description: "Budget de gauche: hausses d'impôts, augmentation des dépenses sociales",
+    levers: {
+      // Major tax increases on high earners
+      incomeTaxChange: 5,
+      vatChange: 0,
+      corpTaxChange: 3,
+      // Increased social spending
+      spendingEducation: 10,
+      spendingDefense: 0,
+      spendingSolidarity: 15,
+      // SS: generous indexation
+      pensionIndexation: 1,  // Above inflation
+      healthSpending: 5,
+      socialContributions: 0,
+      csgRate: 2,  // Increase CSG on capital
+    },
+    reforms: [],
   },
 }
 
@@ -90,16 +184,13 @@ function App() {
   const [spendingDefense, setSpendingDefense] = useState(0)
   const [spendingSolidarity, setSpendingSolidarity] = useState(0)
   
-  // NEW: Sécurité Sociale levers
+  // Sécurité Sociale levers
   const [pensionIndexation, setPensionIndexation] = useState(0)  // pp deviation from inflation
   const [healthSpending, setHealthSpending] = useState(0)        // % change in ONDAM
   const [socialContributions, setSocialContributions] = useState(0)  // pp change
   const [csgRate, setCsgRate] = useState(0)                      // pp change
   
-  // NEW: View toggle
-  const [showIntegrated, setShowIntegrated] = useState(true)  // true = APU total, false = État seul
-  
-  // Structural reform selector - NOW SUPPORTS MULTIPLE
+  // Structural reform selector - SUPPORTS MULTIPLE
   const [selectedReforms, setSelectedReforms] = useState([])  // Array of reform keys
   
   // Calculate combined reform effect
@@ -131,13 +222,36 @@ function App() {
     )
   }
   
+  // Apply preset function
+  const applyPreset = (presetKey) => {
+    const preset = PRESETS[presetKey]
+    if (!preset) return
+    
+    const { levers, reforms } = preset
+    
+    // Apply all levers
+    setIncomeTaxChange(levers.incomeTaxChange)
+    setVatChange(levers.vatChange)
+    setCorpTaxChange(levers.corpTaxChange)
+    setSpendingEducation(levers.spendingEducation)
+    setSpendingDefense(levers.spendingDefense)
+    setSpendingSolidarity(levers.spendingSolidarity)
+    setPensionIndexation(levers.pensionIndexation)
+    setHealthSpending(levers.healthSpending)
+    setSocialContributions(levers.socialContributions)
+    setCsgRate(levers.csgRate)
+    
+    // Apply reforms
+    setSelectedReforms(reforms)
+  }
+  
   // Political risk toggle
   const [politicalRisk, setPoliticalRisk] = useState(0)
   
   // Projection horizon
   const [projectionYears, setProjectionYears] = useState(10)
   
-  // Calculate policy impacts
+  // Calculate policy impacts (ALWAYS integrated now)
   const policyImpact = useMemo(() => {
     // ÉTAT (State) revenue changes
     const incomeRevenue = incomeTaxChange * BASELINE.etat.incomeTax * 0.9
@@ -157,25 +271,15 @@ function App() {
     const csgRevenue = csgRate * BASELINE.securiteSociale.csg / 100
     
     // SÉCURITÉ SOCIALE spending changes
-    // Pension indexation: Each 1pp below inflation saves money
-    // Baseline: pensions revalued at inflation (1.8%)
-    // If pensionIndexation = -1pp, actual revaluation = 0.8%, saving = -1pp * 291 Md€ = ~2.9 Md€
     const pensionSpendingChange = pensionIndexation * BASELINE.securiteSociale.pensions / 100
-    
-    // Health spending (ONDAM): % change
     const healthSpendingChange = healthSpending * BASELINE.securiteSociale.health / 100
     
     const ssRevenueChange = socialContribRevenue + csgRevenue
     const ssSpendingChange = pensionSpendingChange + healthSpendingChange
     
-    // INTEGRATED totals
-    const totalRevenueChange = showIntegrated 
-      ? etatRevenueChange + ssRevenueChange
-      : etatRevenueChange
-    
-    const totalSpendingChange = showIntegrated
-      ? etatSpendingChange + ssSpendingChange
-      : etatSpendingChange
+    // INTEGRATED totals (always)
+    const totalRevenueChange = etatRevenueChange + ssRevenueChange
+    const totalSpendingChange = etatSpendingChange + ssSpendingChange
     
     // Growth effects (simplified)
     const corpGrowthEffect = corpTaxChange < 0 ? Math.abs(corpTaxChange) * 0.002 : 0
@@ -202,7 +306,6 @@ function App() {
     incomeTaxChange, vatChange, corpTaxChange,
     spendingEducation, spendingDefense, spendingSolidarity,
     pensionIndexation, healthSpending, socialContributions, csgRate,
-    showIntegrated,
   ])
   
   // Generate projections
@@ -219,7 +322,7 @@ function App() {
     })
     
     // Policy + Reform scenario
-    const reform = combinedReformEffect  // Now uses combined effect from multiple reforms
+    const reform = combinedReformEffect
     const fullScenario = projectFiscalPath(policyImpact, {
       years: projectionYears,
       enableRiskPremium: true,
@@ -243,16 +346,39 @@ function App() {
   return (
     <div className="app">
       <header className="header">
-        <h1>Simulateur Budget France v1.8</h1>
+        <h1>Simulateur Budget France v1.9</h1>
         <p className="subtitle">
-          Nouvelles fonctionnalités : Prime de risque souverain • Réformes structurelles
+          Vue intégrée État + Sécurité Sociale (APU totales) • 4 scénarios politiques
         </p>
       </header>
 
       <main className="main-content">
-        {/* EXISTING TAX LEVERS */}
+        {/* PRESET BUTTONS */}
+        <section className="controls-section preset-section">
+          <h2>🎯 Scénarios politiques</h2>
+          <p className="section-help">
+            Charger un budget politique complet (taxes + dépenses + réformes)
+          </p>
+          <div className="preset-grid">
+            {Object.entries(PRESETS).map(([key, preset]) => (
+              <button
+                key={key}
+                className="preset-btn"
+                onClick={() => applyPreset(key)}
+              >
+                <strong>{preset.label}</strong>
+                <span className="preset-desc">{preset.description}</span>
+              </button>
+            ))}
+          </div>
+          <div className="preset-note">
+            💡 Les boutons ci-dessus configurent tous les leviers automatiquement
+          </div>
+        </section>
+
+        {/* TAX LEVERS */}
         <section className="controls-section">
-          <h2>Leviers fiscaux</h2>
+          <h2>💶 Leviers fiscaux (État)</h2>
           <div className="controls-grid">
             <SliderControl
               label="Impôt sur le revenu"
@@ -284,9 +410,9 @@ function App() {
           </div>
         </section>
 
-        {/* EXISTING SPENDING LEVERS */}
+        {/* SPENDING LEVERS (État) */}
         <section className="controls-section">
-          <h2>Dépenses publiques</h2>
+          <h2>📊 Dépenses publiques (État)</h2>
           <div className="controls-grid">
             <SliderControl
               label="Enseignement scolaire"
@@ -301,517 +427,356 @@ function App() {
               label="Défense"
               value={spendingDefense}
               onChange={setSpendingDefense}
-              min={-20}
-              max={20}
+              min={-15}
+              max={15}
               step={1}
               unit="%"
             />
             <SliderControl
-              label="Solidarité"
+              label="Solidarité & insertion"
               value={spendingSolidarity}
               onChange={setSpendingSolidarity}
-              min={-20}
-              max={20}
+              min={-30}
+              max={30}
               step={1}
               unit="%"
             />
           </div>
         </section>
 
-        {/* NEW: VIEW TOGGLE - État seul vs APU total */}
-        <section className="controls-section view-toggle-section">
-          <h2>🔀 Périmètre budgétaire</h2>
+        {/* SOCIAL SECURITY CONTROLS */}
+        <section className="controls-section ss-section">
+          <h2>💰 Leviers Sécurité Sociale (PLFSS 2026)</h2>
           <p className="section-help">
-            Choisir entre budget de l'État seul (PLF) ou Administrations Publiques totales (PLF + PLFSS)
+            Ajustements des recettes et dépenses de la sécurité sociale
           </p>
-          <div className="view-toggle-buttons">
-            <button
-              className={`view-btn ${!showIntegrated ? 'active' : ''}`}
-              onClick={() => setShowIntegrated(false)}
-            >
-              <strong>État seul</strong>
-              <span className="view-amount">{BASELINE.etat.spendingTotal} Md€</span>
-              <span className="view-desc">Budget général uniquement</span>
-            </button>
-            <button
-              className={`view-btn ${showIntegrated ? 'active' : ''}`}
-              onClick={() => setShowIntegrated(true)}
-            >
-              <strong>APU total (État + Sécu)</strong>
-              <span className="view-amount">{BASELINE.integrated.spendingTotal} Md€</span>
-              <span className="view-desc">Vue consolidée PLF + PLFSS</span>
-            </button>
-          </div>
-          {showIntegrated && (
-            <div className="integration-note">
-              <p><strong>✓ Mode intégré activé</strong></p>
-              <p>
-                Les leviers de sécurité sociale ci-dessous sont maintenant actifs.
-                Déficit total = État ({BASELINE.etat.deficit} Md€) + Sécu ({BASELINE.securiteSociale.deficit} Md€) = {BASELINE.integrated.deficit} Md€
-              </p>
+          
+          <div className="controls-grid">
+            {/* Pension Indexation */}
+            <div className="control-with-refs">
+              <SliderControl
+                label="Indexation retraites"
+                value={pensionIndexation}
+                onChange={setPensionIndexation}
+                min={-2}
+                max={1}
+                step={0.1}
+                unit="pp vs inflation"
+                decimals={1}
+              />
+              <div className="policy-refs">
+                <h4>Références politiques :</h4>
+                <div className="ref-item">
+                  <strong>PLFSS 2025:</strong> Gel Jan→Jul = -3.6 Md€
+                </div>
+                <div className="ref-item">
+                  <strong>PLFSS 2026:</strong> Gel total = -2.9 Md€
+                </div>
+              </div>
             </div>
-          )}
+
+            {/* Health Spending (ONDAM) */}
+            <SliderControl
+              label="Dépenses santé (ONDAM)"
+              value={healthSpending}
+              onChange={setHealthSpending}
+              min={-10}
+              max={10}
+              step={1}
+              unit="%"
+            />
+
+            {/* Social Contributions */}
+            <SliderControl
+              label="Cotisations sociales"
+              value={socialContributions}
+              onChange={setSocialContributions}
+              min={-5}
+              max={5}
+              step={0.5}
+              unit="pp"
+            />
+
+            {/* CSG */}
+            <SliderControl
+              label="CSG (Contribution Sociale Généralisée)"
+              value={csgRate}
+              onChange={setCsgRate}
+              min={-2}
+              max={2}
+              step={0.5}
+              unit="pp"
+            />
+          </div>
+
+          {/* PLFSS Context */}
+          <div className="ss-context">
+            <h4>📋 Contexte PLFSS 2026 :</h4>
+            <ul>
+              <li><strong>Déficit prévu :</strong> -19.4 Md€ (vs -17.5 Md€ initial)</li>
+              <li><strong>ONDAM :</strong> 274.4 Md€ (+3.1%, vs +1.6% initial)</li>
+              <li><strong>CSG capital :</strong> +1.5 Md€ (9.2% → 10.6%)</li>
+              <li><strong>Mesures abandonnées :</strong> Gel retraites, franchises médicales (-2.3 Md€)</li>
+            </ul>
+          </div>
         </section>
 
-        {/* NEW: SOCIAL SECURITY CONTROLS (only shown in integrated view) */}
-        {showIntegrated && (
-          <>
-            <section className="controls-section ss-section">
-              <h2>💰 Leviers Sécurité Sociale (PLFSS 2026)</h2>
-              <p className="section-help">
-                Ajustements des recettes et dépenses de la sécurité sociale
-              </p>
-              
-              <div className="controls-grid">
-                {/* Pension Indexation */}
-                <div className="control-with-refs">
-                  <SliderControl
-                    label="Indexation retraites"
-                    value={pensionIndexation}
-                    onChange={setPensionIndexation}
-                    min={-2}
-                    max={1}
-                    step={0.1}
-                    unit="pp vs inflation"
-                    decimals={1}
-                  />
-                  <div className="policy-refs">
-                    <h4>Références politiques :</h4>
-                    <div className="ref-item">
-                      <strong>PLFSS 2025:</strong> Gel Jan→Jul = -3.6 Md€
-                    </div>
-                    <div className="ref-item">
-                      <strong>PLFSS 2026:</strong> Gel total = -2.9 Md€
-                    </div>
-                    <div className="ref-item">
-                      <strong>Génération Libre:</strong> [À compléter]
-                    </div>
-                  </div>
-                </div>
-
-                {/* Health Spending (ONDAM) */}
-                <SliderControl
-                  label="Dépenses santé (ONDAM)"
-                  value={healthSpending}
-                  onChange={setHealthSpending}
-                  min={-10}
-                  max={10}
-                  step={1}
-                  unit="%"
-                />
-
-                {/* Social Contributions */}
-                <SliderControl
-                  label="Cotisations sociales"
-                  value={socialContributions}
-                  onChange={setSocialContributions}
-                  min={-5}
-                  max={5}
-                  step={0.5}
-                  unit="pp"
-                  decimals={1}
-                />
-
-                {/* CSG */}
-                <SliderControl
-                  label="CSG (tous revenus)"
-                  value={csgRate}
-                  onChange={setCsgRate}
-                  min={-2}
-                  max={2}
-                  step={0.1}
-                  unit="pp"
-                  decimals={1}
-                />
-              </div>
-
-              <div className="ss-context">
-                <h4>📊 Contexte PLFSS 2026</h4>
-                <ul>
-                  <li><strong>Déficit initial:</strong> -17.5 Md€ (projet) → -19.4 Md€ (définitif)</li>
-                  <li><strong>ONDAM 2026:</strong> 274.4 Md€ (+3.1% vs +1.6% initialement prévu)</li>
-                  <li><strong>CSG capital:</strong> Hausse de 9.2% → 10.6% (+1.5 Md€)</li>
-                  <li><strong>Économies abandonnées:</strong> Franchises médicales, ALD (-8 Md€ non réalisés)</li>
-                </ul>
-              </div>
-            </section>
-          </>
-        )}
-
-        {/* STRUCTURAL REFORMS SELECTOR - NOW WITH CHECKBOXES */}
-        <section className="controls-section reform-section">
-          <h2>🔧 Réformes structurelles (sélection multiple)</h2>
+        {/* STRUCTURAL REFORMS */}
+        <section className="controls-section">
+          <h2>🔧 Réformes structurelles</h2>
           <p className="section-help">
-            Sélectionnez une ou plusieurs réformes. Les effets se cumulent avec pénalité de 15% pour chevauchement.
+            Sélectionner plusieurs réformes (effet cumulatif avec pénalité de 15% pour chevauchements)
           </p>
           
           <div className="reform-checkboxes">
-            <div className="reform-category">
-              <h4>Réformes individuelles</h4>
-              {['laborMarket', 'productMarketRegulation', 'planning', 'education', 'energy'].map(key => (
-                <label key={key} className="reform-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={selectedReforms.includes(key)}
-                    onChange={() => toggleReform(key)}
-                  />
-                  <span className="reform-checkbox-text">
-                    <strong>{STRUCTURAL_REFORMS[key].label}</strong>
-                    <span className="reform-effect">+{(STRUCTURAL_REFORMS[key].growthEffect * 100).toFixed(2)} pp/an</span>
+            {Object.entries(STRUCTURAL_REFORMS).map(([key, reform]) => (
+              <label key={key} className="reform-checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={selectedReforms.includes(key)}
+                  onChange={() => toggleReform(key)}
+                />
+                <div className="reform-checkbox-content">
+                  <strong>{reform.label}</strong>
+                  <span className="reform-effect">+{(reform.growthEffect * 100).toFixed(2)}pp/an</span>
+                  <span className="reform-details">
+                    Délai: {reform.lag} ans • Durée: {reform.duration} ans
                   </span>
-                </label>
-              ))}
-            </div>
-            
-            <div className="reform-category">
-              <h4>Scénarios combinés (pré-configurés)</h4>
-              {['ambitious', 'modest'].map(key => (
-                <label key={key} className="reform-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={selectedReforms.includes(key)}
-                    onChange={() => toggleReform(key)}
-                  />
-                  <span className="reform-checkbox-text">
-                    <strong>{STRUCTURAL_REFORMS[key].label}</strong>
-                    <span className="reform-effect">+{(STRUCTURAL_REFORMS[key].growthEffect * 100).toFixed(2)} pp/an</span>
-                  </span>
-                </label>
-              ))}
-            </div>
+                </div>
+              </label>
+            ))}
           </div>
-          
-          {combinedReformEffect && (
-            <div className="reform-info">
-              <h4>{combinedReformEffect.label}</h4>
-              <div className="combined-reforms-list">
-                <strong>Réformes sélectionnées:</strong>
-                <ul>
-                  {combinedReformEffect.reforms.map((label, i) => (
-                    <li key={i}>{label}</li>
-                  ))}
-                </ul>
-              </div>
-              <div className="reform-specs">
-                <span className="spec">
-                  <strong>Effet total:</strong> +{(combinedReformEffect.growthEffect * 100).toFixed(2)} pp/an
-                  {selectedReforms.length > 1 && " (avec pénalité 15% chevauchement)"}
-                </span>
-                <span className="spec">
-                  <strong>Délai minimal:</strong> {combinedReformEffect.lag} ans
-                </span>
-                <span className="spec">
-                  <strong>Durée maximale:</strong> {combinedReformEffect.duration} ans
-                </span>
+
+          {selectedReforms.length > 0 && (
+            <div className="combined-reforms-summary">
+              <h4>Réformes sélectionnées :</h4>
+              <ul className="combined-reforms-list">
+                {combinedReformEffect.reforms.map((r, i) => (
+                  <li key={i}>{r}</li>
+                ))}
+              </ul>
+              <div className="combined-effect">
+                <strong>Effet croissance combiné :</strong> +{(combinedReformEffect.growthEffect * 100).toFixed(2)}pp/an
+                <br />
+                <small>
+                  (délai min: {combinedReformEffect.lag} ans, durée max: {combinedReformEffect.duration} ans)
+                </small>
               </div>
             </div>
           )}
         </section>
 
-        {/* NEW: RISK PREMIUM SCENARIO */}
+        {/* ADVANCED SETTINGS */}
         <section className="controls-section">
-          <h2>⚠️ Risque politique (NOUVEAU v1.8)</h2>
-          <p className="section-help">
-            Simule l'impact d'une crise politique sur la prime de risque souverain
-            (référence : France 2024, +21 bps après dissolution)
-          </p>
-          <SliderControl
-            label="Prime de risque politique"
-            value={politicalRisk}
-            onChange={setPoliticalRisk}
-            min={0}
-            max={50}
-            step={5}
-            unit="bps"
-          />
-        </section>
-
-        {/* PROJECTION HORIZON */}
-        <section className="controls-section">
-          <h2>Horizon de projection</h2>
-          <div className="horizon-selector">
-            {[1, 2, 5, 10].map(y => (
-              <button
-                key={y}
-                className={`horizon-btn ${projectionYears === y ? 'active' : ''}`}
-                onClick={() => setProjectionYears(y)}
-              >
-                {y} an{y > 1 ? 's' : ''}
-              </button>
-            ))}
+          <h2>⚙️ Paramètres avancés</h2>
+          <div className="controls-grid">
+            <SliderControl
+              label="Prime de risque politique"
+              value={politicalRisk}
+              onChange={setPoliticalRisk}
+              min={0}
+              max={200}
+              step={10}
+              unit="bps"
+              help="Augmentation des taux d'intérêt due à l'instabilité politique"
+            />
+            <SliderControl
+              label="Horizon de projection"
+              value={projectionYears}
+              onChange={setProjectionYears}
+              min={5}
+              max={20}
+              step={1}
+              unit="ans"
+            />
           </div>
         </section>
 
+        {/* ===================================================================
+            RESULTS SECTION
+        =================================================================== */}
+        
+        {/* 10-YEAR DEBT PROJECTION CHART (TOP) */}
+        <section className="results-section">
+          <h2>📈 Trajectoire dette publique sur {projectionYears} ans</h2>
+          <div className="chart-container primary-chart">
+            <ResponsiveContainer width="100%" height={450}>
+              <LineChart data={projections.fullScenario}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="year" />
+                <YAxis 
+                  label={{ value: 'Dette/PIB (%)', angle: -90, position: 'insideLeft' }}
+                  domain={[60, 140]}
+                />
+                <Tooltip />
+                <Legend />
+                
+                {/* Reference lines for Maastricht */}
+                <ReferenceLine y={60} stroke="green" strokeDasharray="3 3" label="Critère Maastricht (60%)" />
+                <ReferenceLine y={100} stroke="orange" strokeDasharray="3 3" label="Seuil alerte (100%)" />
+                
+                {/* Scenarios */}
+                <Line 
+                  type="monotone" 
+                  dataKey="debtToGDP" 
+                  stroke="#2563eb" 
+                  strokeWidth={3}
+                  name="Scénario complet"
+                  dot={{ r: 4 }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="baseline" 
+                  stroke="#94a3b8" 
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  name="Baseline (PLF 2025)"
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+            <p className="chart-context">
+              Vue : <strong>APU totales (État + Sécurité Sociale)</strong>
+            </p>
+          </div>
+        </section>
+
+        {/* KEY METRICS */}
+        <section className="results-section">
+          <h2>📊 Indicateurs clés (Année 1)</h2>
+          <div className="metrics-grid">
+            <MetricCard
+              label="Déficit année 1"
+              value={projections.fullScenario[0].deficit}
+              unit="Md€"
+              baseline={BASELINE.integrated.deficit}
+              format="billions"
+            />
+            <MetricCard
+              label="Dette/PIB année 1"
+              value={projections.fullScenario[0].debtToGDP}
+              unit="%"
+              baseline={projections.baseline[0].debtToGDP}
+              format="percent"
+            />
+            <MetricCard
+              label="Taux d'intérêt"
+              value={projections.fullScenario[0].interestRate * 100}
+              unit="%"
+              baseline={projections.baseline[0].interestRate * 100}
+              format="percent"
+              decimals={2}
+            />
+            <MetricCard
+              label="Croissance réelle"
+              value={projections.fullScenario[0].realGrowth * 100}
+              unit="%"
+              baseline={MACRO_BASELINE.realGrowth * 100}
+              format="percent"
+              decimals={2}
+            />
+          </div>
+          
+          {/* Budget Breakdown */}
+          <div className="budget-breakdown">
+            <h3>Décomposition du déficit (Année 1)</h3>
+            <div className="breakdown-row">
+              <span>État seul :</span>
+              <span className="breakdown-value">
+                {(BASELINE.etat.deficit + policyImpact.etat.revenue - policyImpact.etat.spending).toFixed(1)} Md€
+              </span>
+            </div>
+            <div className="breakdown-row">
+              <span>Sécurité sociale :</span>
+              <span className="breakdown-value">
+                {(BASELINE.securiteSociale.deficit + policyImpact.ss.revenue - policyImpact.ss.spending).toFixed(1)} Md€
+              </span>
+            </div>
+            <div className="breakdown-row total">
+              <span><strong>Total APU :</strong></span>
+              <span className="breakdown-value">
+                <strong>{projections.fullScenario[0].deficit.toFixed(1)} Md€</strong>
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* POLICY IMPACT CHART */}
+        {(policyImpact.revenueChange !== 0 || policyImpact.spendingChange !== 0) && (
+          <section className="results-section">
+            <h2>💡 Impact des leviers budgétaires</h2>
+            <div className="chart-container">
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={[{
+                  name: 'Impact',
+                  'Recettes': policyImpact.revenueChange,
+                  'Dépenses': -policyImpact.spendingChange,
+                  'Solde': policyImpact.revenueChange - policyImpact.spendingChange,
+                }]}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis label={{ value: 'Milliards €', angle: -90, position: 'insideLeft' }} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="Recettes" fill="#10b981" />
+                  <Bar dataKey="Dépenses" fill="#ef4444" />
+                  <Bar dataKey="Solde" fill="#3b82f6" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            
+            {selectedReforms.length > 0 && (
+              <div className="reform-impact-note">
+                <p>
+                  ✓ <strong>{selectedReforms.length} réforme(s) structurelle(s)</strong> activée(s)
+                  avec effet croissance de <strong>+{(combinedReformEffect.growthEffect * 100).toFixed(2)}pp/an</strong>
+                </p>
+                <p className="reform-list">
+                  {combinedReformEffect.reforms.join(' • ')}
+                </p>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* DOOM LOOP ASSESSMENT */}
+        {doomLoopAssessment.isAtRisk && (
+          <section className="results-section warning-section">
+            <h2>⚠️ Alerte : Risque de "Doom Loop"</h2>
+            <div className="doom-loop-warning">
+              <p><strong>{doomLoopAssessment.message}</strong></p>
+              <ul>
+                {doomLoopAssessment.indicators.map((indicator, i) => (
+                  <li key={i}>{indicator}</li>
+                ))}
+              </ul>
+              <p className="doom-loop-explanation">
+                Un "doom loop" se produit quand la dette élevée augmente les taux d'intérêt,
+                ce qui augmente la dette, créant un cercle vicieux.
+              </p>
+            </div>
+          </section>
+        )}
+
         {/* VALIDATION WARNINGS */}
-        {!validation.valid && (
-          <section className="warning-section">
-            <h3>⚠️ Avertissements</h3>
-            <ul>
-              {validation.warnings.map((w, i) => (
-                <li key={i}>{w}</li>
+        {!validation.isValid && (
+          <section className="results-section validation-section">
+            <h2>⚠️ Avertissements de validation</h2>
+            <ul className="validation-warnings">
+              {validation.warnings.map((warning, i) => (
+                <li key={i}>{warning}</li>
               ))}
             </ul>
           </section>
         )}
-
-        {/* DEBT TRAJECTORY CHART - MOVED TO TOP */}
-        <section className="chart-section primary-chart">
-          <h2>📈 Évolution de la dette publique (projection {projectionYears} ans)</h2>
-          <p className="chart-help">
-            {showIntegrated 
-              ? "Vue consolidée État + Sécurité Sociale (APU - Administrations Publiques)"
-              : "État uniquement (Budget général)"}
-          </p>
-          <ResponsiveContainer width="100%" height={450}>
-            <LineChart>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="year"
-                type="number"
-                domain={[MACRO_BASELINE.year, MACRO_BASELINE.year + projectionYears]}
-              />
-              <YAxis
-                label={{ value: 'Dette (% PIB)', angle: -90, position: 'insideLeft' }}
-                domain={[80, 140]}
-              />
-              <Tooltip />
-              <Legend />
-              <ReferenceLine y={60} stroke="#999" strokeDasharray="3 3" label="Maastricht 60%" />
-              <ReferenceLine y={90} stroke="#f59e0b" strokeDasharray="3 3" label="Seuil risque 90%" />
-              <ReferenceLine y={120} stroke="#ef4444" strokeDasharray="3 3" label="Crise >120%" />
-              <Line
-                data={projections.baseline}
-                type="monotone"
-                dataKey="debtRatio"
-                stroke="#94a3b8"
-                strokeWidth={2}
-                name="Scénario tendanciel"
-                dot={false}
-              />
-              <Line
-                data={projections.policyScenario}
-                type="monotone"
-                dataKey="debtRatio"
-                stroke="#3b82f6"
-                strokeWidth={2}
-                name="Avec leviers fiscaux"
-                dot={false}
-              />
-              <Line
-                data={projections.fullScenario}
-                type="monotone"
-                dataKey="debtRatio"
-                stroke="#10b981"
-                strokeWidth={3}
-                name="Avec leviers + réformes"
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </section>
-
-        {/* RESULTS PANELS */}
-        <section className="results-grid">
-          {/* Key Metrics */}
-          <div className="result-card">
-            <h3>Indicateurs clés (Année {projections.fullScenario[projectionYears].year})</h3>
-            {showIntegrated && (
-              <div className="budget-breakdown">
-                <div className="breakdown-item">
-                  <span className="breakdown-label">Déficit État:</span>
-                  <span className="breakdown-value">
-                    {BASELINE.etat.deficit + policyImpact.etat.revenue - policyImpact.etat.spending} Md€
-                  </span>
-                </div>
-                <div className="breakdown-item">
-                  <span className="breakdown-label">Déficit Sécu:</span>
-                  <span className="breakdown-value">
-                    {BASELINE.securiteSociale.deficit + policyImpact.ss.revenue - policyImpact.ss.spending} Md€
-                  </span>
-                </div>
-                <div className="breakdown-separator"></div>
-              </div>
-            )}
-            <div className="metrics">
-              <Metric
-                label="Dette publique"
-                value={projections.fullScenario[projectionYears].debtRatio}
-                unit="% PIB"
-                baseline={projections.baseline[projectionYears].debtRatio}
-              />
-              <Metric
-                label="Déficit public"
-                value={projections.fullScenario[projectionYears].deficitRatio}
-                unit="% PIB"
-                baseline={projections.baseline[projectionYears].deficitRatio}
-              />
-              <Metric
-                label="Taux d'intérêt effectif"
-                value={projections.fullScenario[projectionYears].effectiveInterestRate}
-                unit="%"
-                baseline={projections.baseline[projectionYears].effectiveInterestRate}
-                decimals={2}
-              />
-              <Metric
-                label="Prime de risque"
-                value={projections.fullScenario[projectionYears].riskPremiumBps}
-                unit="bps"
-                baseline={projections.baseline[projectionYears].riskPremiumBps}
-              />
-            </div>
-          </div>
-
-          {/* Doom Loop Assessment */}
-          <div className="result-card doom-loop-card">
-            <h3>🔁 Évaluation "Doom Loop"</h3>
-            <div className="doom-loop-metrics">
-              <div className={`severity-badge severity-${doomLoopAssessment.severity}`}>
-                Sévérité : {doomLoopAssessment.severity.toUpperCase()}
-              </div>
-              <p className="doom-metric">
-                Évolution dette : <strong>{doomLoopAssessment.debtRatioChange > 0 ? '+' : ''}{doomLoopAssessment.debtRatioChange}</strong> pp
-              </p>
-              <p className="doom-metric">
-                Évolution intérêts/PIB : <strong>{doomLoopAssessment.interestRatioChange > 0 ? '+' : ''}{doomLoopAssessment.interestRatioChange}</strong> pp
-              </p>
-              <p className="doom-metric">
-                Prime de risque : <strong>+{doomLoopAssessment.premiumIncreaseBps}</strong> bps
-              </p>
-              {doomLoopAssessment.doomLoopActive && (
-                <p className="doom-warning">
-                  ⚠️ Boucle dette-intérêt activée ! La hausse de la dette alimente la hausse des taux.
-                </p>
-              )}
-            </div>
-          </div>
-        </section>
-
-        {/* NEW: INTEREST RATE EVOLUTION CHART */}
-        <section className="chart-section">
-          <h2>🆕 Évolution du taux d'intérêt effectif</h2>
-          <p className="chart-help">
-            Le taux d'intérêt augmente avec le ratio dette/PIB selon le modèle IMF/EC (3-4 bps/pp au-delà de 60% PIB).
-            Accélération non-linéaire au-delà de 120%.
-          </p>
-          <ResponsiveContainer width="100%" height={350}>
-            <LineChart>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="year"
-                type="number"
-                domain={[MACRO_BASELINE.year, MACRO_BASELINE.year + projectionYears]}
-              />
-              <YAxis
-                label={{ value: 'Taux effectif (%)', angle: -90, position: 'insideLeft' }}
-                domain={[2.5, 6]}
-              />
-              <Tooltip />
-              <Legend />
-              <ReferenceLine
-                y={MACRO_BASELINE.baseInterestRate * 100}
-                stroke="#999"
-                strokeDasharray="3 3"
-                label="Taux base 3.2%"
-              />
-              <Line
-                data={projections.baseline}
-                type="monotone"
-                dataKey="effectiveInterestRate"
-                stroke="#94a3b8"
-                strokeWidth={2}
-                name="Tendanciel"
-                dot={false}
-              />
-              <Line
-                data={projections.fullScenario}
-                type="monotone"
-                dataKey="effectiveInterestRate"
-                stroke="#ef4444"
-                strokeWidth={3}
-                name="Avec politique + réformes"
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </section>
-
-        {/* REFORM IMPACT COMPARISON */}
-        {combinedReformEffect && (
-          <section className="chart-section">
-            <h2>🆕 Impact des réformes structurelles</h2>
-            <p className="chart-help">
-              Comparaison : Politique seule vs. Politique + Réforme(s) structurelle(s)
-            </p>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart
-                data={[1, 2, 5, 10].map(y => {
-                  const comp = compareProjections(projections.policyScenario, projections.fullScenario, [y])[0]
-                  return {
-                    year: `${y} an${y > 1 ? 's' : ''}`,
-                    debtReduction: -comp.debtRatioDiff,  // Negative = improvement
-                  }
-                })}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="year" />
-                <YAxis label={{ value: 'Réduction dette (pp PIB)', angle: -90, position: 'insideLeft' }} />
-                <Tooltip />
-                <Bar dataKey="debtReduction" fill="#10b981" name="Réduction dette grâce aux réformes" />
-              </BarChart>
-            </ResponsiveContainer>
-            <p className="reform-note">
-              Sur {projectionYears} ans, {selectedReforms.length === 1 ? 'la réforme' : `les ${selectedReforms.length} réformes sélectionnées`} <em>{combinedReformEffect.label}</em> {selectedReforms.length === 1 ? 'réduit' : 'réduisent'} la dette de{' '}
-              <strong>
-                {Math.abs(compareProjections(projections.policyScenario, projections.fullScenario, [projectionYears])[0].debtRatioDiff).toFixed(1)} pp de PIB
-              </strong>
-              {' '}par rapport au scénario sans réforme.
-            </p>
-          </section>
-        )}
-
-        {/* METHODOLOGY */}
-        <section className="methodology">
-          <h2>📚 Méthodologie v1.8</h2>
-          <div className="method-grid">
-            <div className="method-card">
-              <h4>Prime de risque souverain</h4>
-              <ul>
-                <li>Modèle par paliers (60%, 90%, 120% dette/PIB)</li>
-                <li>3-4 bps/pp jusqu'à 90%, puis accélération</li>
-                <li>Calibré sur spreads OAT-Bund 2010-2025</li>
-                <li><em>Sources : IMF (2017), EC (2018), Kumar & Baldacci (2010)</em></li>
-              </ul>
-            </div>
-            <div className="method-card">
-              <h4>Réformes structurelles</h4>
-              <ul>
-                <li>Effets progressifs avec délais (2-5 ans)</li>
-                <li>Pic pendant 8-15 ans selon réforme</li>
-                <li>Décroissance exponentielle ensuite (demi-vie 10 ans)</li>
-                <li><em>Sources : OECD (2014), IMF Article IV France (2025), BdF (2017)</em></li>
-              </ul>
-            </div>
-            <div className="method-card">
-              <h4>Boucle dette-intérêt</h4>
-              <ul>
-                <li>Taux d'intérêt endogène (fonction du ratio dette/PIB)</li>
-                <li>Feedback automatique : dette ↑ → taux ↑ → charges ↑ → dette ↑</li>
-                <li>Sévérité = part des intérêts dans le déficit</li>
-                <li><em>Concept : "Doom loop" (Gros & Alcidi, CEPR 2019)</em></li>
-              </ul>
-            </div>
-          </div>
-          <p className="disclaimer">
-            <strong>Avertissement pédagogique :</strong> Ce simulateur illustre des mécanismes économiques à des fins
-            éducatives. Les élasticités et paramètres sont des consensus académiques avec incertitude significative.
-            Ne pas utiliser pour des prévisions précises.
-          </p>
-        </section>
       </main>
 
       <footer className="footer">
-        <p>Simulateur Budget France v1.8B (Option A+) • Sources : PLF 2025, PLFSS 2026, IMF, OECD, ECB</p>
-        <p>Vue intégrée État + Sécurité Sociale • Réformes structurelles multiples</p>
+        <p>Simulateur Budget France v1.9 (Intégré) • Sources : PLF 2025, PLFSS 2026, Knafo, IMF, OECD, ECB</p>
+        <p className="footer-note">
+          Vue consolidée État + Sécurité Sociale (APU totales). 
+          Modèle pédagogique avec paramètres exposés.
+        </p>
       </footer>
     </div>
   )
@@ -821,15 +786,15 @@ function App() {
 // UI COMPONENTS
 // =============================================================================
 
-function SliderControl({ label, value, onChange, min, max, step, unit }) {
-  const displayValue = step < 1 ? value.toFixed(1) : value
-  const sign = value > 0 ? '+' : ''
-  
+function SliderControl({ label, value, onChange, min, max, step, unit, help, decimals = 0 }) {
   return (
-    <div className="slider-control">
-      <label>
-        {label}: <span className="value">{sign}{displayValue} {unit}</span>
-      </label>
+    <div className="control">
+      <div className="control-header">
+        <label>{label}</label>
+        <span className="control-value">
+          {value.toFixed(decimals)} {unit}
+        </span>
+      </div>
       <input
         type="range"
         min={min}
@@ -837,29 +802,37 @@ function SliderControl({ label, value, onChange, min, max, step, unit }) {
         step={step}
         value={value}
         onChange={(e) => onChange(parseFloat(e.target.value))}
+        className="slider"
       />
-      <div className="slider-labels">
-        <span>{min}</span>
-        <span>0</span>
-        <span>{max}</span>
-      </div>
+      {help && <p className="control-help">{help}</p>}
     </div>
   )
 }
 
-function Metric({ label, value, unit, baseline, decimals = 1 }) {
-  const diff = value - baseline
-  const diffSign = diff > 0 ? '+' : ''
-  const diffColor = diff > 0 ? 'metric-worse' : 'metric-better'
+function MetricCard({ label, value, unit, baseline, format, decimals = 1 }) {
+  const delta = value - baseline
+  const deltaPercent = baseline !== 0 ? (delta / Math.abs(baseline)) * 100 : 0
+  
+  let deltaClass = 'neutral'
+  if (format === 'billions') {
+    // For deficit: negative is good (less deficit)
+    deltaClass = delta < 0 ? 'positive' : (delta > 0 ? 'negative' : 'neutral')
+  } else if (format === 'percent') {
+    // For debt/GDP: lower is better
+    deltaClass = delta < 0 ? 'positive' : (delta > 0 ? 'negative' : 'neutral')
+  }
   
   return (
-    <div className="metric">
-      <div className="metric-label">{label}</div>
+    <div className="metric-card">
+      <h3>{label}</h3>
       <div className="metric-value">
         {value.toFixed(decimals)} {unit}
       </div>
-      <div className={`metric-diff ${diffColor}`}>
-        {diffSign}{diff.toFixed(decimals)} vs. tendanciel
+      <div className={`metric-delta ${deltaClass}`}>
+        {delta > 0 ? '+' : ''}{delta.toFixed(decimals)} {unit}
+        <span className="delta-percent">
+          ({delta > 0 ? '+' : ''}{deltaPercent.toFixed(1)}%)
+        </span>
       </div>
     </div>
   )
