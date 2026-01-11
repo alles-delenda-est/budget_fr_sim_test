@@ -292,7 +292,7 @@ function App() {
     const socialContribGrowthEffect = socialContributions < 0 ? Math.abs(socialContributions) * 0.001 : 0
     const growthEffect = corpGrowthEffect + spendingGrowthEffect + socialContribGrowthEffect
     
-    return {
+    const result = {
       revenueChange: totalRevenueChange,
       spendingChange: totalSpendingChange,
       growthEffect,
@@ -307,6 +307,10 @@ function App() {
         spending: ssSpendingChange,
       },
     }
+    
+    console.log('POLICY IMPACT:', result)
+    
+    return result
   }, [
     incomeTaxChange, vatChange, corpTaxChange,
     spendingEducation, spendingDefense, spendingSolidarity,
@@ -333,6 +337,12 @@ function App() {
       enableRiskPremium: true,
       politicalRiskPremium: politicalRisk / 10000,
       structuralReform: reform,
+    })
+    
+    console.log('PROJECTIONS GENERATED:', {
+      baseline: baseline?.[0],
+      policyScenario: policyScenario?.[0],
+      fullScenario: fullScenario?.[0]
     })
     
     return { baseline, policyScenario, fullScenario }
