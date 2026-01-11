@@ -190,6 +190,11 @@ function App() {
   const [socialContributions, setSocialContributions] = useState(0)  // pp change
   const [csgRate, setCsgRate] = useState(0)                      // pp change
   
+  // DEBUG
+  console.log('BASELINE:', BASELINE)
+  console.log('STRUCTURAL_REFORMS:', STRUCTURAL_REFORMS)
+  console.log('MACRO_BASELINE:', MACRO_BASELINE)
+  
   // Structural reform selector - SUPPORTS MULTIPLE
   const [selectedReforms, setSelectedReforms] = useState([])  // Array of reform keys
   
@@ -547,7 +552,7 @@ function App() {
             ))}
           </div>
 
-          {selectedReforms.length > 0 && (
+          {selectedReforms.length > 0 && combinedReformEffect && (
             <div className="combined-reforms-summary">
               <h4>Réformes sélectionnées :</h4>
               <ul className="combined-reforms-list">
@@ -728,7 +733,7 @@ function App() {
               </ResponsiveContainer>
             </div>
             
-            {selectedReforms.length > 0 && (
+            {selectedReforms.length > 0 && combinedReformEffect && (
               <div className="reform-impact-note">
                 <p>
                   ✓ <strong>{selectedReforms.length} réforme(s) structurelle(s)</strong> activée(s)
