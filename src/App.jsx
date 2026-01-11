@@ -807,12 +807,15 @@ function App() {
 // =============================================================================
 
 function SliderControl({ label, value, onChange, min, max, step, unit, help, decimals = 0 }) {
+  // Safety check for undefined value
+  const safeValue = value ?? 0
+  
   return (
     <div className="control">
       <div className="control-header">
         <label>{label}</label>
         <span className="control-value">
-          {value.toFixed(decimals)} {unit}
+          {safeValue.toFixed(decimals)} {unit}
         </span>
       </div>
       <input
@@ -820,7 +823,7 @@ function SliderControl({ label, value, onChange, min, max, step, unit, help, dec
         min={min}
         max={max}
         step={step}
-        value={value}
+        value={safeValue}
         onChange={(e) => onChange(parseFloat(e.target.value))}
         className="slider"
       />
@@ -830,8 +833,11 @@ function SliderControl({ label, value, onChange, min, max, step, unit, help, dec
 }
 
 function MetricCard({ label, value, unit, baseline, format, decimals = 1 }) {
-  const delta = value - baseline
-  const deltaPercent = baseline !== 0 ? (delta / Math.abs(baseline)) * 100 : 0
+  // Safety checks
+  const safeValue = value ?? 0
+  const safeBaseline = baseline ?? 0
+  const delta = safeValue - safeBaseline
+  const deltaPercent = safeBaseline !== 0 ? (delta / Math.abs(safeBaseline)) * 100 : 0
   
   let deltaClass = 'neutral'
   if (format === 'billions') {
@@ -846,7 +852,7 @@ function MetricCard({ label, value, unit, baseline, format, decimals = 1 }) {
     <div className="metric-card">
       <h3>{label}</h3>
       <div className="metric-value">
-        {value.toFixed(decimals)} {unit}
+        {safeValue.toFixed(decimals)} {unit}
       </div>
       <div className={`metric-delta ${deltaClass}`}>
         {delta > 0 ? '+' : ''}{delta.toFixed(decimals)} {unit}
