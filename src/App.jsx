@@ -596,6 +596,9 @@ function App() {
             RESULTS SECTION
         =================================================================== */}
         
+        {/* Safety check: only render results if projections exist */}
+        {projections.fullScenario && projections.fullScenario.length > 0 && (
+          <>
         {/* 10-YEAR DEBT PROJECTION CHART (TOP) */}
         <section className="results-section">
           <h2>📈 Trajectoire dette publique sur {projectionYears} ans</h2>
@@ -757,9 +760,11 @@ function App() {
             </div>
           </section>
         )}
+        </>
+        )}
 
         {/* VALIDATION WARNINGS */}
-        {!validation.isValid && (
+        {projections.fullScenario && !validation.isValid && (
           <section className="results-section validation-section">
             <h2>⚠️ Avertissements de validation</h2>
             <ul className="validation-warnings">
