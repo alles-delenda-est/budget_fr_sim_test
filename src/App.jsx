@@ -50,29 +50,34 @@ const BASELINE = {
     deficit: -139.0,
   },
   
-  // Sécurité Sociale (PLFSS 2026)
+  // Sécurité Sociale (PLFSS 2026) - Source: CCSS 2024, PLFSS 2026 Annexe 3
   securiteSociale: {
     revenuTotal: 659.4,
-    cotisations: 450.0,      // Social contributions
-    csg: 150.0,              // CSG (all sources)
-    tva: 28.0,               // État contribution
-    otherRevenue: 31.4,
-    
+    // Revenue breakdown (CCSS 2024 structure)
+    cotisations: 372.0,      // 56.4% - Cotisations employeurs + salariés
+    csg: 135.0,              // 20.4% - CSG (all sources)
+    impotsTaxes: 117.0,      // 17.7% - TVA affectée (~58) + autres taxes (~59)
+    cotisationsEtat: 18.0,   // 2.8%  - Compensations État pour exonérations
+    transferts: 11.0,        // 1.6%  - Transferts inter-régimes
+    autresProduits: 6.4,     // 1.0%  - Produits divers
+
     spendingTotal: 676.9,
-    pensions: 291.0,         // Vieillesse
-    health: 251.0,           // Maladie (ONDAM)
-    family: 57.5,            // Famille
-    autonomy: 43.6,          // Autonomie
-    other: 33.8,             // FSV + AT-MP
-    
-    deficit: -19.4,
+    // Expenditure by branch (PLFSS 2026 Annexe 3)
+    maladie: 267.5,          // Branche maladie
+    vieillesse: 307.5,       // Branche vieillesse
+    famille: 59.4,           // Branche famille
+    atmp: 18.0,              // Accidents du travail - Maladies professionnelles
+    autonomie: 43.5,         // Branche autonomie
+    // Note: Consolidation inter-branches = -19.0 Md€
+
+    deficit: -17.5,          // PLFSS 2026 target
   },
-  
-  // Integrated totals (APU) - ALWAYS USED
+
+  // Integrated totals (État + ASSO) - excludes collectivités locales
   integrated: {
     revenuTotal: 967.8,      // 308.4 + 659.4
     spendingTotal: 1121.9,   // 444.97 + 676.9
-    deficit: -158.4,         // -139.0 + (-19.4)
+    deficit: -156.5,         // -139.0 + (-17.5)
   },
 }
 
@@ -172,6 +177,119 @@ const PRESETS = {
 }
 
 // =============================================================================
+// ASSUMPTIONS DATA - Academic literature and model parameters
+// =============================================================================
+
+const ASSUMPTIONS = {
+  macro: [
+    {
+      parameter: "PIB nominal 2025",
+      value: "2 850 Md€",
+      impact: "Base de calcul pour tous les ratios",
+      source: "PLF 2025, INSEE",
+      link: "https://www.insee.fr/fr/statistiques"
+    },
+    {
+      parameter: "Croissance nominale",
+      value: "2,9%",
+      impact: "1,1% réel + 1,8% inflation",
+      source: "PLF 2025, Banque de France",
+      link: "https://www.banque-france.fr/fr/publications-et-statistiques/publications/projections-macroeconomiques"
+    },
+    {
+      parameter: "Taux d'intérêt moyen dette",
+      value: "3,2%",
+      impact: "Charge d'intérêts ~55 Md€/an",
+      source: "Agence France Trésor",
+      link: "https://www.aft.gouv.fr/"
+    },
+  ],
+  fiscal: [
+    {
+      parameter: "Élasticité fiscale au PIB",
+      value: "0,45",
+      impact: "45% de la croissance supplémentaire devient recettes",
+      source: "Girouard & André (2005), OCDE",
+      link: "https://www.oecd.org/tax/public-finance/"
+    },
+    {
+      parameter: "Élasticité IR au revenu",
+      value: "0,9",
+      impact: "+1pp taux IR ≈ +8,5 Md€ recettes",
+      source: "CPO, Rapport impôts sur le revenu",
+      link: "https://www.ccomptes.fr/fr/institutions-associees/conseil-des-prelevements-obligatoires-cpo"
+    },
+    {
+      parameter: "Élasticité IS au bénéfice",
+      value: "0,7",
+      impact: "Effet de base taxable (optimisation)",
+      source: "DGFiP, Cour des comptes",
+      link: "https://www.ccomptes.fr/"
+    },
+  ],
+  riskPremium: [
+    {
+      parameter: "Prime de risque 60-90% dette/PIB",
+      value: "+3 bps/pp",
+      impact: "Régime normal, effet modéré",
+      source: "Kumar & Baldacci (2010), FMI",
+      link: "https://www.imf.org/external/pubs/ft/wp/2010/wp10184.pdf"
+    },
+    {
+      parameter: "Prime de risque 90-120% dette/PIB",
+      value: "+4 bps/pp",
+      impact: "Accélération non-linéaire",
+      source: "EC Debt Sustainability Monitor",
+      link: "https://economy-finance.ec.europa.eu/economic-and-fiscal-governance/fiscal-sustainability_en"
+    },
+    {
+      parameter: "Prime de risque >120% dette/PIB",
+      value: "+10 bps/pp",
+      impact: "Régime de crise, doom loop",
+      source: "Consensus académique, OAT France 2010-2012",
+      link: null
+    },
+  ],
+  reforms: [
+    {
+      parameter: "Réforme marché du travail",
+      value: "+0,15 pp/an",
+      impact: "Croissance potentielle sur 10 ans, délai 2 ans",
+      source: "FMI Article IV France (2024)",
+      link: "https://www.imf.org/en/Countries/FRA"
+    },
+    {
+      parameter: "Déréglementation marchés (PMR)",
+      value: "+0,10 pp/an",
+      impact: "Productivité via concurrence, délai 2 ans",
+      source: "OCDE PMR indicators",
+      link: "https://www.oecd.org/economy/reform/indicators-of-product-market-regulation/"
+    },
+    {
+      parameter: "Réforme planification urbaine",
+      value: "+0,15 pp/an",
+      impact: "Productivité via logement, délai 3 ans",
+      source: "Hilber & Vermeulen (2016)",
+      link: "https://doi.org/10.1016/j.jue.2015.11.003"
+    },
+    {
+      parameter: "Réforme éducation/formation",
+      value: "+0,08 pp/an",
+      impact: "Capital humain, délai 5 ans, durée 20 ans",
+      source: "OCDE Education at a Glance",
+      link: "https://www.oecd.org/education/education-at-a-glance/"
+    },
+    {
+      parameter: "Déréglementation énergie",
+      value: "+0,12 pp/an",
+      impact: "Compétitivité industrielle, délai 2 ans",
+      source: "CRE, Commission européenne",
+      link: "https://www.cre.fr/"
+    },
+  ],
+}
+
+// =============================================================================
 // MAIN APP COMPONENT
 // =============================================================================
 
@@ -189,12 +307,10 @@ function App() {
   const [healthSpending, setHealthSpending] = useState(0)        // % change in ONDAM
   const [socialContributions, setSocialContributions] = useState(0)  // pp change
   const [csgRate, setCsgRate] = useState(0)                      // pp change
-  
-  // DEBUG
-  console.log('BASELINE:', BASELINE)
-  console.log('STRUCTURAL_REFORMS:', STRUCTURAL_REFORMS)
-  console.log('MACRO_BASELINE:', MACRO_BASELINE)
-  
+
+  // Tab navigation
+  const [activeTab, setActiveTab] = useState('simulator')
+
   // Structural reform selector - SUPPORTS MULTIPLE
   const [selectedReforms, setSelectedReforms] = useState([])  // Array of reform keys
   
@@ -276,8 +392,8 @@ function App() {
     const csgRevenue = csgRate * BASELINE.securiteSociale.csg / 100
     
     // SÉCURITÉ SOCIALE spending changes
-    const pensionSpendingChange = pensionIndexation * BASELINE.securiteSociale.pensions / 100
-    const healthSpendingChange = healthSpending * BASELINE.securiteSociale.health / 100
+    const pensionSpendingChange = pensionIndexation * BASELINE.securiteSociale.vieillesse / 100
+    const healthSpendingChange = healthSpending * BASELINE.securiteSociale.maladie / 100
     
     const ssRevenueChange = socialContribRevenue + csgRevenue
     const ssSpendingChange = pensionSpendingChange + healthSpendingChange
@@ -307,9 +423,7 @@ function App() {
         spending: ssSpendingChange,
       },
     }
-    
-    console.log('POLICY IMPACT:', result)
-    
+
     return result
   }, [
     incomeTaxChange, vatChange, corpTaxChange,
@@ -338,13 +452,7 @@ function App() {
       politicalRiskPremium: politicalRisk / 10000,
       structuralReform: reform,
     })
-    
-    console.log('PROJECTIONS GENERATED:', {
-      baseline: baseline?.[0],
-      policyScenario: policyScenario?.[0],
-      fullScenario: fullScenario?.[0]
-    })
-    
+
     return { baseline, policyScenario, fullScenario }
   }, [policyImpact, projectionYears, selectedReforms, politicalRisk, combinedReformEffect])
   
@@ -367,7 +475,101 @@ function App() {
         </p>
       </header>
 
+      {/* TAB NAVIGATION */}
+      <nav className="tab-bar">
+        <button
+          className={`tab ${activeTab === 'simulator' ? 'active' : ''}`}
+          onClick={() => setActiveTab('simulator')}
+        >
+          Simulateur
+        </button>
+        <button
+          className={`tab ${activeTab === 'baseline' ? 'active' : ''}`}
+          onClick={() => setActiveTab('baseline')}
+        >
+          Baseline
+        </button>
+        <button
+          className={`tab ${activeTab === 'assumptions' ? 'active' : ''}`}
+          onClick={() => setActiveTab('assumptions')}
+        >
+          Hypothèses
+        </button>
+      </nav>
+
+      {/* SIMULATOR TAB */}
+      {activeTab === 'simulator' && (
       <main className="main-content">
+
+        {/* DEBT PROJECTION CHART - TOP OF PAGE */}
+        {projections.fullScenario && projections.fullScenario.length > 0 && (
+          <section className="results-section primary-chart-section">
+            <h2>Trajectoire dette publique sur {projectionYears} ans</h2>
+            <div className="chart-container primary-chart">
+              <ResponsiveContainer width="100%" height={400}>
+                <LineChart data={projections.fullScenario}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="year" />
+                  <YAxis
+                    label={{ value: 'Dette/PIB (%)', angle: -90, position: 'insideLeft' }}
+                    domain={[50, 140]}
+                  />
+                  <Tooltip />
+                  <Legend />
+                  <ReferenceLine y={60} stroke="#558b2f" strokeDasharray="3 3" label="Maastricht (60%)" />
+                  <ReferenceLine y={100} stroke="#e65100" strokeDasharray="3 3" label="Seuil alerte (100%)" />
+                  <Line
+                    type="monotone"
+                    dataKey="debtRatio"
+                    stroke="#1a1a1a"
+                    strokeWidth={2}
+                    name="Scénario"
+                    dot={{ r: 3 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+        )}
+
+        {/* KEY METRICS - HERO NUMBERS */}
+        {projections.fullScenario && projections.fullScenario.length > 0 && (
+          <section className="results-section">
+            <h2>Indicateurs clés (Année 1)</h2>
+            <div className="metrics-grid">
+              <MetricCard
+                label="Déficit année 1"
+                value={projections.fullScenario[0].deficit}
+                unit="Md€"
+                baseline={BASELINE.integrated.deficit}
+                format="billions"
+              />
+              <MetricCard
+                label="Dette/PIB"
+                value={projections.fullScenario[0].debtRatio}
+                unit="%"
+                baseline={MACRO_BASELINE.debtToGdp}
+                format="percent"
+              />
+              <MetricCard
+                label="Taux d'intérêt effectif"
+                value={projections.fullScenario[0].effectiveInterestRate}
+                unit="%"
+                baseline={MACRO_BASELINE.baseInterestRate * 100}
+                format="percent"
+                decimals={2}
+              />
+              <MetricCard
+                label="Charge d'intérêts"
+                value={projections.fullScenario[0].interest}
+                unit="Md€"
+                baseline={MACRO_BASELINE.debt * MACRO_BASELINE.baseInterestRate}
+                format="billions"
+              />
+            </div>
+          </section>
+        )}
+
         {/* PRESET BUTTONS */}
         <section className="controls-section preset-section">
           <h2>🎯 Scénarios politiques</h2>
@@ -608,116 +810,35 @@ function App() {
         </section>
 
         {/* ===================================================================
-            RESULTS SECTION
+            ADDITIONAL RESULTS
         =================================================================== */}
-        
-        {/* Safety check: only render results if projections exist */}
-        {projections.fullScenario && projections.fullScenario.length > 0 && (
-          <>
-        {/* 10-YEAR DEBT PROJECTION CHART (TOP) */}
-        <section className="results-section">
-          <h2>📈 Trajectoire dette publique sur {projectionYears} ans</h2>
-          <div className="chart-container primary-chart">
-            <ResponsiveContainer width="100%" height={450}>
-              <LineChart data={projections.fullScenario}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="year" />
-                <YAxis 
-                  label={{ value: 'Dette/PIB (%)', angle: -90, position: 'insideLeft' }}
-                  domain={[60, 140]}
-                />
-                <Tooltip />
-                <Legend />
-                
-                {/* Reference lines for Maastricht */}
-                <ReferenceLine y={60} stroke="green" strokeDasharray="3 3" label="Critère Maastricht (60%)" />
-                <ReferenceLine y={100} stroke="orange" strokeDasharray="3 3" label="Seuil alerte (100%)" />
-                
-                {/* Scenarios */}
-                <Line 
-                  type="monotone" 
-                  dataKey="debtToGDP" 
-                  stroke="#2563eb" 
-                  strokeWidth={3}
-                  name="Scénario complet"
-                  dot={{ r: 4 }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="baseline" 
-                  stroke="#94a3b8" 
-                  strokeWidth={2}
-                  strokeDasharray="5 5"
-                  name="Baseline (PLF 2025)"
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-            <p className="chart-context">
-              Vue : <strong>APU totales (État + Sécurité Sociale)</strong>
-            </p>
-          </div>
-        </section>
 
-        {/* KEY METRICS */}
-        <section className="results-section">
-          <h2>📊 Indicateurs clés (Année 1)</h2>
-          <div className="metrics-grid">
-            <MetricCard
-              label="Déficit année 1"
-              value={projections.fullScenario[0].deficit}
-              unit="Md€"
-              baseline={BASELINE.integrated.deficit}
-              format="billions"
-            />
-            <MetricCard
-              label="Dette/PIB année 1"
-              value={projections.fullScenario[0].debtToGDP}
-              unit="%"
-              baseline={projections.baseline[0].debtToGDP}
-              format="percent"
-            />
-            <MetricCard
-              label="Taux d'intérêt"
-              value={projections.fullScenario[0].interestRate * 100}
-              unit="%"
-              baseline={projections.baseline[0].interestRate * 100}
-              format="percent"
-              decimals={2}
-            />
-            <MetricCard
-              label="Croissance réelle"
-              value={projections.fullScenario[0].realGrowth * 100}
-              unit="%"
-              baseline={MACRO_BASELINE.realGrowth * 100}
-              format="percent"
-              decimals={2}
-            />
-          </div>
-          
-          {/* Budget Breakdown */}
-          <div className="budget-breakdown">
-            <h3>Décomposition du déficit (Année 1)</h3>
-            <div className="breakdown-row">
-              <span>État seul :</span>
-              <span className="breakdown-value">
-                {(BASELINE.etat.deficit + policyImpact.etat.revenue - policyImpact.etat.spending).toFixed(1)} Md€
-              </span>
+        {/* Budget Breakdown */}
+        {projections.fullScenario && projections.fullScenario.length > 0 && (
+          <section className="results-section">
+            <h2>Décomposition du déficit (Année 1)</h2>
+            <div className="budget-breakdown">
+              <div className="breakdown-row">
+                <span>État seul :</span>
+                <span className="breakdown-value">
+                  {(BASELINE.etat.deficit + policyImpact.etat.revenue - policyImpact.etat.spending).toFixed(1)} Md€
+                </span>
+              </div>
+              <div className="breakdown-row">
+                <span>Sécurité sociale :</span>
+                <span className="breakdown-value">
+                  {(BASELINE.securiteSociale.deficit + policyImpact.ss.revenue - policyImpact.ss.spending).toFixed(1)} Md€
+                </span>
+              </div>
+              <div className="breakdown-row total">
+                <span><strong>Total APU :</strong></span>
+                <span className="breakdown-value">
+                  <strong>{projections.fullScenario[0].deficit.toFixed(1)} Md€</strong>
+                </span>
+              </div>
             </div>
-            <div className="breakdown-row">
-              <span>Sécurité sociale :</span>
-              <span className="breakdown-value">
-                {(BASELINE.securiteSociale.deficit + policyImpact.ss.revenue - policyImpact.ss.spending).toFixed(1)} Md€
-              </span>
-            </div>
-            <div className="breakdown-row total">
-              <span><strong>Total APU :</strong></span>
-              <span className="breakdown-value">
-                <strong>{projections.fullScenario[0].deficit.toFixed(1)} Md€</strong>
-              </span>
-            </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* POLICY IMPACT CHART */}
         {(policyImpact.revenueChange !== 0 || policyImpact.spendingChange !== 0) && (
@@ -758,15 +879,15 @@ function App() {
         )}
 
         {/* DOOM LOOP ASSESSMENT */}
-        {doomLoopAssessment.isAtRisk && (
+        {doomLoopAssessment.doomLoopActive && (
           <section className="results-section warning-section">
-            <h2>⚠️ Alerte : Risque de "Doom Loop"</h2>
+            <h2>Alerte : Risque de "Doom Loop"</h2>
             <div className="doom-loop-warning">
-              <p><strong>{doomLoopAssessment.message}</strong></p>
+              <p><strong>Sévérité : {doomLoopAssessment.severity === 'high' ? 'Élevée' : doomLoopAssessment.severity === 'medium' ? 'Moyenne' : 'Faible'}</strong></p>
               <ul>
-                {doomLoopAssessment.indicators.map((indicator, i) => (
-                  <li key={i}>{indicator}</li>
-                ))}
+                <li>Variation ratio dette/PIB : +{doomLoopAssessment.debtRatioChange} pp</li>
+                <li>Variation ratio intérêts/PIB : +{doomLoopAssessment.interestRatioChange} pp</li>
+                <li>Augmentation prime de risque : +{doomLoopAssessment.premiumIncreaseBps} bps</li>
               </ul>
               <p className="doom-loop-explanation">
                 Un "doom loop" se produit quand la dette élevée augmente les taux d'intérêt,
@@ -775,11 +896,9 @@ function App() {
             </div>
           </section>
         )}
-        </>
-        )}
 
         {/* VALIDATION WARNINGS */}
-        {projections.fullScenario && !validation.isValid && (
+        {projections.fullScenario && !validation.valid && (
           <section className="results-section validation-section">
             <h2>⚠️ Avertissements de validation</h2>
             <ul className="validation-warnings">
@@ -790,11 +909,275 @@ function App() {
           </section>
         )}
       </main>
+      )}
+
+      {/* BASELINE TAB */}
+      {activeTab === 'baseline' && (
+        <main className="main-content page-baseline">
+          <section className="baseline-section">
+            <h2>Budget de référence : PLF 2025 + PLFSS 2026</h2>
+            <p className="section-subtitle">Projet de loi de finances initial (Michel Barnier)</p>
+
+            <div className="baseline-grid">
+              {/* ÉTAT */}
+              <div className="baseline-column">
+                <h3>État (PLF 2025)</h3>
+
+                <table className="baseline-table">
+                  <thead>
+                    <tr>
+                      <th>Recettes</th>
+                      <th className="amount">Md€</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>Impôt sur le revenu</td><td className="amount">{BASELINE.etat.incomeTax}</td></tr>
+                    <tr><td>TVA</td><td className="amount">{BASELINE.etat.vat}</td></tr>
+                    <tr><td>Impôt sur les sociétés</td><td className="amount">{BASELINE.etat.corporateTax}</td></tr>
+                    <tr><td>Autres recettes fiscales</td><td className="amount">{BASELINE.etat.otherTax}</td></tr>
+                    <tr className="total-row"><td>Total recettes</td><td className="amount">{BASELINE.etat.revenuTotal}</td></tr>
+                  </tbody>
+                </table>
+
+                <table className="baseline-table">
+                  <thead>
+                    <tr>
+                      <th>Dépenses</th>
+                      <th className="amount">Md€</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>Éducation nationale</td><td className="amount">{BASELINE.etat.education}</td></tr>
+                    <tr><td>Défense</td><td className="amount">{BASELINE.etat.defense}</td></tr>
+                    <tr><td>Solidarité & insertion</td><td className="amount">{BASELINE.etat.solidarity}</td></tr>
+                    <tr><td>Transition écologique</td><td className="amount">{BASELINE.etat.ecological}</td></tr>
+                    <tr><td>Autres missions</td><td className="amount">{BASELINE.etat.otherSpending}</td></tr>
+                    <tr className="total-row"><td>Total dépenses</td><td className="amount">{BASELINE.etat.spendingTotal}</td></tr>
+                  </tbody>
+                </table>
+
+                <div className="deficit-box etat">
+                  <span>Déficit État</span>
+                  <span className="deficit-value">{BASELINE.etat.deficit} Md€</span>
+                </div>
+              </div>
+
+              {/* SÉCURITÉ SOCIALE */}
+              <div className="baseline-column">
+                <h3>Sécurité Sociale (PLFSS 2026)</h3>
+
+                <table className="baseline-table">
+                  <thead>
+                    <tr>
+                      <th>Recettes</th>
+                      <th className="amount">Md€</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>Cotisations sociales</td><td className="amount">{BASELINE.securiteSociale.cotisations}</td></tr>
+                    <tr><td>CSG (toutes sources)</td><td className="amount">{BASELINE.securiteSociale.csg}</td></tr>
+                    <tr><td>Impôts et taxes affectés</td><td className="amount">{BASELINE.securiteSociale.impotsTaxes}</td></tr>
+                    <tr><td>Compensations État</td><td className="amount">{BASELINE.securiteSociale.cotisationsEtat}</td></tr>
+                    <tr><td>Transferts inter-régimes</td><td className="amount">{BASELINE.securiteSociale.transferts}</td></tr>
+                    <tr><td>Autres produits</td><td className="amount">{BASELINE.securiteSociale.autresProduits}</td></tr>
+                    <tr className="total-row"><td>Total recettes</td><td className="amount">{BASELINE.securiteSociale.revenuTotal}</td></tr>
+                  </tbody>
+                </table>
+
+                <table className="baseline-table">
+                  <thead>
+                    <tr>
+                      <th>Dépenses</th>
+                      <th className="amount">Md€</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>Vieillesse (retraites)</td><td className="amount">{BASELINE.securiteSociale.vieillesse}</td></tr>
+                    <tr><td>Maladie</td><td className="amount">{BASELINE.securiteSociale.maladie}</td></tr>
+                    <tr><td>Famille</td><td className="amount">{BASELINE.securiteSociale.famille}</td></tr>
+                    <tr><td>Accidents du travail (AT-MP)</td><td className="amount">{BASELINE.securiteSociale.atmp}</td></tr>
+                    <tr><td>Autonomie</td><td className="amount">{BASELINE.securiteSociale.autonomie}</td></tr>
+                    <tr className="total-row"><td>Total dépenses</td><td className="amount">{BASELINE.securiteSociale.spendingTotal}</td></tr>
+                  </tbody>
+                </table>
+
+                <div className="deficit-box ss">
+                  <span>Déficit Sécurité Sociale</span>
+                  <span className="deficit-value">{BASELINE.securiteSociale.deficit} Md€</span>
+                </div>
+              </div>
+            </div>
+
+            {/* CONSOLIDATED */}
+            <div className="consolidated-box">
+              <h3>APU Consolidées (État + Sécurité Sociale)</h3>
+              <div className="consolidated-row">
+                <span>Total recettes</span>
+                <span className="amount">{BASELINE.integrated.revenuTotal} Md€</span>
+              </div>
+              <div className="consolidated-row">
+                <span>Total dépenses</span>
+                <span className="amount">{BASELINE.integrated.spendingTotal} Md€</span>
+              </div>
+              <div className="consolidated-row deficit">
+                <span>Déficit total</span>
+                <span className="amount">{BASELINE.integrated.deficit} Md€</span>
+              </div>
+              <p className="consolidated-note">
+                Soit environ {Math.abs(BASELINE.integrated.deficit / MACRO_BASELINE.gdp * 100).toFixed(1)}% du PIB
+              </p>
+            </div>
+
+            <p className="source-note">
+              Sources : PLF 2025 (Barnier), PLFSS 2026 Annexe 3, CCSS 2024 (structure des recettes SS)
+            </p>
+          </section>
+        </main>
+      )}
+
+      {/* ASSUMPTIONS TAB */}
+      {activeTab === 'assumptions' && (
+        <main className="main-content page-assumptions">
+          <section className="assumptions-section">
+            <h2>Hypothèses du modèle</h2>
+            <p className="section-subtitle">Paramètres économiques et sources académiques</p>
+
+            {/* MACRO */}
+            <div className="assumptions-category">
+              <h3>Paramètres macroéconomiques</h3>
+              <table className="assumptions-table">
+                <thead>
+                  <tr>
+                    <th>Hypothèse</th>
+                    <th>Valeur</th>
+                    <th>Impact</th>
+                    <th>Source</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ASSUMPTIONS.macro.map((item, i) => (
+                    <tr key={i}>
+                      <td>{item.parameter}</td>
+                      <td className="value">{item.value}</td>
+                      <td>{item.impact}</td>
+                      <td>
+                        {item.link ? (
+                          <a href={item.link} target="_blank" rel="noopener noreferrer">{item.source}</a>
+                        ) : (
+                          item.source
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* FISCAL */}
+            <div className="assumptions-category">
+              <h3>Élasticités fiscales</h3>
+              <table className="assumptions-table">
+                <thead>
+                  <tr>
+                    <th>Hypothèse</th>
+                    <th>Valeur</th>
+                    <th>Impact</th>
+                    <th>Source</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ASSUMPTIONS.fiscal.map((item, i) => (
+                    <tr key={i}>
+                      <td>{item.parameter}</td>
+                      <td className="value">{item.value}</td>
+                      <td>{item.impact}</td>
+                      <td>
+                        {item.link ? (
+                          <a href={item.link} target="_blank" rel="noopener noreferrer">{item.source}</a>
+                        ) : (
+                          item.source
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* RISK PREMIUM */}
+            <div className="assumptions-category">
+              <h3>Prime de risque souverain</h3>
+              <table className="assumptions-table">
+                <thead>
+                  <tr>
+                    <th>Hypothèse</th>
+                    <th>Valeur</th>
+                    <th>Impact</th>
+                    <th>Source</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ASSUMPTIONS.riskPremium.map((item, i) => (
+                    <tr key={i}>
+                      <td>{item.parameter}</td>
+                      <td className="value">{item.value}</td>
+                      <td>{item.impact}</td>
+                      <td>
+                        {item.link ? (
+                          <a href={item.link} target="_blank" rel="noopener noreferrer">{item.source}</a>
+                        ) : (
+                          item.source
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* REFORMS */}
+            <div className="assumptions-category">
+              <h3>Réformes structurelles</h3>
+              <table className="assumptions-table">
+                <thead>
+                  <tr>
+                    <th>Hypothèse</th>
+                    <th>Valeur</th>
+                    <th>Impact</th>
+                    <th>Source</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ASSUMPTIONS.reforms.map((item, i) => (
+                    <tr key={i}>
+                      <td>{item.parameter}</td>
+                      <td className="value">{item.value}</td>
+                      <td>{item.impact}</td>
+                      <td>
+                        {item.link ? (
+                          <a href={item.link} target="_blank" rel="noopener noreferrer">{item.source}</a>
+                        ) : (
+                          item.source
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <p className="methodology-note">
+              Les paramètres sont calibrés sur la littérature académique et les publications institutionnelles.
+              L'incertitude sur ces valeurs est significative ; le modèle est à visée pédagogique.
+            </p>
+          </section>
+        </main>
+      )}
 
       <footer className="footer">
         <p>Simulateur Budget France v1.9 (Intégré) • Sources : PLF 2025, PLFSS 2026, Knafo, IMF, OECD, ECB</p>
         <p className="footer-note">
-          Vue consolidée État + Sécurité Sociale (APU totales). 
+          Vue consolidée État + Sécurité Sociale (APU totales).
           Modèle pédagogique avec paramètres exposés.
         </p>
       </footer>
@@ -838,27 +1221,29 @@ function MetricCard({ label, value, unit, baseline, format, decimals = 1 }) {
   const safeBaseline = baseline ?? 0
   const delta = safeValue - safeBaseline
   const deltaPercent = safeBaseline !== 0 ? (delta / Math.abs(safeBaseline)) * 100 : 0
-  
-  let deltaClass = 'neutral'
+
+  // Determine if this is a "worse" or "better" change
+  let deltaClass = ''
   if (format === 'billions') {
     // For deficit: negative is good (less deficit)
-    deltaClass = delta < 0 ? 'positive' : (delta > 0 ? 'negative' : 'neutral')
+    deltaClass = delta < 0 ? 'metric-better' : (delta > 0 ? 'metric-worse' : '')
   } else if (format === 'percent') {
     // For debt/GDP: lower is better
-    deltaClass = delta < 0 ? 'positive' : (delta > 0 ? 'negative' : 'neutral')
+    deltaClass = delta < 0 ? 'metric-better' : (delta > 0 ? 'metric-worse' : '')
   }
-  
+
+  // Show negative values (deficits) in red
+  const isNegativeValue = safeValue < 0
+
   return (
-    <div className="metric-card">
-      <h3>{label}</h3>
-      <div className="metric-value">
+    <div className="metric">
+      <div className="metric-label">{label}</div>
+      <div className={`metric-value ${isNegativeValue ? 'negative' : ''}`}>
         {safeValue.toFixed(decimals)} {unit}
       </div>
-      <div className={`metric-delta ${deltaClass}`}>
+      <div className={`metric-diff ${deltaClass}`}>
         {delta > 0 ? '+' : ''}{delta.toFixed(decimals)} {unit}
-        <span className="delta-percent">
-          ({delta > 0 ? '+' : ''}{deltaPercent.toFixed(1)}%)
-        </span>
+        {' '}({delta > 0 ? '+' : ''}{deltaPercent.toFixed(1)}%)
       </div>
     </div>
   )

@@ -19,9 +19,12 @@ export const MACRO_BASELINE = {
   gdp: 2850,              // Md EUR
   debt: 3300,             // Md EUR (~115.8% GDP)
   debtToGdp: 115.8,       // %
-  
+
   // Interest rate parameters
-  baseInterestRate: 0.032,    // 3.2% average rate on outstanding debt
+  // Note: Effective rate on existing stock is ~2.1% (much debt locked at low rates)
+  // PLF 2025 charge de la dette: ~54 Md€ État, ~70 Md€ total APU
+  // At 115.8% debt/GDP, risk premium adds ~1.93%, so base must be ~0.17% for total = 2.1%
+  baseInterestRate: 0.0017,   // Base rate (risk premium brings total to ~2.1%)
   
   // Sovereign risk premium model (France-specific calibration)
   // Sources: IMF (2017), EC (2018), France OAT spreads 2024-2025
@@ -50,8 +53,9 @@ export const MACRO_BASELINE = {
   realGrowth: 0.011,         // 1.1% baseline
   inflation: 0.018,          // 1.8% ECB target
   
-  // Fiscal parameters  
-  primaryDeficit: 84,        // Md EUR (deficit minus interest)
+  // Fiscal parameters
+  // Primary deficit = total deficit - interest = 156.5 - 69.3 = 87.2 Md€
+  primaryDeficit: 87.2,      // Md EUR (deficit minus interest)
   
   // Tax elasticity to GDP (automatic stabilizers)
   taxElasticity: 0.45,       // 45% of GDP growth → revenue

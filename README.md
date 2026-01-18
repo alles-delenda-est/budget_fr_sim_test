@@ -1,16 +1,49 @@
-# React + Vite
+# Simulateur Budget France
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Interactive simulator for French public finances, modelling the État (PLF 2025) and Sécurité Sociale (PLFSS 2026) budgets with 10-year debt projections.
 
-Currently, two official plugins are available:
+## Current Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Baseline Budget Data**: PLF 2025 + PLFSS 2026 revenue/expenditure breakdown
+- **Policy Sliders**: Adjust tax rates (IR, TVA, IS, CSG) and spending categories
+- **10-Year Debt Projection Engine** (v1.8):
+  - Endogenous interest rates with sovereign risk premium model
+  - Fiscal feedback from growth (automatic stabilizers)
+  - Structural reform growth effects
+  - Doom loop detection
+- **Visualisation**: Debt/GDP trajectory chart with Maastricht threshold
+- **Clean UI**: Elegant serif typography (Crimson Pro), subdued colour palette
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- React + Vite
+- Recharts for data visualisation
+- Pure CSS (no framework)
 
-## Expanding the ESLint configuration
+## Running Locally
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+npm install
+npm run dev
+```
+
+## Project Structure
+
+```
+src/
+  App.jsx                    # Main UI component
+  App.css                    # Styling
+  projection-engine-v1.8.js  # Fiscal projection model
+  main.jsx                   # Entry point
+```
+
+## Next Steps
+
+- [ ] Research and Create Generation Libre pre-sets
+- [ ] Add pre-sets to new columns in the baseline tab and rename to detailed baseline(s)
+- [ ] Increase granularity within the different variables
+- [ ] Export functionality (PDF/CSV)
+- [ ] Scenario comparison (save/load configurations)
+- [ ] Sensitivity analysis (Monte Carlo on growth/rates)
+- [ ] Mobile-responsive layout
+- [ ] i18n (English translation)
