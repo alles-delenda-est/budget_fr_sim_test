@@ -125,7 +125,7 @@ const PRESETS = {
       socialContributions: -2,
       csgRate: 0,
     },
-    reforms: ['labor', 'planning'],  // Expect growth from reforms
+    reforms: ['laborMarket', 'planning'],  // Expect growth from reforms
   },
   
   knafo: {
@@ -375,9 +375,11 @@ function App() {
   // Calculate policy impacts (ALWAYS integrated now)
   const policyImpact = useMemo(() => {
     // ÉTAT (State) revenue changes
-    const incomeRevenue = incomeTaxChange * BASELINE.etat.incomeTax * 0.9
-    const vatRevenue = vatChange * BASELINE.etat.vat * 0.95
-    const corpRevenue = corpTaxChange * BASELINE.etat.corporateTax * 0.7
+    // Formula: pp_change × (revenue / effective_rate%) × elasticity
+    // This converts a percentage-point rate change into Md€ revenue impact
+    const incomeRevenue = incomeTaxChange * BASELINE.etat.incomeTax / 10 * 0.9   // avg effective rate ~10%, → ~8.5 Md€/pp
+    const vatRevenue = vatChange * BASELINE.etat.vat / 20 * 0.95                 // standard rate ~20%, → ~4.6 Md€/pp
+    const corpRevenue = corpTaxChange * BASELINE.etat.corporateTax / 25 * 0.7    // standard rate ~25%, → ~1.4 Md€/pp
     
     // ÉTAT spending changes
     const educationSpending = spendingEducation * BASELINE.etat.education / 100
@@ -388,8 +390,9 @@ function App() {
     const etatSpendingChange = educationSpending + defenseSpending + solidaritySpending
     
     // SÉCURITÉ SOCIALE revenue changes
-    const socialContribRevenue = socialContributions * BASELINE.securiteSociale.cotisations / 100
-    const csgRevenue = csgRate * BASELINE.securiteSociale.csg / 100
+    // Same principle: pp_change × (revenue / effective_rate%) to get Md€ impact
+    const socialContribRevenue = socialContributions * BASELINE.securiteSociale.cotisations / 41  // combined cotisation rate ~41%, → ~9.1 Md€/pp
+    const csgRevenue = csgRate * BASELINE.securiteSociale.csg / 9.2                              // CSG rate ~9.2%, → ~14.7 Md€/pp
     
     // SÉCURITÉ SOCIALE spending changes
     const pensionSpendingChange = pensionIndexation * BASELINE.securiteSociale.vieillesse / 100
@@ -453,7 +456,13 @@ function App() {
       structuralReform: reform,
     })
 
-    return { baseline, policyScenario, fullScenario }
+    // Merge baseline debtRatio into fullScenario for chart comparison
+    const chartData = fullScenario.map((item, i) => ({
+      ...item,
+      baselineDebtRatio: baseline[i]?.debtRatio,
+    }))
+
+    return { baseline, policyScenario, fullScenario, chartData }
   }, [policyImpact, projectionYears, selectedReforms, politicalRisk, combinedReformEffect])
   
   // Assess doom loop risk
@@ -502,17 +511,17 @@ function App() {
       <main className="main-content">
 
         {/* DEBT PROJECTION CHART - TOP OF PAGE */}
-        {projections.fullScenario && projections.fullScenario.length > 0 && (
+        {projections.chartData && projections.chartData.length > 0 && (
           <section className="results-section primary-chart-section">
             <h2>Trajectoire dette publique sur {projectionYears} ans</h2>
             <div className="chart-container primary-chart">
               <ResponsiveContainer width="100%" height={400}>
-                <LineChart data={projections.fullScenario}>
+                <LineChart data={projections.chartData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="year" />
                   <YAxis
                     label={{ value: 'Dette/PIB (%)', angle: -90, position: 'insideLeft' }}
-                    domain={[50, 140]}
+                    domain={['auto', 'auto']}
                   />
                   <Tooltip />
                   <Legend />
@@ -520,9 +529,18 @@ function App() {
                   <ReferenceLine y={100} stroke="#e65100" strokeDasharray="3 3" label="Seuil alerte (100%)" />
                   <Line
                     type="monotone"
-                    dataKey="debtRatio"
-                    stroke="#1a1a1a"
+                    dataKey="baselineDebtRatio"
+                    stroke="#94a3b8"
                     strokeWidth={2}
+                    strokeDasharray="5 5"
+                    name="Baseline (PLF 2025)"
+                    dot={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="debtRatio"
+                    stroke="#2563eb"
+                    strokeWidth={3}
                     name="Scénario"
                     dot={{ r: 3 }}
                   />
@@ -548,14 +566,14 @@ function App() {
                 label="Dette/PIB"
                 value={projections.fullScenario[0].debtRatio}
                 unit="%"
-                baseline={MACRO_BASELINE.debtToGdp}
+                baseline={projections.baseline[0].debtRatio}
                 format="percent"
               />
               <MetricCard
                 label="Taux d'intérêt effectif"
                 value={projections.fullScenario[0].effectiveInterestRate}
                 unit="%"
-                baseline={MACRO_BASELINE.baseInterestRate * 100}
+                baseline={projections.baseline[0].effectiveInterestRate}
                 format="percent"
                 decimals={2}
               />
@@ -563,7 +581,7 @@ function App() {
                 label="Charge d'intérêts"
                 value={projections.fullScenario[0].interest}
                 unit="Md€"
-                baseline={MACRO_BASELINE.debt * MACRO_BASELINE.baseInterestRate}
+                baseline={projections.baseline[0].interest}
                 format="billions"
               />
             </div>
