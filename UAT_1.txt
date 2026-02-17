@@ -1,0 +1,124 @@
+USER ACCEPTANCE TESTS - Budget Simulator v1.9
+================================================
+
+These tests cover visual, interactive, and browser-dependent behavior
+that automated unit tests cannot validate.
+
+
+1. CHART RENDERING
+------------------
+[ ] Debt trajectory chart renders on page load with two lines:
+    - Dashed grey "Baseline (PLF 2025)"
+    - Solid blue "Scénario"
+[ ] Both lines start at the same point (~115.8% debt/GDP)
+[ ] X-axis shows years (2025-2035), Y-axis shows "Dette/PIB (%)"
+[ ] Maastricht (60%) and alert (100%) reference lines are visible
+[ ] Hovering over chart points shows a tooltip with exact values
+[ ] Legend is visible and labels match the lines
+[ ] Policy impact bar chart appears when any lever is moved off zero
+[ ] Bar chart shows three bars: Recettes (green), Dépenses (red), Solde (blue)
+
+2. SLIDER INTERACTIONS
+----------------------
+[ ] Each slider moves smoothly and updates its displayed value in real time
+[ ] Moving any tax slider updates the chart immediately (no lag or flicker)
+[ ] Moving any spending slider updates the chart immediately
+[ ] Slider value resets to 0 correctly (not stuck at a near-zero float)
+[ ] Sliders respect their min/max bounds (cannot drag beyond range):
+    - IR: -10 to +10 pp
+    - TVA: -5 to +5 pp (step 0.5)
+    - IS: -10 to +5 pp
+    - Education: -20% to +20%
+    - Défense: -15% to +15%
+    - Solidarité: -30% to +30%
+    - Indexation retraites: -2 to +1 pp (step 0.1)
+    - Dépenses santé: -10% to +10%
+    - Cotisations: -5 to +5 pp (step 0.5)
+    - CSG: -2 to +2 pp (step 0.5)
+    - Prime de risque: 0 to 200 bps (step 10)
+    - Horizon: 5 to 20 ans
+
+3. PRESET BUTTONS
+-----------------
+[ ] Clicking "PLF 2025 (Barnier)" sets all sliders to expected positions
+[ ] Clicking "Sarah Knafo" sets all sliders (verify solidarity goes to -60%)
+[ ] Clicking "Nouveau Front Populaire" sets all sliders (verify IR goes to +5)
+[ ] Clicking "Génération Libre" sets all sliders AND checks laborMarket + planning reforms
+[ ] After applying a preset, manually adjusting one slider works normally
+[ ] Applying a second preset fully overwrites the first (no stale values)
+[ ] After Génération Libre, applying Knafo unchecks all reform checkboxes
+
+4. STRUCTURAL REFORM CHECKBOXES
+--------------------------------
+[ ] Each reform checkbox can be toggled independently
+[ ] Selecting multiple reforms shows "N réformes combinées" summary
+[ ] Combined growth effect displays correctly (with 15% overlap penalty)
+[ ] Reform selection updates the chart (visible improvement in later years)
+[ ] Unchecking all reforms removes the combined summary block
+
+5. KEY METRICS (Hero Numbers)
+-----------------------------
+[ ] Four metric cards display under "Indicateurs clés (Année 1)":
+    Déficit, Dette/PIB, Taux d'intérêt effectif, Charge d'intérêts
+[ ] Baseline values show reasonable numbers (deficit ~156 Md€, debt ~115.8%)
+[ ] Moving sliders toward austerity turns deltas green (metric-better)
+[ ] Moving sliders toward stimulus turns deltas red (metric-worse)
+[ ] Percentage change displays correctly (not NaN or Infinity)
+[ ] Negative deficit values display in red
+
+6. DOOM LOOP WARNING
+--------------------
+[ ] Warning section does NOT appear on page load with default sliders
+[ ] Increasing spending significantly (e.g. solidarity +30%) triggers the warning
+[ ] Warning shows severity (Élevée/Moyenne/Faible) and numeric details
+[ ] Adding 200 bps political risk makes the warning appear or worsen
+[ ] Reducing spending back to 0 makes the warning disappear
+
+7. VALIDATION WARNINGS
+-----------------------
+[ ] No warnings on page load
+[ ] Extreme stimulus (all spending max, all revenue min) for 20 years
+    shows "⚠️ Avertissements de validation" section
+[ ] Warning messages mention specific years and thresholds
+
+8. TAB NAVIGATION
+-----------------
+[ ] "Simulateur" tab is active by default
+[ ] Clicking "Baseline" shows budget tables (État + Sécurité Sociale)
+[ ] Clicking "Hypothèses" shows assumptions tables with sources
+[ ] Switching back to "Simulateur" preserves slider positions
+[ ] External links in Hypothèses tab open in new tabs
+[ ] Baseline tab numbers match the values used in calculations:
+    État revenue 308.4, spending 444.97, SS revenue 659.4, etc.
+
+9. BUDGET BREAKDOWN
+--------------------
+[ ] "Décomposition du déficit" shows État + SS + Total APU
+[ ] État + SS deficits sum to the APU total shown
+[ ] Moving only État sliders changes only the État line
+[ ] Moving only SS sliders changes only the SS line
+
+10. VISUAL / LAYOUT
+--------------------
+[ ] Page renders without horizontal scrollbar on 1280px+ screens
+[ ] Charts resize when window is resized (ResponsiveContainer)
+[ ] No overlapping text in slider labels or metric cards
+[ ] Footer displays at the bottom with version and sources
+[ ] All French characters (é, è, ê, ç, etc.) render correctly
+
+11. CROSS-SCENARIO COHERENCE
+-----------------------------
+[ ] Apply Knafo preset → chart shows debt improving vs baseline
+[ ] Apply NFP preset → chart shows debt worsening or similar to baseline
+    (NFP raises both taxes and spending; net effect should be visible)
+[ ] Apply Génération Libre → reform effect visible as curve diverges
+    from baseline in later years (after lag period)
+[ ] Set projection horizon to 5 years → chart shows only 5 years
+[ ] Set projection horizon to 20 years → chart extends, trends amplified
+
+12. EDGE INTERACTIONS
+---------------------
+[ ] Rapidly clicking multiple presets in succession does not crash
+[ ] Moving a slider while chart is updating does not produce glitches
+[ ] Setting all sliders to 0 returns chart to match baseline exactly
+    (both lines should overlap)
