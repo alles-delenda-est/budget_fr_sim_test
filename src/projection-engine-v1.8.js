@@ -393,16 +393,29 @@ export function compareProjections(projectionA, projectionB, targetYears = [1, 2
  * Returns metrics on debt-interest feedback loop
  */
 export function assessDoomLoop(projection) {
+  if (!projection || projection.length === 0) {
+    return {
+      debtRatioChange: 0,
+      interestRatioChange: 0,
+      premiumIncreaseBps: 0,
+      severity: "low",
+      doomLoopActive: false,
+    }
+  }
+
   const start = projection[0]
   const end = projection[projection.length - 1]
-  
+
   const debtIncrease = end.debtRatio - start.debtRatio
   const interestIncrease = end.interestRatio - start.interestRatio
   const premiumIncrease = end.riskPremiumBps - start.riskPremiumBps
-  
+
   // Severity: how much is interest crowding out fiscal space?
-  const severity = interestIncrease / Math.abs(end.deficitRatio)
-  
+  // Guard against division by zero when deficitRatio ≈ 0
+  const severity = Math.abs(end.deficitRatio) > 0.01
+    ? interestIncrease / Math.abs(end.deficitRatio)
+    : 0
+
   return {
     debtRatioChange: Math.round(debtIncrease * 10) / 10,
     interestRatioChange: Math.round(interestIncrease * 100) / 100,
