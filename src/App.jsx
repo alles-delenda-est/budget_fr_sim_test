@@ -309,7 +309,7 @@ function App() {
   return (
     <div className="app">
       <header className="header">
-        <h1>Simulateur Budget France v2.0</h1>
+        <h1>Simulateur Budget France <span className="version-badge">v2.0</span></h1>
         <p className="subtitle">
           Vue intégrée État + Sécurité Sociale (APU totales) • Réponse comportementale ETI • Inertie dette
         </p>
