@@ -1314,3 +1314,80 @@ body {
 .recharts-tooltip-wrapper {
   font-family: var(--font-sans);
 }
+
+/* =============================================================================
+   SMALL CHARTS ROW (3 equal-width charts)
+============================================================================= */
+
+.small-charts-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+}
+
+@media (max-width: 900px) {
+  .small-charts-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.small-chart-container {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-light);
+  border-radius: 6px;
+  padding: var(--space-sm);
+}
+
+.small-chart-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  margin: 0 0 var(--space-xs) 0;
+  color: var(--color-ink);
+}
+
+/* =============================================================================
+   YEAR-5 / YEAR-10 SNAPSHOT METRICS
+============================================================================= */
+
+.snapshot-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-lg);
+}
+
+@media (max-width: 700px) {
+  .snapshot-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.snapshot-group {
+  border: 1px solid var(--color-border-light);
+  border-radius: 6px;
+  padding: var(--space-sm) var(--space-md);
+}
+
+.snapshot-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0 0 var(--space-sm) 0;
+  color: var(--color-ink-muted);
+  border-bottom: 1px solid var(--color-border-light);
+  padding-bottom: var(--space-xs);
+}
+
+.metrics-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* =============================================================================
+   ASSUMPTIONS NOTES
+============================================================================= */
+
+.assumptions-note {
+  font-size: 0.8rem;
+  color: var(--color-ink-muted);
+  margin: 0 0 var(--space-sm) 0;
+  line-height: 1.5;
+}

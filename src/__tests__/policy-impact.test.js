@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { BASELINE, PRESETS, calculatePolicyImpact } from '../policy-impact'
+import { BASELINE, PRESETS, calculatePolicyImpact, BEHAVIORAL_RESPONSE, FISCAL_MULTIPLIERS } from '../policy-impact'
 
 // =============================================================================
 // BASELINE constants - regression guards
 // =============================================================================
 
 describe('BASELINE constants', () => {
-  it('état revenue total is 308.4', () => {
-    expect(BASELINE.etat.revenuTotal).toBe(308.4)
+  it('état revenue total is 315.3', () => {
+    expect(BASELINE.etat.revenuTotal).toBe(315.3)
   })
 
   it('état spending total is 444.97', () => {
@@ -29,8 +29,8 @@ describe('BASELINE constants', () => {
     expect(BASELINE.securiteSociale.revenuTotal).toBe(659.4)
   })
 
-  it('SS spending total is 676.9', () => {
-    expect(BASELINE.securiteSociale.spendingTotal).toBe(676.9)
+  it('SS spending total is 686.6', () => {
+    expect(BASELINE.securiteSociale.spendingTotal).toBe(686.6)
   })
 
   it('SS revenue components sum to revenuTotal', () => {
@@ -43,8 +43,7 @@ describe('BASELINE constants', () => {
   it('SS spending components sum to spendingTotal', () => {
     const ss = BASELINE.securiteSociale
     const sum = ss.maladie + ss.vieillesse + ss.famille + ss.atmp + ss.autonomie
-    // Note: spending components total 695.9, but consolidation of -19.0 brings it to 676.9
-    expect(sum).toBeCloseTo(695.9, 1)
+    expect(sum).toBeCloseTo(ss.spendingTotal, 1)
   })
 
   it('integrated revenue = état + SS', () => {
@@ -64,35 +63,104 @@ describe('BASELINE constants', () => {
 })
 
 // =============================================================================
-// Individual revenue levers
+// BEHAVIORAL_RESPONSE and FISCAL_MULTIPLIERS constants
+// =============================================================================
+
+describe('BEHAVIORAL_RESPONSE constants', () => {
+  it('has all expected tax types', () => {
+    expect(BEHAVIORAL_RESPONSE).toHaveProperty('incomeTax')
+    expect(BEHAVIORAL_RESPONSE).toHaveProperty('corporateTax')
+    expect(BEHAVIORAL_RESPONSE).toHaveProperty('vat')
+    expect(BEHAVIORAL_RESPONSE).toHaveProperty('csg')
+    expect(BEHAVIORAL_RESPONSE).toHaveProperty('socialContributions')
+  })
+
+  it('each type has increaseEfficiency, decreaseEfficiency, growthDragPerPp', () => {
+    for (const [, val] of Object.entries(BEHAVIORAL_RESPONSE)) {
+      expect(val).toHaveProperty('increaseEfficiency')
+      expect(val).toHaveProperty('decreaseEfficiency')
+      expect(val).toHaveProperty('growthDragPerPp')
+    }
+  })
+
+  it('increaseEfficiency < 1 for all types (haircutting)', () => {
+    for (const [, val] of Object.entries(BEHAVIORAL_RESPONSE)) {
+      expect(val.increaseEfficiency).toBeLessThan(1)
+    }
+  })
+
+  it('decreaseEfficiency >= 1 for all types (supply-side boost)', () => {
+    for (const [, val] of Object.entries(BEHAVIORAL_RESPONSE)) {
+      expect(val.decreaseEfficiency).toBeGreaterThanOrEqual(1)
+    }
+  })
+
+  it('growthDragPerPp < 0 for all types (drag for increases)', () => {
+    for (const [, val] of Object.entries(BEHAVIORAL_RESPONSE)) {
+      expect(val.growthDragPerPp).toBeLessThan(0)
+    }
+  })
+})
+
+describe('FISCAL_MULTIPLIERS constants', () => {
+  it('has all expected spending categories', () => {
+    expect(FISCAL_MULTIPLIERS).toHaveProperty('education')
+    expect(FISCAL_MULTIPLIERS).toHaveProperty('defense')
+    expect(FISCAL_MULTIPLIERS).toHaveProperty('solidarity')
+    expect(FISCAL_MULTIPLIERS).toHaveProperty('pensions')
+    expect(FISCAL_MULTIPLIERS).toHaveProperty('health')
+  })
+
+  it('each category has expansion and recession multipliers', () => {
+    for (const [, val] of Object.entries(FISCAL_MULTIPLIERS)) {
+      expect(val).toHaveProperty('expansion')
+      expect(val).toHaveProperty('recession')
+    }
+  })
+
+  it('recession multipliers >= expansion multipliers (larger in downturns)', () => {
+    for (const [, val] of Object.entries(FISCAL_MULTIPLIERS)) {
+      expect(val.recession).toBeGreaterThanOrEqual(val.expansion)
+    }
+  })
+})
+
+// =============================================================================
+// Individual revenue levers — with behavioral response
 // =============================================================================
 
 describe('calculatePolicyImpact - revenue levers', () => {
   describe('income tax (IR)', () => {
-    it('+1pp produces ~8.47 Md revenue', () => {
+    it('+1pp produces ~5.93 Md revenue (static × 70% efficiency)', () => {
       const result = calculatePolicyImpact({ incomeTaxChange: 1 })
-      // 1 * 94.1 / 10 * 0.9 = 8.469
-      expect(result.revenueChange).toBeCloseTo(8.469, 2)
+      // 1 * 94.1 / 10 * 0.9 * 0.70 = 5.9283
+      expect(result.revenueChange).toBeCloseTo(5.928, 2)
     })
 
-    it('+2pp produces 2x the impact (linearity)', () => {
+    it('+2pp produces 2x the impact (linearity for increases)', () => {
       const one = calculatePolicyImpact({ incomeTaxChange: 1 })
       const two = calculatePolicyImpact({ incomeTaxChange: 2 })
       expect(two.revenueChange).toBeCloseTo(one.revenueChange * 2, 2)
     })
 
-    it('negative change is symmetric', () => {
-      const pos = calculatePolicyImpact({ incomeTaxChange: 3 })
-      const neg = calculatePolicyImpact({ incomeTaxChange: -3 })
-      expect(neg.revenueChange).toBeCloseTo(-pos.revenueChange, 2)
+    it('decrease uses decreaseEfficiency (105%), not increaseEfficiency', () => {
+      const neg = calculatePolicyImpact({ incomeTaxChange: -1 })
+      // -1 * 94.1 / 10 * 0.9 * 1.05 = -8.8925
+      expect(neg.revenueChange).toBeCloseTo(-8.893, 2)
+    })
+
+    it('decrease revenue exceeds increase revenue in absolute terms (asymmetry)', () => {
+      const pos = calculatePolicyImpact({ incomeTaxChange: 1 })
+      const neg = calculatePolicyImpact({ incomeTaxChange: -1 })
+      expect(Math.abs(neg.revenueChange)).toBeGreaterThan(Math.abs(pos.revenueChange))
     })
   })
 
   describe('VAT (TVA)', () => {
-    it('+1pp produces ~4.63 Md revenue', () => {
+    it('+1pp produces ~4.26 Md revenue (static × 92% efficiency)', () => {
       const result = calculatePolicyImpact({ vatChange: 1 })
-      // 1 * 97.5 / 20 * 0.95 = 4.63125
-      expect(result.revenueChange).toBeCloseTo(4.631, 2)
+      // 1 * 97.5 / 20 * 0.95 * 0.92 = 4.26075
+      expect(result.revenueChange).toBeCloseTo(4.261, 2)
     })
 
     it('linearity: +2pp = 2x', () => {
@@ -103,39 +171,45 @@ describe('calculatePolicyImpact - revenue levers', () => {
   })
 
   describe('corporate tax (IS)', () => {
-    it('+1pp produces ~1.44 Md revenue', () => {
+    it('+1pp produces ~0.90 Md revenue (static × 55% efficiency)', () => {
       const result = calculatePolicyImpact({ corpTaxChange: 1 })
-      // 1 * 51.3 / 25 * 0.7 = 1.4364
-      expect(result.revenueChange).toBeCloseTo(1.436, 2)
+      // 1 * 58.2 / 25 * 0.7 * 0.55 = 0.89628
+      expect(result.revenueChange).toBeCloseTo(0.896, 2)
+    })
+
+    it('-1pp applies decreaseEfficiency 110% (investment attraction)', () => {
+      const result = calculatePolicyImpact({ corpTaxChange: -1 })
+      // -1 * 58.2 / 25 * 0.7 * 1.10 = -1.79256
+      expect(result.revenueChange).toBeCloseTo(-1.793, 2)
     })
   })
 
   describe('social contributions (cotisations)', () => {
-    it('+1pp produces ~9.07 Md revenue', () => {
+    it('+1pp produces ~5.26 Md revenue (static × 58% efficiency)', () => {
       const result = calculatePolicyImpact({ socialContributions: 1 })
-      // 1 * 372.0 / 41 = 9.07317...
-      expect(result.revenueChange).toBeCloseTo(9.073, 2)
+      // 1 * 372.0 / 41 * 0.58 = 5.26244
+      expect(result.revenueChange).toBeCloseTo(5.262, 2)
     })
   })
 
   describe('CSG', () => {
-    it('+1pp produces ~14.67 Md revenue', () => {
+    it('+1pp produces ~12.03 Md revenue (static × 82% efficiency)', () => {
       const result = calculatePolicyImpact({ csgRate: 1 })
-      // 1 * 135.0 / 9.2 = 14.67391...
-      expect(result.revenueChange).toBeCloseTo(14.674, 2)
+      // 1 * 135.0 / 9.2 * 0.82 = 12.03261
+      expect(result.revenueChange).toBeCloseTo(12.033, 2)
     })
   })
 
   describe('revenue breakdown by sector', () => {
     it('income tax goes to état', () => {
       const result = calculatePolicyImpact({ incomeTaxChange: 1 })
-      expect(result.etat.revenue).toBeCloseTo(8.469, 2)
+      expect(result.etat.revenue).toBeCloseTo(5.928, 2)
       expect(result.ss.revenue).toBe(0)
     })
 
     it('CSG goes to sécurité sociale', () => {
       const result = calculatePolicyImpact({ csgRate: 1 })
-      expect(result.ss.revenue).toBeCloseTo(14.674, 2)
+      expect(result.ss.revenue).toBeCloseTo(12.033, 2)
       expect(result.etat.revenue).toBe(0)
     })
   })
@@ -163,18 +237,18 @@ describe('calculatePolicyImpact - spending levers', () => {
   })
 
   describe('pension indexation', () => {
-    it('+1pp produces 3.075 Md spending increase', () => {
+    it('+1pp produces 3.034 Md spending increase', () => {
       const result = calculatePolicyImpact({ pensionIndexation: 1 })
-      // 1 * 307.5 / 100 = 3.075
-      expect(result.spendingChange).toBeCloseTo(3.075, 2)
+      // 1 * 303.4 / 100 = 3.034
+      expect(result.spendingChange).toBeCloseTo(3.034, 2)
     })
   })
 
   describe('health spending', () => {
-    it('+10% produces 26.75 Md spending increase', () => {
+    it('+10% produces 26.23 Md spending increase', () => {
       const result = calculatePolicyImpact({ healthSpending: 10 })
-      // 10 * 267.5 / 100 = 26.75
-      expect(result.spendingChange).toBeCloseTo(26.75, 2)
+      // 10 * 262.3 / 100 = 26.23
+      expect(result.spendingChange).toBeCloseTo(26.23, 2)
     })
   })
 
@@ -187,51 +261,73 @@ describe('calculatePolicyImpact - spending levers', () => {
 
     it('pension goes to sécurité sociale', () => {
       const result = calculatePolicyImpact({ pensionIndexation: 1 })
-      expect(result.ss.spending).toBeCloseTo(3.075, 2)
+      expect(result.ss.spending).toBeCloseTo(3.034, 2)
       expect(result.etat.spending).toBe(0)
     })
   })
 })
 
 // =============================================================================
-// Growth effects
+// Growth effects — behavioral tax response + fiscal multipliers
 // =============================================================================
 
 describe('calculatePolicyImpact - growth effects', () => {
-  it('corp tax cuts generate growth', () => {
-    const result = calculatePolicyImpact({ corpTaxChange: -5 })
-    // 5 * 0.002 = 0.01
-    expect(result.growthEffect).toBeCloseTo(0.01, 4)
+  it('corp tax increases create negative growth drag', () => {
+    const result = calculatePolicyImpact({ corpTaxChange: 5 })
+    // growthDrag = -0.0025 * 5 = -0.0125
+    expect(result.growthEffect).toBeCloseTo(-0.0125, 4)
   })
 
-  it('corp tax increases generate no growth', () => {
-    const result = calculatePolicyImpact({ corpTaxChange: 5 })
+  it('corp tax cuts produce zero direct growth drag (max(0, lever) = 0)', () => {
+    const result = calculatePolicyImpact({ corpTaxChange: -5 })
     expect(result.growthEffect).toBe(0)
   })
 
-  it('spending cuts create drag', () => {
+  it('income tax increase creates growth drag', () => {
+    const result = calculatePolicyImpact({ incomeTaxChange: 5 })
+    // growthDrag = -0.0012 * 5 = -0.006
+    expect(result.growthEffect).toBeCloseTo(-0.006, 4)
+  })
+
+  it('spending cuts create growth drag (negative multiplier effect)', () => {
     const result = calculatePolicyImpact({ spendingEducation: -20 })
-    // spending = -17.78, growth = -17.78 * 0.0001 = -0.001778
+    // educationSpending = -20 * 88.9/100 = -17.78
+    // growth = -17.78 / 2850 * 0.90 = -0.005614
+    expect(result.growthEffect).toBeLessThan(0)
+    expect(result.growthEffect).toBeCloseTo(-0.005614, 4)
+  })
+
+  it('spending increases create positive growth effect (multiplier)', () => {
+    const result = calculatePolicyImpact({ spendingEducation: 20 })
+    // educationSpending = 17.78, growth = 17.78 / 2850 * 0.90 = +0.005614
+    expect(result.growthEffect).toBeGreaterThan(0)
+    expect(result.growthEffect).toBeCloseTo(0.005614, 4)
+  })
+
+  it('social contribution cuts produce zero direct growth drag', () => {
+    const result = calculatePolicyImpact({ socialContributions: -2 })
+    expect(result.growthEffect).toBe(0)
+  })
+
+  it('social contribution increases produce negative growth drag', () => {
+    const result = calculatePolicyImpact({ socialContributions: 2 })
+    // growthDrag = -0.0018 * 2 = -0.0036
+    expect(result.growthEffect).toBeCloseTo(-0.0036, 4)
+  })
+
+  it('NFP tax increases produce significant negative growth drag', () => {
+    // NFP: IR+5, IS+3, CSG+2 → all increases
+    const result = calculatePolicyImpact(PRESETS.nfp.levers)
+    // Tax drags: IR=-0.006, IS=-0.0075, CSG=-0.0016 → total ≈ -0.0151
+    // Plus spending multiplier boosts
     expect(result.growthEffect).toBeLessThan(0)
   })
 
-  it('spending increases generate no growth', () => {
-    const result = calculatePolicyImpact({ spendingEducation: 20 })
-    expect(result.growthEffect).toBe(0)
-  })
-
-  it('social contribution cuts generate growth', () => {
-    const result = calculatePolicyImpact({ socialContributions: -2 })
-    // 2 * 0.001 = 0.002
-    expect(result.growthEffect).toBeCloseTo(0.002, 4)
-  })
-
-  it('combined corp tax cut + social contrib cut', () => {
-    const result = calculatePolicyImpact({ corpTaxChange: -3, socialContributions: -1 })
-    // corp: 3 * 0.002 = 0.006, social: 1 * 0.001 = 0.001
-    // spending is negative (social contrib cut doesn't affect spending directly)
-    // total: 0.006 + 0.001 = 0.007
-    expect(result.growthEffect).toBeCloseTo(0.007, 4)
+  it('GL spending cuts produce negative multiplier growth effect', () => {
+    const result = calculatePolicyImpact(PRESETS.generationLibre.levers)
+    // Big spending cuts dominate over zero tax drags (all cuts)
+    // But GL also has education, solidarity, health cuts → all negative multipliers
+    expect(result.growthEffect).toBeLessThan(0)
   })
 })
 
@@ -281,7 +377,7 @@ describe('calculatePolicyImpact - slider extremes', () => {
       socialContributions: 5, // max
       csgRate: 2,            // max
     })
-    expect(result.revenueChange).toBeGreaterThan(100)
+    expect(result.revenueChange).toBeGreaterThan(80)
   })
 
   it('all revenues at min produces large negative revenue change', () => {
@@ -317,15 +413,13 @@ describe('calculatePolicyImpact - slider extremes', () => {
     expect(result.spendingChange).toBeLessThan(-50)
   })
 
-  it('combined max austerity improves deficit by ~200+ Md', () => {
+  it('combined max austerity improves deficit by ~150+ Md', () => {
     const result = calculatePolicyImpact({
-      // Max revenue increases
       incomeTaxChange: 10,
       vatChange: 5,
       corpTaxChange: 5,
       socialContributions: 5,
       csgRate: 2,
-      // Max spending cuts
       spendingEducation: -20,
       spendingDefense: -15,
       spendingSolidarity: -30,
@@ -338,13 +432,11 @@ describe('calculatePolicyImpact - slider extremes', () => {
 
   it('combined max stimulus worsens deficit by ~200+ Md', () => {
     const result = calculatePolicyImpact({
-      // Max revenue cuts
       incomeTaxChange: -10,
       vatChange: -5,
       corpTaxChange: -10,
       socialContributions: -5,
       csgRate: -2,
-      // Max spending increases
       spendingEducation: 20,
       spendingDefense: 15,
       spendingSolidarity: 30,
@@ -370,7 +462,6 @@ describe('calculatePolicyImpact - presets', () => {
   it('Knafo produces net austerity (spending cuts > revenue cuts)', () => {
     const result = calculatePolicyImpact(PRESETS.knafo.levers)
     const improvement = result.revenueChange - result.spendingChange
-    // Revenue falls by ~22 Md, spending falls by ~40 Md → net improvement ~18 Md
     expect(improvement).toBeGreaterThan(10)
   })
 
@@ -384,14 +475,24 @@ describe('calculatePolicyImpact - presets', () => {
     expect(Math.abs(result.spendingChange)).toBeGreaterThan(Math.abs(result.revenueChange))
   })
 
-  it('NFP produces net expansion (more spending than revenue)', () => {
+  it('NFP raises revenue (tax increases, behaviorally adjusted)', () => {
     const result = calculatePolicyImpact(PRESETS.nfp.levers)
-    // NFP raises taxes and raises spending, net depends on magnitudes
-    // Revenue up: IR +5pp (~42), IS +3pp (~4.3), CSG +2pp (~29.3) ≈ +76 Md
-    // Spending up: edu +10% (~8.9), sol +15% (~4.5), pension +1pp (~3.1), health +5% (~13.4) ≈ +30 Md
-    // So NFP actually improves deficit (more revenue than spending)
     expect(result.revenueChange).toBeGreaterThan(0)
+  })
+
+  it('NFP raises spending', () => {
+    const result = calculatePolicyImpact(PRESETS.nfp.levers)
     expect(result.spendingChange).toBeGreaterThan(0)
+  })
+
+  it('NFP revenue corrected to ~56 Md (not 77 Md) due to ETI haircuts', () => {
+    const result = calculatePolicyImpact(PRESETS.nfp.levers)
+    // IR+5: 5*94.1/10*0.9*0.70 ≈ 29.6
+    // IS+3: 3*58.2/25*0.7*0.55 ≈ 2.7
+    // CSG+2: 2*135/9.2*0.82 ≈ 24.1
+    // Total ≈ 56.4 Md (down from ~76.6 Md static)
+    expect(result.revenueChange).toBeGreaterThan(40)
+    expect(result.revenueChange).toBeLessThan(65)
   })
 
   it('Génération Libre cuts both revenue and spending', () => {

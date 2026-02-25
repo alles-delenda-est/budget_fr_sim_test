@@ -12,10 +12,10 @@
 export const BASELINE = {
   // État (State Budget - PLF 2025)
   etat: {
-    revenuTotal: 308.4,
+    revenuTotal: 315.3,        // 94.1 + 97.5 + 58.2 + 65.5
     incomeTax: 94.1,
     vat: 97.5,
-    corporateTax: 51.3,
+    corporateTax: 58.2,        // PLF 2025 incl. temporary contribution
     otherTax: 65.5,
 
     spendingTotal: 444.97,
@@ -25,7 +25,7 @@ export const BASELINE = {
     ecological: 45.0,
     otherSpending: 216.07,
 
-    deficit: -139.0,
+    deficit: -129.7,           // Internal consistency: 315.3 - 444.97
   },
 
   // Sécurité Sociale (PLFSS 2026) - Source: CCSS 2024, PLFSS 2026 Annexe 3
@@ -39,10 +39,10 @@ export const BASELINE = {
     transferts: 11.0,        // 1.6%  - Transferts inter-régimes
     autresProduits: 6.4,     // 1.0%  - Produits divers
 
-    spendingTotal: 676.9,
+    spendingTotal: 686.6,      // Sum of branches: 262.3+303.4+59.4+18.0+43.5
     // Expenditure by branch (PLFSS 2026 Annexe 3)
-    maladie: 267.5,          // Branche maladie
-    vieillesse: 307.5,       // Branche vieillesse
+    maladie: 262.3,          // Branche maladie (PLFSS 2025 ONDAM projection)
+    vieillesse: 303.4,       // Branche vieillesse (PLFSS 2025 pension projection)
     famille: 59.4,           // Branche famille
     atmp: 18.0,              // Accidents du travail - Maladies professionnelles
     autonomie: 43.5,         // Branche autonomie
@@ -52,9 +52,9 @@ export const BASELINE = {
 
   // Integrated totals (État + ASSO) - excludes collectivités locales
   integrated: {
-    revenuTotal: 967.8,      // 308.4 + 659.4
-    spendingTotal: 1121.9,   // 444.97 + 676.9
-    deficit: -156.5,         // -139.0 + (-17.5)
+    revenuTotal: 974.7,      // 315.3 + 659.4
+    spendingTotal: 1131.6,   // 444.97 + 686.6
+    deficit: -147.2,         // -129.7 + (-17.5)
   },
 }
 
@@ -137,6 +137,61 @@ export const PRESETS = {
 }
 
 // =============================================================================
+// BEHAVIORAL RESPONSE PARAMETERS (ETI-calibrated)
+// =============================================================================
+// Sources: Dynamic assumptions.txt Modules 2 (ETI) and 3 (emigration)
+//
+// increaseEfficiency: fraction of static revenue that materialises for rate increases
+// decreaseEfficiency: multiplier for cuts (modest supply-side boost to revenue)
+// growthDragPerPp: pp nominal growth drag per 1pp rate INCREASE (negative)
+
+export const BEHAVIORAL_RESPONSE = {
+  incomeTax: {
+    increaseEfficiency: 0.70,  // ETI top-10% 0.25, top-1% 0.55; France ≈54% combined marginal
+    decreaseEfficiency: 1.05,
+    growthDragPerPp:   -0.0012, // semi-elasticity migration 0.17 (Module 3)
+  },
+  corporateTax: {
+    increaseEfficiency: 0.55,  // ETI broad capital 0.50, dividends 1.00; profit-shifting
+    decreaseEfficiency: 1.10,  // investment attraction
+    growthDragPerPp:   -0.0025,
+  },
+  vat: {
+    increaseEfficiency: 0.92,  // most efficient; consumption substitution only
+    decreaseEfficiency: 1.00,
+    growthDragPerPp:   -0.0004,
+  },
+  csg: {
+    increaseEfficiency: 0.82,  // ETI labour income weighted; broad base
+    decreaseEfficiency: 1.02,
+    growthDragPerPp:   -0.0008,
+  },
+  socialContributions: {
+    increaseEfficiency: 0.58,  // France highest OECD wedge; ETI ≈0.25 at this level
+    decreaseEfficiency: 1.08,  // employer cut → hiring
+    growthDragPerPp:   -0.0018,
+  },
+}
+
+// =============================================================================
+// FISCAL MULTIPLIERS (Module 4)
+// =============================================================================
+// Source: Dynamic assumptions.txt Module 4
+// France 2025 output gap ≈ 0 → expansion multipliers used as default
+// Note: monetary offset = 0.00 (ECB is supranational; no country-level crowding-out)
+
+export const FISCAL_MULTIPLIERS = {
+  education:   { expansion: 0.90, recession: 1.40 }, // public investment
+  defense:     { expansion: 0.60, recession: 1.10 }, // government consumption
+  solidarity:  { expansion: 0.40, recession: 0.90 }, // transfers
+  pensions:    { expansion: 0.40, recession: 0.90 }, // transfers
+  health:      { expansion: 0.70, recession: 1.00 }, // mixed
+}
+
+// GDP reference for multiplier calculations (Md€)
+const GDP_BASE = 2850  // MACRO_BASELINE.gdp
+
+// =============================================================================
 // POLICY IMPACT CALCULATION
 // =============================================================================
 
@@ -160,40 +215,65 @@ export function calculatePolicyImpact(levers = {}) {
     csgRate = 0,
   } = levers
 
-  // ÉTAT (State) revenue changes
-  // Formula: pp_change × (revenue / effective_rate%) × elasticity
-  const incomeRevenue = incomeTaxChange * BASELINE.etat.incomeTax / 10 * 0.9
-  const vatRevenue = vatChange * BASELINE.etat.vat / 20 * 0.95
-  const corpRevenue = corpTaxChange * BASELINE.etat.corporateTax / 25 * 0.7
+  // Helper: apply behavioral efficiency based on direction of lever
+  function applyEfficiency(rawRevenue, lever, response) {
+    if (lever === 0) return 0
+    const efficiency = lever > 0 ? response.increaseEfficiency : response.decreaseEfficiency
+    return rawRevenue * efficiency
+  }
+
+  // ÉTAT (State) revenue changes — static estimate × behavioral efficiency
+  const incomeRevenueRaw = incomeTaxChange * BASELINE.etat.incomeTax / 10 * 0.9
+  const vatRevenueRaw    = vatChange       * BASELINE.etat.vat         / 20 * 0.95
+  const corpRevenueRaw   = corpTaxChange   * BASELINE.etat.corporateTax / 25 * 0.7
+
+  const incomeRevenue = applyEfficiency(incomeRevenueRaw, incomeTaxChange, BEHAVIORAL_RESPONSE.incomeTax)
+  const vatRevenue    = applyEfficiency(vatRevenueRaw,    vatChange,       BEHAVIORAL_RESPONSE.vat)
+  const corpRevenue   = applyEfficiency(corpRevenueRaw,   corpTaxChange,   BEHAVIORAL_RESPONSE.corporateTax)
 
   // ÉTAT spending changes
-  const educationSpending = spendingEducation * BASELINE.etat.education / 100
-  const defenseSpending = spendingDefense * BASELINE.etat.defense / 100
+  const educationSpending  = spendingEducation  * BASELINE.etat.education  / 100
+  const defenseSpending    = spendingDefense    * BASELINE.etat.defense    / 100
   const solidaritySpending = spendingSolidarity * BASELINE.etat.solidarity / 100
 
-  const etatRevenueChange = incomeRevenue + vatRevenue + corpRevenue
+  const etatRevenueChange  = incomeRevenue + vatRevenue + corpRevenue
   const etatSpendingChange = educationSpending + defenseSpending + solidaritySpending
 
-  // SÉCURITÉ SOCIALE revenue changes
-  const socialContribRevenue = socialContributions * BASELINE.securiteSociale.cotisations / 41
-  const csgRevenue = csgRate * BASELINE.securiteSociale.csg / 9.2
+  // SÉCURITÉ SOCIALE revenue changes — static estimate × behavioral efficiency
+  const socialContribRevenueRaw = socialContributions * BASELINE.securiteSociale.cotisations / 41
+  const csgRevenueRaw           = csgRate             * BASELINE.securiteSociale.csg         / 9.2
+
+  const socialContribRevenue = applyEfficiency(socialContribRevenueRaw, socialContributions, BEHAVIORAL_RESPONSE.socialContributions)
+  const csgRevenue           = applyEfficiency(csgRevenueRaw,           csgRate,             BEHAVIORAL_RESPONSE.csg)
 
   // SÉCURITÉ SOCIALE spending changes
   const pensionSpendingChange = pensionIndexation * BASELINE.securiteSociale.vieillesse / 100
-  const healthSpendingChange = healthSpending * BASELINE.securiteSociale.maladie / 100
+  const healthSpendingChange  = healthSpending    * BASELINE.securiteSociale.maladie    / 100
 
-  const ssRevenueChange = socialContribRevenue + csgRevenue
+  const ssRevenueChange  = socialContribRevenue + csgRevenue
   const ssSpendingChange = pensionSpendingChange + healthSpendingChange
 
   // INTEGRATED totals
-  const totalRevenueChange = etatRevenueChange + ssRevenueChange
+  const totalRevenueChange  = etatRevenueChange  + ssRevenueChange
   const totalSpendingChange = etatSpendingChange + ssSpendingChange
 
-  // Growth effects (simplified)
-  const corpGrowthEffect = corpTaxChange < 0 ? Math.abs(corpTaxChange) * 0.002 : 0
-  const spendingGrowthEffect = totalSpendingChange < 0 ? totalSpendingChange * 0.0001 : 0
-  const socialContribGrowthEffect = socialContributions < 0 ? Math.abs(socialContributions) * 0.001 : 0
-  const growthEffect = corpGrowthEffect + spendingGrowthEffect + socialContribGrowthEffect
+  // Growth effects — behavioral tax response (drag for increases only; max(0, lever))
+  const incomeTaxGrowthDrag      = BEHAVIORAL_RESPONSE.incomeTax.growthDragPerPp       * Math.max(0, incomeTaxChange)
+  const vatGrowthDrag            = BEHAVIORAL_RESPONSE.vat.growthDragPerPp             * Math.max(0, vatChange)
+  const corpTaxGrowthDrag        = BEHAVIORAL_RESPONSE.corporateTax.growthDragPerPp    * Math.max(0, corpTaxChange)
+  const csgGrowthDrag            = BEHAVIORAL_RESPONSE.csg.growthDragPerPp             * Math.max(0, csgRate)
+  const socialContribGrowthDrag  = BEHAVIORAL_RESPONSE.socialContributions.growthDragPerPp * Math.max(0, socialContributions)
+
+  // Growth effects — fiscal multipliers for spending (positive for increases, negative for cuts)
+  const educationGrowthEffect  = educationSpending    / GDP_BASE * FISCAL_MULTIPLIERS.education.expansion
+  const defenseGrowthEffect    = defenseSpending      / GDP_BASE * FISCAL_MULTIPLIERS.defense.expansion
+  const solidarityGrowthEffect = solidaritySpending   / GDP_BASE * FISCAL_MULTIPLIERS.solidarity.expansion
+  const healthGrowthEffect     = healthSpendingChange / GDP_BASE * FISCAL_MULTIPLIERS.health.expansion
+  const pensionGrowthEffect    = pensionSpendingChange / GDP_BASE * FISCAL_MULTIPLIERS.pensions.expansion
+
+  const growthEffect =
+    incomeTaxGrowthDrag + vatGrowthDrag + corpTaxGrowthDrag + csgGrowthDrag + socialContribGrowthDrag +
+    educationGrowthEffect + defenseGrowthEffect + solidarityGrowthEffect + healthGrowthEffect + pensionGrowthEffect
 
   return {
     revenueChange: totalRevenueChange,

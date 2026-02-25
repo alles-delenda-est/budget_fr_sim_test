@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest'
 import {
   MACRO_BASELINE,
   STRUCTURAL_REFORMS,
+  ROLLOVER_RATE,
+  DEFICIT_STRESS_THRESHOLD,
+  DEFICIT_STRESS_SENSITIVITY,
   calculateInterestRate,
   calculateReformGrowthBoost,
   projectFiscalPath,
@@ -37,7 +40,7 @@ describe('MACRO_BASELINE constants', () => {
   })
 
   it('has correct nominal growth', () => {
-    expect(MACRO_BASELINE.nominalGrowth).toBe(0.029)
+    expect(MACRO_BASELINE.nominalGrowth).toBe(0.025)
   })
 
   it('has correct primary deficit', () => {
@@ -53,6 +56,32 @@ describe('MACRO_BASELINE constants', () => {
     expect(MACRO_BASELINE.riskPremium.threshold2).toBe(90)
     expect(MACRO_BASELINE.riskPremium.threshold3).toBe(120)
   })
+
+  it('has unemployment rate 7.3%', () => {
+    expect(MACRO_BASELINE.unemploymentRate).toBe(7.3)
+  })
+
+  it('has Okun coefficient 0.5', () => {
+    expect(MACRO_BASELINE.okunCoefficient).toBe(0.5)
+  })
+})
+
+// =============================================================================
+// Inertia and deficit stress constants
+// =============================================================================
+
+describe('inertia and deficit stress constants', () => {
+  it('ROLLOVER_RATE is 12.5%', () => {
+    expect(ROLLOVER_RATE).toBe(0.125)
+  })
+
+  it('DEFICIT_STRESS_THRESHOLD is 4.0% GDP', () => {
+    expect(DEFICIT_STRESS_THRESHOLD).toBe(4.0)
+  })
+
+  it('DEFICIT_STRESS_SENSITIVITY is 17 bps per %', () => {
+    expect(DEFICIT_STRESS_SENSITIVITY).toBeCloseTo(0.0017, 6)
+  })
 })
 
 // =============================================================================
@@ -60,76 +89,98 @@ describe('MACRO_BASELINE constants', () => {
 // =============================================================================
 
 describe('calculateInterestRate', () => {
-  describe('normal operation at key debt/GDP points', () => {
+  describe('normal operation at key debt/GDP points (deficitRatio=0)', () => {
     it('returns base rate at 0% debt/GDP', () => {
-      expect(calculateInterestRate(0)).toBeCloseTo(0.0017, 6)
+      expect(calculateInterestRate(0, 0)).toBeCloseTo(0.0017, 6)
     })
 
     it('returns base rate at 60% (threshold1 boundary)', () => {
-      expect(calculateInterestRate(60)).toBeCloseTo(0.0017, 6)
+      expect(calculateInterestRate(60, 0)).toBeCloseTo(0.0017, 6)
     })
 
     it('applies regime 1 slope at 75%', () => {
       // excess = 15, premium = 15 * 0.0003 = 0.0045
-      expect(calculateInterestRate(75)).toBeCloseTo(0.0062, 6)
+      expect(calculateInterestRate(75, 0)).toBeCloseTo(0.0062, 6)
     })
 
     it('applies full regime 1 at 90% (threshold2 boundary)', () => {
       // premium = 30 * 0.0003 = 0.009
-      expect(calculateInterestRate(90)).toBeCloseTo(0.0107, 6)
+      expect(calculateInterestRate(90, 0)).toBeCloseTo(0.0107, 6)
     })
 
     it('applies regime 2 slope at 100%', () => {
       // regime1 = 0.009, excess = 10, regime2 = 10 * 0.0004 = 0.004
-      expect(calculateInterestRate(100)).toBeCloseTo(0.0147, 6)
+      expect(calculateInterestRate(100, 0)).toBeCloseTo(0.0147, 6)
     })
 
-    it('produces ~2.1% effective rate at France current 115.8%', () => {
+    it('produces ~2.1% effective rate at France current 115.8% (no deficit premium)', () => {
       // regime1 = 0.009, excess = 25.8, regime2 = 25.8 * 0.0004 = 0.01032
-      const rate = calculateInterestRate(115.8)
+      const rate = calculateInterestRate(115.8, 0)
       expect(rate).toBeCloseTo(0.02102, 4)
     })
 
     it('applies full regime 2 at 120% (threshold3 boundary)', () => {
       // regime1 = 0.009, regime2 = 30 * 0.0004 = 0.012
-      expect(calculateInterestRate(120)).toBeCloseTo(0.0227, 6)
+      expect(calculateInterestRate(120, 0)).toBeCloseTo(0.0227, 6)
     })
 
     it('applies regime 3 crisis slope at 130%', () => {
       // regime1 = 0.009, regime2 = 0.012, excess = 10, regime3 = 10 * 0.001 = 0.01
-      expect(calculateInterestRate(130)).toBeCloseTo(0.0327, 6)
+      expect(calculateInterestRate(130, 0)).toBeCloseTo(0.0327, 6)
     })
 
     it('applies regime 3 at 150%', () => {
       // regime1 = 0.009, regime2 = 0.012, excess = 30, regime3 = 30 * 0.001 = 0.03
-      expect(calculateInterestRate(150)).toBeCloseTo(0.0527, 6)
+      expect(calculateInterestRate(150, 0)).toBeCloseTo(0.0527, 6)
     })
 
     it('produces very high rates at 200%', () => {
       // regime1 = 0.009, regime2 = 0.012, excess = 80, regime3 = 80 * 0.001 = 0.08
-      expect(calculateInterestRate(200)).toBeCloseTo(0.1027, 6)
+      expect(calculateInterestRate(200, 0)).toBeCloseTo(0.1027, 6)
+    })
+  })
+
+  describe('deficit stress premium', () => {
+    it('no premium when deficit below threshold (3% GDP)', () => {
+      const withoutStress = calculateInterestRate(115.8, 0)
+      const belowThreshold = calculateInterestRate(115.8, 3)
+      expect(belowThreshold).toBeCloseTo(withoutStress, 6)
+    })
+
+    it('adds ~20 bps at France 5.17% deficit/GDP', () => {
+      const noDeficit = calculateInterestRate(115.8, 0)
+      const withDeficit = calculateInterestRate(115.8, 5.17)
+      // (5.17 - 4.0) * 0.0017 = 1.17 * 0.0017 = 0.001989 ≈ 20 bps
+      expect((withDeficit - noDeficit) * 10000).toBeCloseTo(19.9, 0)
+    })
+
+    it('increases linearly above threshold', () => {
+      const at5 = calculateInterestRate(115.8, 5)
+      const at6 = calculateInterestRate(115.8, 6)
+      // 1% more deficit = 17 bps more
+      expect((at6 - at5) * 10000).toBeCloseTo(17, 0)
     })
   })
 
   describe('options', () => {
     it('returns only base rate when premium disabled', () => {
-      const rate = calculateInterestRate(150, { enablePremium: false })
+      const rate = calculateInterestRate(150, 0, { enablePremium: false })
       expect(rate).toBeCloseTo(0.0017, 6)
     })
 
     it('accepts custom base rate', () => {
-      const rate = calculateInterestRate(0, { baseRate: 0.03 })
+      const rate = calculateInterestRate(0, 0, { baseRate: 0.03 })
       expect(rate).toBeCloseTo(0.03, 6)
     })
 
     it('adds political risk on top of premium', () => {
-      const withoutRisk = calculateInterestRate(115.8)
-      const withRisk = calculateInterestRate(115.8, { politicalRisk: 0.02 })
+      const withoutRisk = calculateInterestRate(115.8, 0)
+      const withRisk = calculateInterestRate(115.8, 0, { politicalRisk: 0.02 })
       expect(withRisk - withoutRisk).toBeCloseTo(0.02, 6)
     })
 
     it('political risk works when premium disabled', () => {
-      const rate = calculateInterestRate(200, {
+      const rate = calculateInterestRate(200, 0, {
         enablePremium: false,
         politicalRisk: 0.01,
       })
@@ -137,11 +188,18 @@ describe('calculateInterestRate', () => {
     })
   })
 
+  describe('backward compatibility: deficitRatio defaults to 0', () => {
+    it('single-argument call still works (no deficit premium)', () => {
+      const rate = calculateInterestRate(115.8)
+      expect(rate).toBeCloseTo(0.02102, 4)
+    })
+  })
+
   describe('monotonicity', () => {
-    it('rate never decreases as debt increases (sweep 0-300%)', () => {
-      let prev = calculateInterestRate(0)
+    it('rate never decreases as debt increases (sweep 0-300%, deficitRatio=0)', () => {
+      let prev = calculateInterestRate(0, 0)
       for (let ratio = 1; ratio <= 300; ratio++) {
-        const current = calculateInterestRate(ratio)
+        const current = calculateInterestRate(ratio, 0)
         expect(current).toBeGreaterThanOrEqual(prev)
         prev = current
       }
@@ -150,18 +208,17 @@ describe('calculateInterestRate', () => {
 
   describe('edge cases (documenting behavior)', () => {
     it('negative debt ratio produces rate below base rate', () => {
-      // Negative excess in regime 1 would subtract from premium
-      // but since debtRatio <= threshold1, premium = 0
-      const rate = calculateInterestRate(-50)
+      // debtRatio <= threshold1, so premium = 0
+      const rate = calculateInterestRate(-50, 0)
       expect(rate).toBeCloseTo(0.0017, 6)
     })
 
     it('NaN input propagates to NaN output', () => {
-      expect(calculateInterestRate(NaN)).toBeNaN()
+      expect(calculateInterestRate(NaN, 0)).toBeNaN()
     })
 
     it('undefined input propagates to NaN output', () => {
-      expect(calculateInterestRate(undefined)).toBeNaN()
+      expect(calculateInterestRate(undefined, 0)).toBeNaN()
     })
   })
 })
@@ -271,16 +328,19 @@ describe('projectFiscalPath', () => {
       expect(baseline[0].debtRatio).toBe(115.8)
     })
 
-    it('year 0 effective rate ~2.1%', () => {
-      expect(baseline[0].effectiveInterestRate).toBeCloseTo(2.1, 1)
+    it('year 0 effective rate reflects portfolio rate ~2.1%', () => {
+      // Portfolio rate starts at calculateInterestRate(115.8, 0) = 2.1%
+      // interest is computed before rollover, effectiveInterestRate shows portfolio rate
+      expect(baseline[0].effectiveInterestRate).toBeCloseTo(2.1, 0)
     })
 
-    it('year 0 interest ~69 Md', () => {
-      expect(baseline[0].interest).toBeCloseTo(69.4, 0)
+    it('year 0 interest ~69 Md (uses start-of-year portfolio rate)', () => {
+      // Initial avgPortfolioRate ≈ 2.1%, interest = 3300 * 0.021 = 69.3
+      expect(baseline[0].interest).toBeCloseTo(69.3, 0)
     })
 
     it('year 0 deficit ~156-157 Md', () => {
-      expect(baseline[0].deficit).toBeCloseTo(156.6, 0)
+      expect(baseline[0].deficit).toBeCloseTo(156.5, 0)
     })
 
     it('GDP grows over 10 years', () => {
@@ -299,7 +359,6 @@ describe('projectFiscalPath', () => {
 
     it('values are rounded to 1 decimal', () => {
       baseline.forEach(entry => {
-        // Check that gdp, debt, deficit have at most 1 decimal place
         expect(entry.gdp * 10 % 1).toBeCloseTo(0, 5)
         expect(entry.debt * 10 % 1).toBeCloseTo(0, 5)
         expect(entry.deficit * 10 % 1).toBeCloseTo(0, 5)
@@ -307,9 +366,13 @@ describe('projectFiscalPath', () => {
     })
 
     it('interest rates are in % not decimal', () => {
-      // effectiveInterestRate should be ~2.1, not ~0.021
       expect(baseline[0].effectiveInterestRate).toBeGreaterThan(1)
       expect(baseline[0].effectiveInterestRate).toBeLessThan(20)
+    })
+
+    it('baseline unemployment stays at 7.3% (no growth deviation)', () => {
+      // No policy growth effect → realGrowth = nominalGrowth - inflation = baseline realGrowth
+      expect(baseline[0].unemploymentRate).toBeCloseTo(7.3, 1)
     })
   })
 
@@ -354,6 +417,40 @@ describe('projectFiscalPath', () => {
     it('debt ratio improves with growth', () => {
       expect(withGrowth[10].debtRatio).toBeLessThan(baseline[10].debtRatio)
     })
+
+    it('positive growth effect lowers unemployment via Okun', () => {
+      // Use a larger growth effect to avoid rounding to same 2-decimal value
+      // growthEffect = 0.02 → realGrowthThisYear = 0.007 + 0.02 = 0.027
+      // Δunemployment = (0.007 - 0.027) * 0.5 = -0.01 → 7.3 - 0.01 = 7.29
+      const withLargeGrowth = projectFiscalPath({ growthEffect: 0.02 }, { years: 10 })
+      expect(withLargeGrowth[0].unemploymentRate).toBeLessThan(baseline[0].unemploymentRate)
+    })
+
+    it('negative growth effect raises unemployment via Okun', () => {
+      // growthEffect = -0.02 → Δunemployment = (0.007 - (0.007 - 0.02)) * 0.5 = 0.01 → 7.31
+      const withNegGrowth = projectFiscalPath({ growthEffect: -0.02 }, { years: 10 })
+      expect(withNegGrowth[0].unemploymentRate).toBeGreaterThan(baseline[0].unemploymentRate)
+    })
+  })
+
+  describe('debt stock inertia', () => {
+    it('interest rate convergence: portfolio rate moves slowly toward marginal rate', () => {
+      // Apply a large political risk premium to create a big gap between
+      // initial portfolio rate and new marginal rate
+      const withRisk = projectFiscalPath({}, {
+        years: 10,
+        politicalRiskPremium: 0.05, // 500 bps
+      })
+      const baseline = projectFiscalPath({}, { years: 10 })
+
+      // Year 0: interest difference should be small (inertia, rollover not applied yet)
+      const interestDiffYr0 = withRisk[0].interest - baseline[0].interest
+
+      // Year 10: interest difference should be larger (rates have converged more)
+      const interestDiffYr10 = withRisk[10].interest - baseline[10].interest
+
+      expect(interestDiffYr10).toBeGreaterThan(interestDiffYr0)
+    })
   })
 
   describe('structural reforms', () => {
@@ -384,11 +481,7 @@ describe('projectFiscalPath', () => {
       politicalRiskPremium: 0.02, // 200 bps
     })
 
-    it('interest is higher with political risk', () => {
-      expect(withRisk[0].interest).toBeGreaterThan(noRisk[0].interest)
-    })
-
-    it('debt ratio is measurably worse with political risk', () => {
+    it('debt ratio is measurably worse with political risk by year 10', () => {
       const ratioDiff = withRisk[10].debtRatio - noRisk[10].debtRatio
       expect(ratioDiff).toBeGreaterThan(1) // at least 1pp worse
     })
@@ -401,11 +494,12 @@ describe('projectFiscalPath', () => {
       expect(result).toHaveLength(6) // years + 1
     })
 
-    it('each entry has all required fields', () => {
+    it('each entry has all required fields including unemploymentRate', () => {
       const requiredFields = [
         'year', 'gdp', 'deficit', 'interest', 'primaryDeficit',
         'debt', 'debtRatio', 'deficitRatio', 'interestRatio',
         'effectiveInterestRate', 'nominalGrowthRate', 'riskPremiumBps',
+        'unemploymentRate',
       ]
       result.forEach(entry => {
         requiredFields.forEach(field => {
@@ -441,7 +535,7 @@ describe('getBaselineProjection', () => {
 
 describe('assessDoomLoop', () => {
   describe('feedback severity', () => {
-    it('baseline 10yr shows doom loop active (premium increase > 20 bps)', () => {
+    it('baseline 10yr shows doom loop active (marginal premium increase > 20 bps)', () => {
       const baseline = getBaselineProjection(10)
       const result = assessDoomLoop(baseline)
       expect(result.doomLoopActive).toBe(true)
@@ -507,7 +601,6 @@ describe('assessDoomLoop', () => {
     })
 
     it('deficitRatio near 0 does not produce Infinity severity', () => {
-      // Construct a projection where deficitRatio is very close to 0
       const projection = projectFiscalPath({ revenueChange: 87.2 }, { years: 5 })
       const result = assessDoomLoop(projection)
       expect(result.severity).not.toBe(undefined)

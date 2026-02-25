@@ -1,13 +1,18 @@
 /**
  * FRENCH BUDGET SIMULATOR - PROJECTION ENGINE v1.8
- * 
+ *
  * New features:
  * - Enhanced sovereign risk premium model (France-calibrated)
  * - Structural reform growth effects
- * 
+ * - Debt stock inertia (avg portfolio rate, 12.5% annual rollover)
+ * - Deficit-sensitive interest rate premium (stress regime)
+ * - Unemployment via Okun's Law
+ *
  * Academic sources:
  * - Interest rates: IMF (2017), EC (2018), Kumar & Baldacci (2010)
  * - Structural reforms: OECD (2014), IMF Article IV France (2025)
+ * - Debt inertia: OAT maturity profile (AFT 2025), Module 1
+ * - Okun's Law: INSEE, standard France coefficient
  */
 
 // =============================================================================
@@ -25,41 +30,56 @@ export const MACRO_BASELINE = {
   // PLF 2025 charge de la dette: ~54 Md€ État, ~70 Md€ total APU
   // At 115.8% debt/GDP, risk premium adds ~1.93%, so base must be ~0.17% for total = 2.1%
   baseInterestRate: 0.0017,   // Base rate (risk premium brings total to ~2.1%)
-  
+
   // Sovereign risk premium model (France-specific calibration)
   // Sources: IMF (2017), EC (2018), France OAT spreads 2024-2025
   riskPremium: {
     enabled: true,
-    
+
     // Linear regime (60-90% debt/GDP): stable spread
     threshold1: 60,         // Below this: no premium
     slope1: 0.0003,        // 3 bps per pp (IMF/EC consensus)
-    
+
     // Moderate regime (90-120%): increasing pressure
     threshold2: 90,
     slope2: 0.0004,        // 4 bps per pp (France historical)
-    
-    // High regime (>120%): non-linear acceleration  
+
+    // High regime (>120%): non-linear acceleration
     threshold3: 120,
     slope3: 0.0010,        // 10 bps per pp (crisis risk)
-    
+
     // Political risk component (context: France 2024-2025)
     // OAT spread widened 21 bps due to political instability
     politicalPremium: 0.0000,  // User can add separately if modeling scenarios
   },
-  
+
   // Growth parameters
-  nominalGrowth: 0.029,      // 2.9% (1.1% real + 1.8% inflation)
-  realGrowth: 0.011,         // 1.1% baseline
+  nominalGrowth: 0.025,      // 2.5% (0.7% real + 1.8% inflation)
+  realGrowth: 0.007,         // 0.7% baseline (HCFP / PLF 2025 revised)
   inflation: 0.018,          // 1.8% ECB target
-  
+
   // Fiscal parameters
   // Primary deficit = total deficit - interest = 156.5 - 69.3 = 87.2 Md€
   primaryDeficit: 87.2,      // Md EUR (deficit minus interest)
-  
+
   // Tax elasticity to GDP (automatic stabilizers)
   taxElasticity: 0.45,       // 45% of GDP growth → revenue
+
+  // Labour market (Okun's Law)
+  unemploymentRate: 7.3,     // % France 2025 (INSEE)
+  okunCoefficient: 0.5,      // standard for France
 }
+
+// =============================================================================
+// DEBT STOCK INERTIA PARAMETERS (Module 1)
+// =============================================================================
+
+// Annual rollover rate: 12.5% of stock matures each year (avg OAT maturity ~8 years)
+export const ROLLOVER_RATE = 0.125
+
+// Deficit stress premium: 17 bps per 1pp deficit/GDP above threshold
+export const DEFICIT_STRESS_THRESHOLD = 4.0      // % GDP
+export const DEFICIT_STRESS_SENSITIVITY = 0.0017 // 17 bps per 1% deficit/GDP above threshold
 
 // =============================================================================
 // STRUCTURAL REFORM PARAMETERS
@@ -68,10 +88,10 @@ export const MACRO_BASELINE = {
 /**
  * Structural reform growth effects
  * Sources: OECD (2014), IMF Article IV 2025, Banque de France (2017)
- * 
+ *
  * Calibration notes:
  * - OECD 2014: Full reform package → +0.4 pp/year for 10 years
- * - IMF 2025: +0.3 pp potential growth → -10pp debt/GDP long-term  
+ * - IMF 2025: +0.3 pp potential growth → -10pp debt/GDP long-term
  * - BdF 2017: Best-practice PMR/LMR → +6% potential GDP (~0.6pp/year)
  * - Effects materialize with 2-3 year lag, peak at 5-10 years
  */
@@ -86,7 +106,7 @@ export const STRUCTURAL_REFORMS = {
     source: "IMF Article IV, OECD Labour Market Reviews",
     confidence: "medium",     // High uncertainty on magnitude
   },
-  
+
   productMarketRegulation: {
     label: "Ouverture professions réglementées",
     description: "Déréglementation professions (notaires, pharmaciens, etc.)",
@@ -96,17 +116,17 @@ export const STRUCTURAL_REFORMS = {
     source: "Autorité de la concurrence, OECD PMR indicators",
     confidence: "medium-high",
   },
-  
+
   planning: {
     label: "Réforme droit de l'urbanisme",
     description: "Simplification règles urbanisme et construction",
-    growthEffect: 0.0015,     // +0.15 pp/year  
+    growthEffect: 0.0015,     // +0.15 pp/year
     lag: 3,                   // Longer lag (housing stock adjustment)
     duration: 15,             // Very long-lived effects
     source: "UK planning reform estimates (Hilber & Vermeulen 2016)",
     confidence: "low-medium", // Extrapolated from UK
   },
-  
+
   education: {
     label: "Réforme formation professionnelle",
     description: "Amélioration formation, apprentissage",
@@ -116,7 +136,7 @@ export const STRUCTURAL_REFORMS = {
     source: "OECD Education at a Glance",
     confidence: "low",        // Very uncertain, long-term
   },
-  
+
   energy: {
     label: "Dérégulation marché énergie",
     description: "Concurrence accrue, simplification réglementation",
@@ -126,7 +146,7 @@ export const STRUCTURAL_REFORMS = {
     source: "CRE estimates, EC energy market integration",
     confidence: "medium",
   },
-  
+
   // Composite scenarios
   ambitious: {
     label: "Paquet structurel ambitieux",
@@ -137,7 +157,7 @@ export const STRUCTURAL_REFORMS = {
     source: "OECD (2014) comprehensive reform estimate",
     confidence: "medium",     // Well-studied
   },
-  
+
   modest: {
     label: "Réformes ciblées (labour + PMR)",
     description: "Focus marché du travail et professions réglementées",
@@ -155,30 +175,31 @@ export const STRUCTURAL_REFORMS = {
 
 /**
  * Calculate effective interest rate with sovereign risk premium
- * 
+ *
  * Methodology:
- * - Piecewise linear function with three regimes
+ * - Piecewise linear function with three debt/GDP regimes
+ * - Deficit stress premium above 4% deficit/GDP (Module 1)
  * - Calibrated to France OAT spreads 2010-2025
- * - Validated against IMF debt sustainability analysis
- * 
- * @param {number} debtRatio - Debt-to-GDP ratio (%)
- * @param {object} options - Configuration
+ *
+ * @param {number} debtRatio   - Debt-to-GDP ratio (%)
+ * @param {number} deficitRatio - Deficit-to-GDP ratio (%, positive = deficit)
+ * @param {object} options     - Configuration
  * @returns {number} Effective interest rate (decimal, e.g., 0.035 = 3.5%)
  */
-export function calculateInterestRate(debtRatio, options = {}) {
+export function calculateInterestRate(debtRatio, deficitRatio = 0, options = {}) {
   const {
     baseRate = MACRO_BASELINE.baseInterestRate,
     enablePremium = true,
     politicalRisk = 0,
   } = options
-  
+
   if (!enablePremium) {
     return baseRate + politicalRisk
   }
-  
+
   const { riskPremium } = MACRO_BASELINE
   let premium = 0
-  
+
   // Regime 1: Low debt (<60% GDP) - no premium
   if (debtRatio <= riskPremium.threshold1) {
     premium = 0
@@ -202,8 +223,14 @@ export function calculateInterestRate(debtRatio, options = {}) {
     const excess = debtRatio - riskPremium.threshold3
     premium = regime2Premium + regime3Premium + (excess * riskPremium.slope3)
   }
-  
-  return baseRate + premium + politicalRisk
+
+  // Deficit stress premium (Module 1): 17 bps per 1pp above 4% threshold
+  let deficitPremium = 0
+  if (deficitRatio > DEFICIT_STRESS_THRESHOLD) {
+    deficitPremium = (deficitRatio - DEFICIT_STRESS_THRESHOLD) * DEFICIT_STRESS_SENSITIVITY
+  }
+
+  return baseRate + premium + deficitPremium + politicalRisk
 }
 
 // =============================================================================
@@ -212,28 +239,28 @@ export function calculateInterestRate(debtRatio, options = {}) {
 
 /**
  * Calculate growth boost from structural reforms over time
- * 
+ *
  * Model: Growth effect phases in over 'lag' years, peaks for 'duration' years,
  * then gradually fades as economy converges to new steady state
- * 
+ *
  * @param {number} year - Years since reform announcement
  * @param {object} reform - Reform parameters
  * @returns {number} Growth boost this year (pp, e.g., 0.002 = +0.2 pp)
  */
 export function calculateReformGrowthBoost(year, reform) {
   const { growthEffect, lag, duration } = reform
-  
+
   // Phase-in period (years 0 to lag)
   if (year < lag) {
     // Linear phase-in: 0% → 100% over lag years
     return growthEffect * (year / lag)
   }
-  
-  // Peak period (years lag to lag+duration)  
+
+  // Peak period (years lag to lag+duration)
   if (year < lag + duration) {
     return growthEffect
   }
-  
+
   // Fade-out period (after peak)
   // Exponential decay: effect halves every 10 years
   const yearsSincePeak = year - (lag + duration)
@@ -247,13 +274,16 @@ export function calculateReformGrowthBoost(year, reform) {
 
 /**
  * Project fiscal path with interest rate feedback and structural reforms
- * 
+ *
  * This is the CORE calculation engine. It integrates:
  * 1. Policy changes (revenue/spending adjustments)
  * 2. Economic feedback (growth effects, tax elasticity)
  * 3. Sovereign risk premium (endogenous interest rates)
- * 4. Structural reforms (productivity/potential growth)
- * 
+ * 4. Debt stock inertia (avg portfolio rate with 12.5% annual rollover)
+ * 5. Deficit stress premium (flow-based interest rate component)
+ * 6. Structural reforms (productivity/potential growth)
+ * 7. Unemployment via Okun's Law
+ *
  * @param {object} policyChanges - User's policy adjustments
  * @param {object} options - Projection configuration
  * @returns {array} Year-by-year projection
@@ -265,83 +295,110 @@ export function projectFiscalPath(policyChanges, options = {}) {
     politicalRiskPremium = 0,
     structuralReform = null,  // From STRUCTURAL_REFORMS
   } = options
-  
+
   const {
     revenueChange = 0,
     spendingChange = 0,
-    growthEffect = 0,        // From tax policy changes
+    growthEffect = 0,        // From tax/spending policy changes
   } = policyChanges
-  
+
   const results = []
-  
+
   // Initialize state variables
   let gdp = MACRO_BASELINE.gdp
   let debt = MACRO_BASELINE.debt
-  
+
   // Deficit improvement from policy (positive = better)
   const deficitImprovement = revenueChange - spendingChange
-  
+
+  // Initial portfolio rate: based on debt/GDP only (no deficit premium for initial stock)
+  // This reflects that existing debt was issued at historical rates
+  let avgPortfolioRate = calculateInterestRate(MACRO_BASELINE.debtToGdp, 0, {
+    enablePremium: enableRiskPremium,
+    politicalRisk: politicalRiskPremium,
+  })
+
+  // Initial deficit/GDP ratio for deficit stress premium (France 2025 actual)
+  let prevDeficitRatio = Math.abs(MACRO_BASELINE.primaryDeficit / MACRO_BASELINE.gdp * 100) + 2.43
+  // ≈ 5.17% (primary deficit/GDP + interest/GDP at baseline)
+
   for (let t = 0; t <= years; t++) {
     // 1. Calculate growth rate this year
     let nominalGrowth = MACRO_BASELINE.nominalGrowth
-    
+
     // Add policy-driven growth effect
     nominalGrowth += growthEffect
-    
+
     // Add structural reform boost (if selected)
     if (structuralReform) {
       const reformBoost = calculateReformGrowthBoost(t, structuralReform)
       nominalGrowth += reformBoost
     }
-    
-    // 2. Calculate effective interest rate (endogenous)
+
+    // 2. Calculate marginal interest rate (includes deficit stress premium)
     const debtRatio = (debt / gdp) * 100
-    const effectiveRate = calculateInterestRate(debtRatio, {
+    const effectiveRate = calculateInterestRate(debtRatio, prevDeficitRatio, {
       enablePremium: enableRiskPremium,
       politicalRisk: politicalRiskPremium,
     })
-    
-    // 3. Calculate fiscal outcomes
-    const interest = debt * effectiveRate
+
+    // 3. Debt stock inertia: interest uses avg portfolio rate (start of year)
+    //    Then update portfolio rate for next year via 12.5% annual rollover
+    const interest = debt * avgPortfolioRate
+    avgPortfolioRate = avgPortfolioRate * (1 - ROLLOVER_RATE) + effectiveRate * ROLLOVER_RATE
+
+    // 4. Calculate fiscal outcomes
     const primaryDeficit = MACRO_BASELINE.primaryDeficit - deficitImprovement
     const totalDeficit = primaryDeficit + interest
-    
-    // 4. Calculate fiscal feedback from growth
+
+    // 5. Calculate fiscal feedback from growth
     // Higher growth → more revenue (automatic stabilizers)
     const growthFeedback = (nominalGrowth - MACRO_BASELINE.nominalGrowth) * gdp * MACRO_BASELINE.taxElasticity
     const adjustedDeficit = totalDeficit - growthFeedback
-    
-    // 5. Store results
+
+    // 6. Unemployment via Okun's Law
+    // Δunemployment = -okunCoefficient × (realGrowth - potentialRealGrowth)
+    const realGrowthThisYear = nominalGrowth - MACRO_BASELINE.inflation
+    const unemploymentRate = MACRO_BASELINE.unemploymentRate
+      + (MACRO_BASELINE.realGrowth - realGrowthThisYear) * MACRO_BASELINE.okunCoefficient
+
+    // 7. Store results
     results.push({
       year: MACRO_BASELINE.year + t,
-      
+
       // Flow variables (Md EUR)
       gdp: Math.round(gdp * 10) / 10,
       deficit: Math.round(adjustedDeficit * 10) / 10,
       interest: Math.round(interest * 10) / 10,
       primaryDeficit: Math.round(primaryDeficit * 10) / 10,
-      
+
       // Stock variable (Md EUR)
       debt: Math.round(debt * 10) / 10,
-      
+
       // Ratios (% GDP)
       debtRatio: Math.round(debtRatio * 10) / 10,
       deficitRatio: Math.round((adjustedDeficit / gdp * 100) * 10) / 10,
       interestRatio: Math.round((interest / gdp * 100) * 100) / 100,
-      
-      // Parameters used
-      effectiveInterestRate: Math.round(effectiveRate * 10000) / 100,  // bps → %
+
+      // Interest rate (% using portfolio rate — actual borrowing cost)
+      effectiveInterestRate: Math.round(avgPortfolioRate * 10000) / 100,
+
+      // Labour market
+      unemploymentRate: Math.round(unemploymentRate * 100) / 100,
+
+      // Growth
       nominalGrowthRate: Math.round(nominalGrowth * 10000) / 100,
-      
-      // Risk premium breakdown (for transparency)
+
+      // Risk premium breakdown (marginal rate - base, for transparency)
       riskPremiumBps: Math.round((effectiveRate - MACRO_BASELINE.baseInterestRate) * 10000),
     })
-    
-    // 6. Evolve to next year
+
+    // 8. Evolve to next year
+    prevDeficitRatio = Math.abs(adjustedDeficit / gdp * 100)
     gdp = gdp * (1 + nominalGrowth)
     debt = debt + adjustedDeficit
   }
-  
+
   return results
 }
 
@@ -369,13 +426,13 @@ export function getBaselineProjection(years = 10) {
  */
 export function compareProjections(projectionA, projectionB, targetYears = [1, 2, 5, 10]) {
   const comparisons = []
-  
+
   for (const offset of targetYears) {
     if (offset >= projectionA.length || offset >= projectionB.length) continue
-    
+
     const a = projectionA[offset]
     const b = projectionB[offset]
-    
+
     comparisons.push({
       year: a.year,
       yearOffset: offset,
@@ -384,7 +441,7 @@ export function compareProjections(projectionA, projectionB, targetYears = [1, 2
       interestDiff: Math.round((a.interest - b.interest) * 10) / 10,
     })
   }
-  
+
   return comparisons
 }
 
@@ -435,27 +492,27 @@ export function assessDoomLoop(projection) {
  */
 export function validateProjection(projection) {
   const warnings = []
-  
+
   for (let i = 1; i < projection.length; i++) {
     const year = projection[i]
-    
+
     // Check for unrealistic debt levels
     if (year.debtRatio > 200) {
       warnings.push(`Year ${year.year}: Debt ratio exceeds 200% (${year.debtRatio}%)`)
     }
-    
+
     // Check for unrealistic interest rates
     if (year.effectiveInterestRate > 10) {
       warnings.push(`Year ${year.year}: Interest rate exceeds 10% (${year.effectiveInterestRate}%)`)
     }
-    
+
     // Check for GDP collapse
     const gdpGrowth = (year.gdp / projection[i-1].gdp - 1) * 100
     if (gdpGrowth < -5) {
       warnings.push(`Year ${year.year}: GDP decline exceeds 5% (${gdpGrowth.toFixed(1)}%)`)
     }
   }
-  
+
   return {
     valid: warnings.length === 0,
     warnings,
@@ -464,6 +521,9 @@ export function validateProjection(projection) {
 
 export default {
   MACRO_BASELINE,
+  ROLLOVER_RATE,
+  DEFICIT_STRESS_THRESHOLD,
+  DEFICIT_STRESS_SENSITIVITY,
   STRUCTURAL_REFORMS,
   calculateInterestRate,
   calculateReformGrowthBoost,

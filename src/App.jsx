@@ -3,23 +3,25 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import './App.css'
 
 /**
- * FRENCH BUDGET SIMULATOR v1.9
+ * FRENCH BUDGET SIMULATOR v2.0
  *
- * NEW IN v1.9:
- * - Always shows integrated État + Sécurité Sociale (APU total)
- * - Added Sarah Knafo counter-budget preset
- * - Preset buttons for major political proposals
- *
- * PEDAGOGICAL GOALS:
- * - Show complete fiscal picture (not just État)
- * - Compare major political budget proposals
- * - Demonstrate trade-offs between revenue and spending
+ * NEW IN v2.0:
+ * - Behavioral tax response (ETI-calibrated, Module 2/3)
+ * - Fiscal multipliers for spending (Module 4)
+ * - Debt stock inertia + deficit stress premium (Module 1)
+ * - Unemployment via Okun's Law
+ * - 3 new charts: deficit/GDP, growth, unemployment
+ * - Year-5 / Year-10 snapshot metrics
+ * - Transparent assumptions tables for new parameters
  */
 
 // Import projection engine
 import {
   MACRO_BASELINE,
   STRUCTURAL_REFORMS,
+  ROLLOVER_RATE,
+  DEFICIT_STRESS_THRESHOLD,
+  DEFICIT_STRESS_SENSITIVITY,
   projectFiscalPath,
   getBaselineProjection,
   compareProjections,
@@ -28,7 +30,7 @@ import {
 } from './projection-engine-v1.8'
 
 // Import policy impact calculation and data
-import { BASELINE, PRESETS, calculatePolicyImpact } from './policy-impact'
+import { BASELINE, PRESETS, calculatePolicyImpact, BEHAVIORAL_RESPONSE, FISCAL_MULTIPLIERS } from './policy-impact'
 
 // =============================================================================
 // ASSUMPTIONS DATA - Academic literature and model parameters
@@ -45,17 +47,24 @@ const ASSUMPTIONS = {
     },
     {
       parameter: "Croissance nominale",
-      value: "2,9%",
-      impact: "1,1% réel + 1,8% inflation",
+      value: "2,5%",
+      impact: "0,7% réel + 1,8% inflation",
       source: "PLF 2025, Banque de France",
       link: "https://www.banque-france.fr/fr/publications-et-statistiques/publications/projections-macroeconomiques"
     },
     {
       parameter: "Taux d'intérêt moyen dette",
-      value: "3,2%",
-      impact: "Charge d'intérêts ~55 Md€/an",
+      value: "2,1%",
+      impact: "Charge d'intérêts ~69 Md€/an",
       source: "Agence France Trésor",
       link: "https://www.aft.gouv.fr/"
+    },
+    {
+      parameter: "Taux de chômage 2025",
+      value: "7,3%",
+      impact: "Base pour la loi d'Okun",
+      source: "INSEE",
+      link: "https://www.insee.fr/fr/statistiques"
     },
   ],
   fiscal: [
@@ -69,7 +78,7 @@ const ASSUMPTIONS = {
     {
       parameter: "Élasticité IR au revenu",
       value: "0,9",
-      impact: "+1pp taux IR ≈ +8,5 Md€ recettes",
+      impact: "+1pp taux IR ≈ +8,5 Md€ recettes statiques",
       source: "CPO, Rapport impôts sur le revenu",
       link: "https://www.ccomptes.fr/fr/institutions-associees/conseil-des-prelevements-obligatoires-cpo"
     },
@@ -101,6 +110,20 @@ const ASSUMPTIONS = {
       value: "+10 bps/pp",
       impact: "Régime de crise, doom loop",
       source: "Consensus académique, OAT France 2010-2012",
+      link: null
+    },
+    {
+      parameter: "Prime déficit (>4% PIB)",
+      value: "+17 bps/%",
+      impact: "Prime de flux au-delà du seuil de 4%",
+      source: "Module 1 — profil OAT AFT 2025",
+      link: null
+    },
+    {
+      parameter: "Taux de renouvellement dette",
+      value: "12,5%/an",
+      impact: "Inertie du taux moyen (≈8 ans passage complet)",
+      source: "Module 1 — maturité OAT AFT 2025",
       link: null
     },
   ],
@@ -155,7 +178,7 @@ function App() {
   const [spendingEducation, setSpendingEducation] = useState(0)
   const [spendingDefense, setSpendingDefense] = useState(0)
   const [spendingSolidarity, setSpendingSolidarity] = useState(0)
-  
+
   // Sécurité Sociale levers
   const [pensionIndexation, setPensionIndexation] = useState(0)  // pp deviation from inflation
   const [healthSpending, setHealthSpending] = useState(0)        // % change in ONDAM
@@ -167,16 +190,16 @@ function App() {
 
   // Structural reform selector - SUPPORTS MULTIPLE
   const [selectedReforms, setSelectedReforms] = useState([])  // Array of reform keys
-  
+
   // Calculate combined reform effect
   const combinedReformEffect = useMemo(() => {
     if (selectedReforms.length === 0) return null
-    
+
     // Sum growth effects (with diminishing returns for overlap)
     const totalGrowthEffect = selectedReforms.reduce((sum, key) => {
       return sum + STRUCTURAL_REFORMS[key].growthEffect
     }, 0) * 0.85  // 15% overlap penalty when combining
-    
+
     return {
       label: `${selectedReforms.length} réformes combinées`,
       growthEffect: totalGrowthEffect,
@@ -187,23 +210,23 @@ function App() {
       reforms: selectedReforms.map(k => STRUCTURAL_REFORMS[k].label),
     }
   }, [selectedReforms])
-  
+
   // Toggle reform selection
   const toggleReform = (reformKey) => {
-    setSelectedReforms(prev => 
+    setSelectedReforms(prev =>
       prev.includes(reformKey)
         ? prev.filter(k => k !== reformKey)
         : [...prev, reformKey]
     )
   }
-  
+
   // Apply preset function
   const applyPreset = (presetKey) => {
     const preset = PRESETS[presetKey]
     if (!preset) return
-    
+
     const { levers, reforms } = preset
-    
+
     // Apply all levers
     setIncomeTaxChange(levers.incomeTaxChange)
     setVatChange(levers.vatChange)
@@ -215,17 +238,17 @@ function App() {
     setHealthSpending(levers.healthSpending)
     setSocialContributions(levers.socialContributions)
     setCsgRate(levers.csgRate)
-    
+
     // Apply reforms
     setSelectedReforms(reforms)
   }
-  
+
   // Political risk toggle
   const [politicalRisk, setPoliticalRisk] = useState(0)
-  
+
   // Projection horizon
   const [projectionYears, setProjectionYears] = useState(10)
-  
+
   // Calculate policy impacts (ALWAYS integrated now)
   const policyImpact = useMemo(() => {
     return calculatePolicyImpact({
@@ -238,12 +261,12 @@ function App() {
     spendingEducation, spendingDefense, spendingSolidarity,
     pensionIndexation, healthSpending, socialContributions, csgRate,
   ])
-  
+
   // Generate projections
   const projections = useMemo(() => {
     // Baseline (no policy change, no reforms)
     const baseline = getBaselineProjection(projectionYears)
-    
+
     // Policy scenario (with current lever settings)
     const policyScenario = projectFiscalPath(policyImpact, {
       years: projectionYears,
@@ -251,7 +274,7 @@ function App() {
       politicalRiskPremium: politicalRisk / 10000,  // bps → decimal
       structuralReform: null,
     })
-    
+
     // Policy + Reform scenario
     const reform = combinedReformEffect
     const fullScenario = projectFiscalPath(policyImpact, {
@@ -261,31 +284,34 @@ function App() {
       structuralReform: reform,
     })
 
-    // Merge baseline debtRatio into fullScenario for chart comparison
+    // Merge baseline fields into fullScenario for chart comparison
     const chartData = fullScenario.map((item, i) => ({
       ...item,
       baselineDebtRatio: baseline[i]?.debtRatio,
+      baselineDeficitRatio: baseline[i]?.deficitRatio,
+      baselineNominalGrowthRate: baseline[i]?.nominalGrowthRate,
+      baselineUnemploymentRate: baseline[i]?.unemploymentRate,
     }))
 
     return { baseline, policyScenario, fullScenario, chartData }
   }, [policyImpact, projectionYears, selectedReforms, politicalRisk, combinedReformEffect])
-  
+
   // Assess doom loop risk
   const doomLoopAssessment = useMemo(() => {
     return assessDoomLoop(projections.fullScenario)
   }, [projections.fullScenario])
-  
+
   // Validation
   const validation = useMemo(() => {
     return validateProjection(projections.fullScenario)
   }, [projections.fullScenario])
-  
+
   return (
     <div className="app">
       <header className="header">
-        <h1>Simulateur Budget France v1.9</h1>
+        <h1>Simulateur Budget France v2.0</h1>
         <p className="subtitle">
-          Vue intégrée État + Sécurité Sociale (APU totales) • 4 scénarios politiques
+          Vue intégrée État + Sécurité Sociale (APU totales) • Réponse comportementale ETI • Inertie dette
         </p>
       </header>
 
@@ -355,7 +381,108 @@ function App() {
           </section>
         )}
 
-        {/* KEY METRICS - HERO NUMBERS */}
+        {/* 3 SMALL CHARTS — DEFICIT, GROWTH, UNEMPLOYMENT */}
+        {projections.chartData && projections.chartData.length > 0 && (
+          <section className="results-section">
+            <h2>Trajectoires associées</h2>
+            <div className="small-charts-row">
+
+              {/* Déficit / PIB */}
+              <div className="small-chart-container">
+                <h3 className="small-chart-title">Déficit / PIB (%)</h3>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={projections.chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="year" tick={{ fontSize: 11 }} />
+                    <YAxis domain={['auto', 'auto']} tick={{ fontSize: 11 }} />
+                    <Tooltip formatter={(v) => `${v}%`} />
+                    <ReferenceLine y={3} stroke="#e65100" strokeDasharray="3 3" />
+                    <Line
+                      type="monotone"
+                      dataKey="baselineDeficitRatio"
+                      stroke="#94a3b8"
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      name="Baseline"
+                      dot={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="deficitRatio"
+                      stroke="#dc2626"
+                      strokeWidth={2}
+                      name="Scénario"
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Croissance nominale */}
+              <div className="small-chart-container">
+                <h3 className="small-chart-title">Croissance nominale (%)</h3>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={projections.chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="year" tick={{ fontSize: 11 }} />
+                    <YAxis domain={['auto', 'auto']} tick={{ fontSize: 11 }} />
+                    <Tooltip formatter={(v) => `${v}%`} />
+                    <Line
+                      type="monotone"
+                      dataKey="baselineNominalGrowthRate"
+                      stroke="#94a3b8"
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      name="Baseline"
+                      dot={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="nominalGrowthRate"
+                      stroke="#16a34a"
+                      strokeWidth={2}
+                      name="Scénario"
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Chômage */}
+              <div className="small-chart-container">
+                <h3 className="small-chart-title">Chômage (%)</h3>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={projections.chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="year" tick={{ fontSize: 11 }} />
+                    <YAxis domain={['auto', 'auto']} tick={{ fontSize: 11 }} />
+                    <Tooltip formatter={(v) => `${v}%`} />
+                    <Line
+                      type="monotone"
+                      dataKey="baselineUnemploymentRate"
+                      stroke="#94a3b8"
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      name="Baseline"
+                      dot={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="unemploymentRate"
+                      stroke="#7c3aed"
+                      strokeWidth={2}
+                      name="Scénario"
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+            </div>
+          </section>
+        )}
+
+        {/* KEY METRICS — YEAR 1 */}
         {projections.fullScenario && projections.fullScenario.length > 0 && (
           <section className="results-section">
             <h2>Indicateurs clés (Année 1)</h2>
@@ -393,9 +520,76 @@ function App() {
           </section>
         )}
 
+        {/* SNAPSHOT METRICS — YEAR 5 & YEAR 10 */}
+        {projections.fullScenario && projections.fullScenario.length >= 10 && (
+          <section className="results-section">
+            <h2>Instantanés à 5 ans et 10 ans</h2>
+            <div className="snapshot-row">
+              <div className="snapshot-group">
+                <h3 className="snapshot-label">Année 5 ({MACRO_BASELINE.year + 5})</h3>
+                <div className="metrics-grid metrics-grid-3">
+                  <MetricCard
+                    label="Dette"
+                    value={projections.fullScenario[5].debt}
+                    unit="Md€"
+                    baseline={projections.baseline[5].debt}
+                    format="billions"
+                    decimals={0}
+                  />
+                  <MetricCard
+                    label="Déficit"
+                    value={projections.fullScenario[5].deficit}
+                    unit="Md€"
+                    baseline={projections.baseline[5].deficit}
+                    format="billions"
+                    decimals={0}
+                  />
+                  <MetricCard
+                    label="Intérêts"
+                    value={projections.fullScenario[5].interest}
+                    unit="Md€"
+                    baseline={projections.baseline[5].interest}
+                    format="billions"
+                    decimals={0}
+                  />
+                </div>
+              </div>
+              <div className="snapshot-group">
+                <h3 className="snapshot-label">Année 10 ({MACRO_BASELINE.year + 10})</h3>
+                <div className="metrics-grid metrics-grid-3">
+                  <MetricCard
+                    label="Dette"
+                    value={projections.fullScenario[10].debt}
+                    unit="Md€"
+                    baseline={projections.baseline[10].debt}
+                    format="billions"
+                    decimals={0}
+                  />
+                  <MetricCard
+                    label="Déficit"
+                    value={projections.fullScenario[10].deficit}
+                    unit="Md€"
+                    baseline={projections.baseline[10].deficit}
+                    format="billions"
+                    decimals={0}
+                  />
+                  <MetricCard
+                    label="Intérêts"
+                    value={projections.fullScenario[10].interest}
+                    unit="Md€"
+                    baseline={projections.baseline[10].interest}
+                    format="billions"
+                    decimals={0}
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* PRESET BUTTONS */}
         <section className="controls-section preset-section">
-          <h2>🎯 Scénarios politiques</h2>
+          <h2>Scénarios politiques</h2>
           <p className="section-help">
             Charger un budget politique complet (taxes + dépenses + réformes)
           </p>
@@ -412,13 +606,13 @@ function App() {
             ))}
           </div>
           <div className="preset-note">
-            💡 Les boutons ci-dessus configurent tous les leviers automatiquement
+            Les boutons ci-dessus configurent tous les leviers automatiquement
           </div>
         </section>
 
         {/* TAX LEVERS */}
         <section className="controls-section">
-          <h2>💶 Leviers fiscaux (État)</h2>
+          <h2>Leviers fiscaux (État)</h2>
           <div className="controls-grid">
             <SliderControl
               label="Impôt sur le revenu"
@@ -452,7 +646,7 @@ function App() {
 
         {/* SPENDING LEVERS (État) */}
         <section className="controls-section">
-          <h2>📊 Dépenses publiques (État)</h2>
+          <h2>Dépenses publiques (État)</h2>
           <div className="controls-grid">
             <SliderControl
               label="Enseignement scolaire"
@@ -486,11 +680,11 @@ function App() {
 
         {/* SOCIAL SECURITY CONTROLS */}
         <section className="controls-section ss-section">
-          <h2>💰 Leviers Sécurité Sociale (PLFSS 2026)</h2>
+          <h2>Leviers Sécurité Sociale (PLFSS 2026)</h2>
           <p className="section-help">
             Ajustements des recettes et dépenses de la sécurité sociale
           </p>
-          
+
           <div className="controls-grid">
             {/* Pension Indexation */}
             <div className="control-with-refs">
@@ -551,7 +745,7 @@ function App() {
 
           {/* PLFSS Context */}
           <div className="ss-context">
-            <h4>📋 Contexte PLFSS 2026 :</h4>
+            <h4>Contexte PLFSS 2026 :</h4>
             <ul>
               <li><strong>Déficit prévu :</strong> -19.4 Md€ (vs -17.5 Md€ initial)</li>
               <li><strong>ONDAM :</strong> 274.4 Md€ (+3.1%, vs +1.6% initial)</li>
@@ -563,11 +757,11 @@ function App() {
 
         {/* STRUCTURAL REFORMS */}
         <section className="controls-section">
-          <h2>🔧 Réformes structurelles</h2>
+          <h2>Réformes structurelles</h2>
           <p className="section-help">
             Sélectionner plusieurs réformes (effet cumulatif avec pénalité de 15% pour chevauchements)
           </p>
-          
+
           <div className="reform-checkboxes">
             {Object.entries(STRUCTURAL_REFORMS).map(([key, reform]) => (
               <label key={key} className="reform-checkbox-label">
@@ -608,7 +802,7 @@ function App() {
 
         {/* ADVANCED SETTINGS */}
         <section className="controls-section">
-          <h2>⚙️ Paramètres avancés</h2>
+          <h2>Paramètres avancés</h2>
           <div className="controls-grid">
             <SliderControl
               label="Prime de risque politique"
@@ -666,7 +860,7 @@ function App() {
         {/* POLICY IMPACT CHART */}
         {(policyImpact.revenueChange !== 0 || policyImpact.spendingChange !== 0) && (
           <section className="results-section">
-            <h2>💡 Impact des leviers budgétaires</h2>
+            <h2>Impact des leviers budgétaires</h2>
             <div className="chart-container">
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={[{
@@ -686,7 +880,7 @@ function App() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            
+
             {selectedReforms.length > 0 && combinedReformEffect && (
               <div className="reform-impact-note">
                 <p>
@@ -723,7 +917,7 @@ function App() {
         {/* VALIDATION WARNINGS */}
         {projections.fullScenario && !validation.valid && (
           <section className="results-section validation-section">
-            <h2>⚠️ Avertissements de validation</h2>
+            <h2>Avertissements de validation</h2>
             <ul className="validation-warnings">
               {validation.warnings.map((warning, i) => (
                 <li key={i}>{warning}</li>
@@ -870,12 +1064,7 @@ function App() {
               <h3>Paramètres macroéconomiques</h3>
               <table className="assumptions-table">
                 <thead>
-                  <tr>
-                    <th>Hypothèse</th>
-                    <th>Valeur</th>
-                    <th>Impact</th>
-                    <th>Source</th>
-                  </tr>
+                  <tr><th>Hypothèse</th><th>Valeur</th><th>Impact</th><th>Source</th></tr>
                 </thead>
                 <tbody>
                   {ASSUMPTIONS.macro.map((item, i) => (
@@ -883,13 +1072,7 @@ function App() {
                       <td>{item.parameter}</td>
                       <td className="value">{item.value}</td>
                       <td>{item.impact}</td>
-                      <td>
-                        {item.link ? (
-                          <a href={item.link} target="_blank" rel="noopener noreferrer">{item.source}</a>
-                        ) : (
-                          item.source
-                        )}
-                      </td>
+                      <td>{item.link ? <a href={item.link} target="_blank" rel="noopener noreferrer">{item.source}</a> : item.source}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -901,12 +1084,7 @@ function App() {
               <h3>Élasticités fiscales</h3>
               <table className="assumptions-table">
                 <thead>
-                  <tr>
-                    <th>Hypothèse</th>
-                    <th>Valeur</th>
-                    <th>Impact</th>
-                    <th>Source</th>
-                  </tr>
+                  <tr><th>Hypothèse</th><th>Valeur</th><th>Impact</th><th>Source</th></tr>
                 </thead>
                 <tbody>
                   {ASSUMPTIONS.fiscal.map((item, i) => (
@@ -914,13 +1092,65 @@ function App() {
                       <td>{item.parameter}</td>
                       <td className="value">{item.value}</td>
                       <td>{item.impact}</td>
-                      <td>
-                        {item.link ? (
-                          <a href={item.link} target="_blank" rel="noopener noreferrer">{item.source}</a>
-                        ) : (
-                          item.source
-                        )}
-                      </td>
+                      <td>{item.link ? <a href={item.link} target="_blank" rel="noopener noreferrer">{item.source}</a> : item.source}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* BEHAVIORAL RESPONSE */}
+            <div className="assumptions-category">
+              <h3>Réponse comportementale aux taxes (ETI)</h3>
+              <p className="assumptions-note">
+                Module 2 (ETI) + Module 3 (émigration fiscale).
+                increaseEfficiency = fraction du rendement statique réalisée pour une hausse.
+                decreaseEfficiency = multiplicateur pour une baisse (effet offre modéré).
+                growthDragPerPp = frein croissance par pp de hausse (traîne nulle pour les baisses).
+              </p>
+              <table className="assumptions-table">
+                <thead>
+                  <tr>
+                    <th>Taxe</th>
+                    <th>Efficacité hausse</th>
+                    <th>Efficacité baisse</th>
+                    <th>Frein croissance/pp</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(BEHAVIORAL_RESPONSE).map(([key, val]) => (
+                    <tr key={key}>
+                      <td>{key}</td>
+                      <td className="value">{(val.increaseEfficiency * 100).toFixed(0)}%</td>
+                      <td className="value">{(val.decreaseEfficiency * 100).toFixed(0)}%</td>
+                      <td className="value">{(val.growthDragPerPp * 100).toFixed(2)} pp</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* FISCAL MULTIPLIERS */}
+            <div className="assumptions-category">
+              <h3>Multiplicateurs fiscaux des dépenses (Module 4)</h3>
+              <p className="assumptions-note">
+                Multiplicateurs en expansion (gap de production ≈ 0, France 2025).
+                Offset monétaire = 0 (BCE supranationale, pas de crowding-out national).
+              </p>
+              <table className="assumptions-table">
+                <thead>
+                  <tr>
+                    <th>Catégorie</th>
+                    <th>Expansion (gap ≈ 0)</th>
+                    <th>Récession (gap &lt; 0)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(FISCAL_MULTIPLIERS).map(([key, val]) => (
+                    <tr key={key}>
+                      <td>{key}</td>
+                      <td className="value">{val.expansion.toFixed(2)}</td>
+                      <td className="value">{val.recession.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -929,15 +1159,10 @@ function App() {
 
             {/* RISK PREMIUM */}
             <div className="assumptions-category">
-              <h3>Prime de risque souverain</h3>
+              <h3>Prime de risque souverain + inertie dette</h3>
               <table className="assumptions-table">
                 <thead>
-                  <tr>
-                    <th>Hypothèse</th>
-                    <th>Valeur</th>
-                    <th>Impact</th>
-                    <th>Source</th>
-                  </tr>
+                  <tr><th>Hypothèse</th><th>Valeur</th><th>Impact</th><th>Source</th></tr>
                 </thead>
                 <tbody>
                   {ASSUMPTIONS.riskPremium.map((item, i) => (
@@ -945,13 +1170,7 @@ function App() {
                       <td>{item.parameter}</td>
                       <td className="value">{item.value}</td>
                       <td>{item.impact}</td>
-                      <td>
-                        {item.link ? (
-                          <a href={item.link} target="_blank" rel="noopener noreferrer">{item.source}</a>
-                        ) : (
-                          item.source
-                        )}
-                      </td>
+                      <td>{item.link ? <a href={item.link} target="_blank" rel="noopener noreferrer">{item.source}</a> : item.source}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -963,12 +1182,7 @@ function App() {
               <h3>Réformes structurelles</h3>
               <table className="assumptions-table">
                 <thead>
-                  <tr>
-                    <th>Hypothèse</th>
-                    <th>Valeur</th>
-                    <th>Impact</th>
-                    <th>Source</th>
-                  </tr>
+                  <tr><th>Hypothèse</th><th>Valeur</th><th>Impact</th><th>Source</th></tr>
                 </thead>
                 <tbody>
                   {ASSUMPTIONS.reforms.map((item, i) => (
@@ -976,13 +1190,7 @@ function App() {
                       <td>{item.parameter}</td>
                       <td className="value">{item.value}</td>
                       <td>{item.impact}</td>
-                      <td>
-                        {item.link ? (
-                          <a href={item.link} target="_blank" rel="noopener noreferrer">{item.source}</a>
-                        ) : (
-                          item.source
-                        )}
-                      </td>
+                      <td>{item.link ? <a href={item.link} target="_blank" rel="noopener noreferrer">{item.source}</a> : item.source}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -998,10 +1206,9 @@ function App() {
       )}
 
       <footer className="footer">
-        <p>Simulateur Budget France v1.9 (Intégré) • Sources : PLF 2025, PLFSS 2026, Knafo, IMF, OECD, ECB</p>
+        <p>Simulateur Budget France v2.0 • Sources : PLF 2025, PLFSS 2026, IMF, OECD, ECB, AFT</p>
         <p className="footer-note">
-          Vue consolidée État + Sécurité Sociale (APU totales).
-          Modèle pédagogique avec paramètres exposés.
+          Vue consolidée État + Sécurité Sociale. Réponse comportementale ETI. Inertie taux OAT.
         </p>
       </footer>
     </div>
@@ -1015,7 +1222,7 @@ function App() {
 function SliderControl({ label, value, onChange, min, max, step, unit, help, decimals = 0 }) {
   // Safety check for undefined value
   const safeValue = value ?? 0
-  
+
   return (
     <div className="control">
       <div className="control-header">

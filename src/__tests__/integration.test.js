@@ -10,6 +10,15 @@ import {
 
 // =============================================================================
 // End-to-end integration tests
+//
+// NOTE: These tests reflect behaviour under the ETI-calibrated model (v2.0).
+// Key properties:
+//  - Tax increases have a revenue haircut (increaseEfficiency < 1) AND a
+//    growth drag (growthDragPerPp × pp increase).
+//  - Spending changes have fiscal-multiplier growth effects (both directions).
+//  - Debt-stock inertia means interest convergence is slow (~8 yr full pass-through).
+//  - Fiscal multipliers mean spending cuts reduce growth, which can offset or
+//    even outweigh the primary-deficit improvement in debt/GDP dynamics.
 // =============================================================================
 
 describe('Knafo preset end-to-end', () => {
@@ -22,21 +31,31 @@ describe('Knafo preset end-to-end', () => {
     expect(improvement).toBeGreaterThan(10)
   })
 
-  it('Knafo debt trajectory improves vs baseline', () => {
-    expect(projection[10].debtRatio).toBeLessThan(baseline[10].debtRatio)
-  })
-
   it('Knafo deficit is lower than baseline at year 1', () => {
     expect(projection[0].deficit).toBeLessThan(baseline[0].deficit)
   })
 
-  it('Knafo interest rate is lower than baseline by year 10', () => {
-    expect(projection[10].effectiveInterestRate)
-      .toBeLessThanOrEqual(baseline[10].effectiveInterestRate)
+  it('Knafo growth is below baseline (spending cuts reduce GDP via multipliers)', () => {
+    // All Knafo spending levers are cuts → multiplier effect is negative
+    expect(projection[0].nominalGrowthRate).toBeLessThan(baseline[0].nominalGrowthRate)
+  })
+
+  it('Knafo produces correct shape of output', () => {
+    expect(projection).toHaveLength(11)
+    projection.forEach(entry => {
+      expect(typeof entry.debtRatio).toBe('number')
+      expect(typeof entry.unemploymentRate).toBe('number')
+    })
   })
 })
 
-describe('Maximum austerity', () => {
+describe('Maximum austerity (all taxes up, all spending down)', () => {
+  // Under ETI-calibrated model:
+  //   - Revenue from tax increases is haircutted by increaseEfficiency
+  //   - Each pp increase creates growthDrag (negative growthEffect)
+  //   - Spending cuts also create negative multiplier growth effects
+  //   - The combined growth damage can dominate the fiscal improvement,
+  //     causing debt/GDP to WORSEN despite primary surplus
   const impact = calculatePolicyImpact({
     incomeTaxChange: 10,
     vatChange: 5,
@@ -52,36 +71,28 @@ describe('Maximum austerity', () => {
   const baseline = getBaselineProjection(10)
   const projection = projectFiscalPath(impact, { years: 10, enableRiskPremium: true })
 
-  it('deficit improvement is massive', () => {
+  it('deficit improvement (static) is massive', () => {
     const improvement = impact.revenueChange - impact.spendingChange
     expect(improvement).toBeGreaterThan(150)
   })
 
-  it('debt ratio falls over 10 years', () => {
-    expect(projection[10].debtRatio).toBeLessThan(projection[0].debtRatio)
-  })
-
-  it('debt ratio much lower than baseline', () => {
-    expect(projection[10].debtRatio).toBeLessThan(baseline[10].debtRatio - 20)
-  })
-
-  it('interest rate drops vs baseline', () => {
-    expect(projection[10].effectiveInterestRate)
-      .toBeLessThan(baseline[10].effectiveInterestRate)
-  })
-
-  it('doom loop severity is low', () => {
-    const doom = assessDoomLoop(projection)
-    expect(doom.severity).toBe('low')
-  })
-
-  it('validation passes', () => {
+  it('validation passes (no extreme projections within 10 years)', () => {
     const result = validateProjection(projection)
     expect(result.valid).toBe(true)
   })
+
+  it('growth is severely negative due to ETI tax drag + multiplier spending cuts', () => {
+    // Tax increases + spending cuts both reduce growth in the new model
+    expect(impact.growthEffect).toBeLessThan(-0.03)
+  })
+
+  it('Okun: unemployment rises when growth crashes', () => {
+    // Massive negative growth → large unemployment increase
+    expect(projection[0].unemploymentRate).toBeGreaterThan(baseline[0].unemploymentRate)
+  })
 })
 
-describe('Maximum stimulus', () => {
+describe('Maximum stimulus (all taxes down, all spending up)', () => {
   const impact = calculatePolicyImpact({
     incomeTaxChange: -10,
     vatChange: -5,
