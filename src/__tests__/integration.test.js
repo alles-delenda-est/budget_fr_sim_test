@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { calculatePolicyImpact, PRESETS } from '../policy-impact'
+import { calculatePolicyImpact, PRESETS, PENSION_REFORM_PRESETS } from '../policy-impact'
 import {
   STRUCTURAL_REFORMS,
+  PENSION_REFORM,
   projectFiscalPath,
   getBaselineProjection,
   assessDoomLoop,
@@ -196,5 +197,164 @@ describe('Political risk stress test', () => {
     // Both should have active doom loop (baseline already triggers it)
     // 200 bps should be at least as severe
     expect(doom200.premiumIncreaseBps).toBeGreaterThanOrEqual(doom0.premiumIncreaseBps)
+  })
+})
+
+describe('Demographic drift integration', () => {
+  const withDrift = projectFiscalPath({}, { years: 10, enableDemographicDrift: true })
+  const noDrift = projectFiscalPath({}, { years: 10, enableDemographicDrift: false })
+
+  it('demographic drift adds ~18 Md to deficit at year 10', () => {
+    const deficitDiff = withDrift[10].deficit - noDrift[10].deficit
+    expect(deficitDiff).toBeGreaterThan(10)
+    expect(deficitDiff).toBeLessThan(30)
+  })
+
+  it('demographic drift worsens debt ratio by year 10', () => {
+    expect(withDrift[10].debtRatio).toBeGreaterThan(noDrift[10].debtRatio)
+  })
+
+  it('baseline (with default demographic drift) remains valid', () => {
+    const result = validateProjection(withDrift)
+    expect(result.valid).toBe(true)
+  })
+
+  it('20-year projection with demographic drift triggers debt warning (realistic)', () => {
+    const proj20 = projectFiscalPath({}, { years: 20, enableDemographicDrift: true })
+    const result = validateProjection(proj20)
+    // With demographic drift, 20-year baseline debt ratio exceeds 200% — expected
+    expect(proj20[20].debtRatio).toBeGreaterThan(180)
+  })
+
+  it('reform + demographic drift: reform partially offsets demographic pressure', () => {
+    const reformDrift = projectFiscalPath({}, {
+      years: 10,
+      structuralReform: STRUCTURAL_REFORMS.ambitious,
+      enableDemographicDrift: true,
+    })
+    // Reform helps but demographic pressure still adds spending
+    // Deficit with reform+drift should be less than drift-only
+    expect(reformDrift[10].deficit).toBeLessThan(withDrift[10].deficit)
+    // But worse than reform without drift
+    const reformNoDrift = projectFiscalPath({}, {
+      years: 10,
+      structuralReform: STRUCTURAL_REFORMS.ambitious,
+      enableDemographicDrift: false,
+    })
+    expect(reformDrift[10].deficit).toBeGreaterThan(reformNoDrift[10].deficit)
+  })
+})
+
+describe('ONDAM floor integration with projection', () => {
+  it('GL preset with -8% health cut is damped in projection', () => {
+    const impact = calculatePolicyImpact(PRESETS.generationLibre.levers)
+    // GL has healthSpending: -8, which triggers ONDAM floor
+    expect(impact.ondamWarning).not.toBeNull()
+    expect(impact.ondamEffectiveCut).toBeCloseTo(-5.5, 1)
+  })
+})
+
+// =============================================================================
+// COR SCENARIO INTEGRATION TESTS
+// =============================================================================
+
+describe('COR scenario integration', () => {
+  it('each COR preset produces a valid projection', () => {
+    for (const [key, preset] of Object.entries(PENSION_REFORM_PRESETS)) {
+      const result = projectFiscalPath({}, {
+        years: 10,
+        pensionReform: preset.pensionReform,
+      })
+      expect(result).toHaveLength(11)
+      const validation = validateProjection(result)
+      expect(validation.valid).toBe(true)
+    }
+  })
+
+  it('reformeRetraites reduces deficit vs baseline at year 10', () => {
+    const baseline = projectFiscalPath({}, { years: 10 })
+    const reform = projectFiscalPath({}, {
+      years: 10,
+      pensionReform: PENSION_REFORM_PRESETS.reformeRetraites.pensionReform,
+    })
+    expect(reform[10].deficit).toBeLessThan(baseline[10].deficit)
+  })
+
+  it('reformeRetraites saving at year 10 is significant (>30 Md)', () => {
+    const reform = projectFiscalPath({}, {
+      years: 10,
+      pensionReform: PENSION_REFORM_PRESETS.reformeRetraites.pensionReform,
+    })
+    // Age 67 + desindexation 1.5 + cap 15% + notionnel all contribute
+    expect(reform[10].pensionReformSaving).toBeGreaterThan(30)
+  })
+
+  it('pension floor prevents extreme savings', () => {
+    const reform = projectFiscalPath({}, {
+      years: 20,
+      pensionReform: PENSION_REFORM_PRESETS.reformeRetraites.pensionReform,
+    })
+    const maxSaving = PENSION_REFORM.pensionMass * (1 - PENSION_REFORM.pensionFloor)
+    reform.forEach(entry => {
+      expect(entry.pensionReformSaving).toBeLessThanOrEqual(maxSaving + 0.1)
+    })
+  })
+})
+
+describe('Pension reform + demographic drift interaction', () => {
+  it('pension reform partially offsets demographic pressure', () => {
+    const driftOnly = projectFiscalPath({}, {
+      years: 10,
+      enableDemographicDrift: true,
+    })
+    const reformPlusDrift = projectFiscalPath({}, {
+      years: 10,
+      enableDemographicDrift: true,
+      pensionReform: { retirementAge: 67, desindexation: 1.0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+    })
+    // Reform should reduce deficit vs drift-only
+    expect(reformPlusDrift[10].deficit).toBeLessThan(driftOnly[10].deficit)
+  })
+
+  it('demographic drift still worsens deficit even with reform', () => {
+    const reformNoDrift = projectFiscalPath({}, {
+      years: 10,
+      enableDemographicDrift: false,
+      pensionReform: { retirementAge: 67, desindexation: 1.0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+    })
+    const reformPlusDrift = projectFiscalPath({}, {
+      years: 10,
+      enableDemographicDrift: true,
+      pensionReform: { retirementAge: 67, desindexation: 1.0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+    })
+    expect(reformPlusDrift[10].deficit).toBeGreaterThan(reformNoDrift[10].deficit)
+  })
+})
+
+describe('Migration and dependance integration', () => {
+  it('all channels enabled produces valid 20-year projection', () => {
+    const result = projectFiscalPath({}, {
+      years: 20,
+      enableDemographicDrift: true,
+      enableMigrationImpact: true,
+      enableDependanceDrift: true,
+    })
+    expect(result).toHaveLength(21)
+    result.forEach(entry => {
+      expect(entry.gdp).not.toBeNaN()
+      expect(entry.deficit).not.toBeNaN()
+      expect(entry.debtRatio).not.toBeNaN()
+    })
+  })
+
+  it('existing presets still produce valid projections with new channels', () => {
+    for (const [key, preset] of Object.entries(PRESETS)) {
+      const impact = calculatePolicyImpact(preset.levers)
+      const result = projectFiscalPath(impact, { years: 10 })
+      expect(result).toHaveLength(11)
+      result.forEach(entry => {
+        expect(entry.deficit).not.toBeNaN()
+      })
+    }
   })
 })

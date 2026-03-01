@@ -22,6 +22,13 @@ import {
   ROLLOVER_RATE,
   DEFICIT_STRESS_THRESHOLD,
   DEFICIT_STRESS_SENSITIVITY,
+  DEMOGRAPHIC_PARAMS,
+  DEMOGRAPHIC_PRESSURE_PER_YEAR,
+  SENIOR_EMPLOYMENT,
+  PENSION_REFORM,
+  MIGRATION_PARAMS,
+  MIGRATION_NET_WORKERS_PER_YEAR,
+  DEPENDANCE_PARAMS,
   projectFiscalPath,
   getBaselineProjection,
   compareProjections,
@@ -30,7 +37,7 @@ import {
 } from './projection-engine-v1.8'
 
 // Import policy impact calculation and data
-import { BASELINE, PRESETS, calculatePolicyImpact, BEHAVIORAL_RESPONSE, FISCAL_MULTIPLIERS } from './policy-impact'
+import { BASELINE, PRESETS, PENSION_REFORM_PRESETS, calculatePolicyImpact, BEHAVIORAL_RESPONSE, FISCAL_MULTIPLIERS } from './policy-impact'
 
 // =============================================================================
 // ASSUMPTIONS DATA - Academic literature and model parameters
@@ -127,6 +134,50 @@ const ASSUMPTIONS = {
       link: null
     },
   ],
+  demographic: [
+    {
+      parameter: "Dérive ratio dépendance",
+      value: "+0,48 pp/an",
+      impact: `+${DEMOGRAPHIC_PRESSURE_PER_YEAR.toFixed(1)} Md€/an pression sur dépenses pension+santé`,
+      source: "INSEE 2024 Projections de population",
+      link: "https://www.insee.fr/fr/statistiques"
+    },
+    {
+      parameter: "Élasticité pension/dépendance",
+      value: "0,80",
+      impact: "Retraites (303,4 Md€) croissent avec le vieillissement",
+      source: "COR 2024 rapport annuel",
+      link: null
+    },
+    {
+      parameter: "Élasticité santé/dépendance",
+      value: "0,50",
+      impact: "Maladie (262,3 Md€) croît avec le vieillissement",
+      source: "DREES 2024",
+      link: null
+    },
+    {
+      parameter: "Prime politique (OAT spread)",
+      value: "+21 bps",
+      impact: "Composante politique du taux d'intérêt (déjà intégrée)",
+      source: "Bloomberg OAT-Bund 10Y Q4 2024, ECB FSR Nov 2024",
+      link: null
+    },
+    {
+      parameter: "Plancher ONDAM",
+      value: "-3% seuil, -7% plancher",
+      impact: "Rendements décroissants des coupes santé (déserts médicaux)",
+      source: "DREES 2024, FNAIM",
+      link: null
+    },
+    {
+      parameter: "Taux emploi seniors",
+      value: "58% → 65% (benchmark UE)",
+      impact: "+4,9 Md€ cotisations à 10 ans (si réforme marché travail)",
+      source: "DARES 2024, Eurostat",
+      link: null
+    },
+  ],
   reforms: [
     {
       parameter: "Réforme marché du travail",
@@ -144,9 +195,9 @@ const ASSUMPTIONS = {
     },
     {
       parameter: "Réforme planification urbaine",
-      value: "+0,15 pp/an",
-      impact: "Productivité via logement, délai 3 ans",
-      source: "Hilber & Vermeulen (2016)",
+      value: "+0,20 pp/an",
+      impact: "Productivité via logement, délai 3 ans (uplift France: tension 4.8)",
+      source: "FNAIM 2024, Hilber & Vermeulen (2016)",
       link: "https://doi.org/10.1016/j.jue.2015.11.003"
     },
     {
@@ -158,10 +209,61 @@ const ASSUMPTIONS = {
     },
     {
       parameter: "Déréglementation énergie",
-      value: "+0,12 pp/an",
-      impact: "Compétitivité industrielle, délai 2 ans",
-      source: "CRE, Commission européenne",
+      value: "+0,07 pp/an",
+      impact: "Compétitivité industrielle, délai 2 ans (réduit: France déjà compétitive)",
+      source: "CRE 2024, Eurostat energy prices",
       link: "https://www.cre.fr/"
+    },
+  ],
+  pensionReform: [
+    {
+      parameter: "Masse pension Sécu (vieillesse)",
+      value: "303,4 Md€",
+      impact: "Base pour calcul des réformes retraites",
+      source: "PLFSS 2025, francetdb.com",
+      link: null
+    },
+    {
+      parameter: "Ratio cotisants/retraité",
+      value: "1,70",
+      impact: "Déclin -0,012/an → pression sur financement",
+      source: "COR 2024 rapport annuel",
+      link: null
+    },
+    {
+      parameter: "Effet âge retraite",
+      value: "-2,5%/an au-delà de 64",
+      impact: "Chaque année supplémentaire réduit la masse pension",
+      source: "francetdb.com rtRunModel()",
+      link: null
+    },
+    {
+      parameter: "Comptes notionnels (suédois)",
+      value: "-6% masse pension",
+      impact: "Mise en place sur 15 ans à partir de 2027",
+      source: "francetdb.com, modèle NDC",
+      link: null
+    },
+    {
+      parameter: "Plancher pension",
+      value: "65% du niveau initial",
+      impact: "Les réformes ne peuvent réduire les pensions au-delà",
+      source: "Contrainte politique modélisée",
+      link: null
+    },
+    {
+      parameter: "Immigration nette",
+      value: "270k entrants, 200k sortants/an",
+      impact: "-1,1 Md€/an impact fiscal (brain drain)",
+      source: "INSEE 2023, francetdb.com",
+      link: null
+    },
+    {
+      parameter: "Dépendance/autonomie",
+      value: "43,5 Md€, +5,5%/an",
+      impact: "Croissance excédentaire vs PIB (+16 Md€ à 10 ans)",
+      source: "PLFSS 2025, DREES",
+      link: null
     },
   ],
 }
@@ -184,6 +286,12 @@ function App() {
   const [healthSpending, setHealthSpending] = useState(0)        // % change in ONDAM
   const [socialContributions, setSocialContributions] = useState(0)  // pp change
   const [csgRate, setCsgRate] = useState(0)                      // pp change
+
+  // Pension reform levers
+  const [retirementAge, setRetirementAge] = useState(64)
+  const [desindexation, setDesindexation] = useState(0)
+  const [pensionCap, setPensionCap] = useState(0)
+  const [notionnel, setNotionnel] = useState(false)
 
   // Tab navigation
   const [activeTab, setActiveTab] = useState('simulator')
@@ -243,6 +351,18 @@ function App() {
     setSelectedReforms(reforms)
   }
 
+  // Apply COR / pension reform preset
+  const applyCORPreset = (presetKey) => {
+    const preset = PENSION_REFORM_PRESETS[presetKey]
+    if (!preset) return
+
+    const { pensionReform: pr } = preset
+    setRetirementAge(pr.retirementAge)
+    setDesindexation(pr.desindexation)
+    setPensionCap(pr.pensionCap)
+    setNotionnel(pr.notionnel)
+  }
+
   // Political risk toggle
   const [politicalRisk, setPoliticalRisk] = useState(0)
 
@@ -262,6 +382,13 @@ function App() {
     pensionIndexation, healthSpending, socialContributions, csgRate,
   ])
 
+  // Build pension reform option (null if all defaults)
+  const pensionReformOption = useMemo(() => {
+    const isDefault = retirementAge === 64 && desindexation === 0 && pensionCap === 0 && !notionnel
+    if (isDefault) return null
+    return { retirementAge, desindexation, pensionCap, notionnel, capitalisation: 0 }
+  }, [retirementAge, desindexation, pensionCap, notionnel])
+
   // Generate projections
   const projections = useMemo(() => {
     // Baseline (no policy change, no reforms)
@@ -273,6 +400,7 @@ function App() {
       enableRiskPremium: true,
       politicalRiskPremium: politicalRisk / 10000,  // bps → decimal
       structuralReform: null,
+      pensionReform: pensionReformOption,
     })
 
     // Policy + Reform scenario
@@ -282,6 +410,7 @@ function App() {
       enableRiskPremium: true,
       politicalRiskPremium: politicalRisk / 10000,
       structuralReform: reform,
+      pensionReform: pensionReformOption,
     })
 
     // Merge baseline fields into fullScenario for chart comparison
@@ -291,10 +420,14 @@ function App() {
       baselineDeficitRatio: baseline[i]?.deficitRatio,
       baselineNominalGrowthRate: baseline[i]?.nominalGrowthRate,
       baselineUnemploymentRate: baseline[i]?.unemploymentRate,
+      // Ratio cotisants/retraité projection
+      cotisantsPerRetraite: PENSION_REFORM.cotisantsPerRetraite - (i * PENSION_REFORM.ratioDeclinePerYear)
+        + ((pensionReformOption?.retirementAge ?? 64) - 64) * PENSION_REFORM.retirementAge.ratioImprovementPerYear
+          * Math.min(i / PENSION_REFORM.retirementAge.rampUpYears, 1),
     }))
 
     return { baseline, policyScenario, fullScenario, chartData }
-  }, [policyImpact, projectionYears, selectedReforms, politicalRisk, combinedReformEffect])
+  }, [policyImpact, projectionYears, selectedReforms, politicalRisk, combinedReformEffect, pensionReformOption])
 
   // Assess doom loop risk
   const doomLoopAssessment = useMemo(() => {
@@ -478,6 +611,28 @@ function App() {
                 </ResponsiveContainer>
               </div>
 
+              {/* Ratio cotisants/retraité */}
+              <div className="small-chart-container">
+                <h3 className="small-chart-title">Cotisants/retraité</h3>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={projections.chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="year" tick={{ fontSize: 11 }} />
+                    <YAxis domain={['auto', 'auto']} tick={{ fontSize: 11 }} />
+                    <Tooltip formatter={(v) => v.toFixed(2)} />
+                    <ReferenceLine y={1.5} stroke="#e65100" strokeDasharray="3 3" />
+                    <Line
+                      type="monotone"
+                      dataKey="cotisantsPerRetraite"
+                      stroke="#0891b2"
+                      strokeWidth={2}
+                      name="Ratio"
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
             </div>
           </section>
         )}
@@ -581,6 +736,31 @@ function App() {
                     format="billions"
                     decimals={0}
                   />
+                </div>
+
+                {/* Sustainability metrics */}
+                <div className="sustainability-metrics">
+                  <h4>Soutenabilité retraites (An 10)</h4>
+                  <div className="sustainability-row">
+                    <span>Cotisants/retraité :</span>
+                    <span className="sustainability-value">
+                      {(PENSION_REFORM.cotisantsPerRetraite - 10 * PENSION_REFORM.ratioDeclinePerYear
+                        + ((pensionReformOption?.retirementAge ?? 64) - 64) * PENSION_REFORM.retirementAge.ratioImprovementPerYear
+                          * Math.min(10 / PENSION_REFORM.retirementAge.rampUpYears, 1)).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="sustainability-row">
+                    <span>Economies retraites :</span>
+                    <span className="sustainability-value">{projections.fullScenario[10].pensionReformSaving} Md€</span>
+                  </div>
+                  <div className="sustainability-row">
+                    <span>Impact migration :</span>
+                    <span className="sustainability-value">{projections.fullScenario[10].migrationImpact} Md€</span>
+                  </div>
+                  <div className="sustainability-row">
+                    <span>Pression dépendance :</span>
+                    <span className="sustainability-value">+{projections.fullScenario[10].dependancePressure} Md€</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -710,15 +890,24 @@ function App() {
             </div>
 
             {/* Health Spending (ONDAM) */}
-            <SliderControl
-              label="Dépenses santé (ONDAM)"
-              value={healthSpending}
-              onChange={setHealthSpending}
-              min={-10}
-              max={10}
-              step={1}
-              unit="%"
-            />
+            <div className="control-with-refs">
+              <SliderControl
+                label="Dépenses santé (ONDAM)"
+                value={healthSpending}
+                onChange={setHealthSpending}
+                min={-10}
+                max={10}
+                step={1}
+                unit="%"
+              />
+              {policyImpact.ondamWarning && (
+                <div className={`ondam-warning ondam-${policyImpact.ondamWarningLevel}`}>
+                  <strong>Contrainte ONDAM :</strong> Coupe demandée {healthSpending}% → effective {policyImpact.ondamEffectiveCut.toFixed(1)}%
+                  <br />
+                  <small>Déserts médicaux, urgences saturées — rendements décroissants au-delà de -3%</small>
+                </div>
+              )}
+            </div>
 
             {/* Social Contributions */}
             <SliderControl
@@ -753,6 +942,87 @@ function App() {
               <li><strong>Mesures abandonnées :</strong> Gel retraites, franchises médicales (-2.3 Md€)</li>
             </ul>
           </div>
+        </section>
+
+        {/* PENSION REFORM */}
+        <section className="controls-section ss-section">
+          <h2>Réforme des retraites (francetdb.com)</h2>
+          <p className="section-help">
+            Réformes structurelles du système de retraites — effets dynamiques sur {projectionYears} ans
+          </p>
+
+          {/* COR Preset Buttons */}
+          <div className="preset-grid">
+            {Object.entries(PENSION_REFORM_PRESETS).map(([key, preset]) => (
+              <button
+                key={key}
+                className="preset-btn preset-btn-sm"
+                onClick={() => applyCORPreset(key)}
+              >
+                <strong>{preset.label}</strong>
+                <span className="preset-desc">{preset.description}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="controls-grid">
+            <SliderControl
+              label="Âge de départ en retraite"
+              value={retirementAge}
+              onChange={setRetirementAge}
+              min={60}
+              max={72}
+              step={0.5}
+              unit="ans"
+              decimals={1}
+              help="Âge légal actuel: 64 ans. Chaque année au-delà réduit la masse pension de 2,5%"
+            />
+            <SliderControl
+              label="Désindexation"
+              value={desindexation}
+              onChange={setDesindexation}
+              min={-1}
+              max={2}
+              step={0.1}
+              unit="pt"
+              decimals={1}
+              help="Points de réduction de la revalorisation annuelle des pensions"
+            />
+            <SliderControl
+              label="Plafonnement hautes pensions"
+              value={pensionCap}
+              onChange={setPensionCap}
+              min={0}
+              max={20}
+              step={0.5}
+              unit="%"
+              decimals={1}
+              help="Pourcentage de la masse pension plafonnée"
+            />
+            <div className="control">
+              <div className="control-header">
+                <label>Comptes notionnels (suédois)</label>
+              </div>
+              <label className="reform-checkbox-label" style={{ marginTop: '8px' }}>
+                <input
+                  type="checkbox"
+                  checked={notionnel}
+                  onChange={(e) => setNotionnel(e.target.checked)}
+                />
+                <span>Activer le système de comptes notionnels (-6% masse pension sur 15 ans)</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Pension reform savings display */}
+          {pensionReformOption && projections.fullScenario && projections.fullScenario.length > 10 && (
+            <div className="combined-reforms-summary">
+              <h4>Impact réforme retraites :</h4>
+              <div className="combined-effect">
+                <strong>Economie pension (Année 10) :</strong> {projections.fullScenario[10].pensionReformSaving} Md€
+              </div>
+            </div>
+          )}
         </section>
 
         {/* STRUCTURAL REFORMS */}
@@ -805,14 +1075,14 @@ function App() {
           <h2>Paramètres avancés</h2>
           <div className="controls-grid">
             <SliderControl
-              label="Prime de risque politique"
+              label="Prime de risque politique (additionnelle)"
               value={politicalRisk}
               onChange={setPoliticalRisk}
               min={0}
               max={200}
               step={10}
               unit="bps"
-              help="Augmentation des taux d'intérêt due à l'instabilité politique"
+              help="Prime ADDITIONNELLE au-delà des 21 bps déjà intégrés (crise politique 2024)"
             />
             <SliderControl
               label="Horizon de projection"
@@ -1166,6 +1436,54 @@ function App() {
                 </thead>
                 <tbody>
                   {ASSUMPTIONS.riskPremium.map((item, i) => (
+                    <tr key={i}>
+                      <td>{item.parameter}</td>
+                      <td className="value">{item.value}</td>
+                      <td>{item.impact}</td>
+                      <td>{item.link ? <a href={item.link} target="_blank" rel="noopener noreferrer">{item.source}</a> : item.source}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* DEMOGRAPHIC & STRUCTURAL PARAMETERS */}
+            <div className="assumptions-category">
+              <h3>Paramètres démographiques et structurels (francetdb.com)</h3>
+              <p className="assumptions-note">
+                Intégrations de données réelles: dérive démographique, prime politique OAT,
+                plancher ONDAM, emploi seniors. Source: INSEE, COR, DREES, DARES, Bloomberg.
+              </p>
+              <table className="assumptions-table">
+                <thead>
+                  <tr><th>Hypothèse</th><th>Valeur</th><th>Impact</th><th>Source</th></tr>
+                </thead>
+                <tbody>
+                  {ASSUMPTIONS.demographic.map((item, i) => (
+                    <tr key={i}>
+                      <td>{item.parameter}</td>
+                      <td className="value">{item.value}</td>
+                      <td>{item.impact}</td>
+                      <td>{item.link ? <a href={item.link} target="_blank" rel="noopener noreferrer">{item.source}</a> : item.source}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* PENSION REFORM */}
+            <div className="assumptions-category">
+              <h3>Réforme des retraites et soutenabilité (francetdb.com/#retraites)</h3>
+              <p className="assumptions-note">
+                Paramètres du modèle de réforme des retraites, migration, et dépendance.
+                Source: francetdb.com, COR 2024, INSEE, DREES.
+              </p>
+              <table className="assumptions-table">
+                <thead>
+                  <tr><th>Hypothèse</th><th>Valeur</th><th>Impact</th><th>Source</th></tr>
+                </thead>
+                <tbody>
+                  {ASSUMPTIONS.pensionReform.map((item, i) => (
                     <tr key={i}>
                       <td>{item.parameter}</td>
                       <td className="value">{item.value}</td>

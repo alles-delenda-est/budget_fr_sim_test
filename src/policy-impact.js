@@ -137,6 +137,44 @@ export const PRESETS = {
 }
 
 // =============================================================================
+// PENSION REFORM PRESETS (COR scenarios)
+// =============================================================================
+// Source: francetdb.com COR scenarios, Conseil d'Orientation des Retraites 2024
+
+export const PENSION_REFORM_PRESETS = {
+  corOptimiste: {
+    label: "COR optimiste (1,6%)",
+    description: "Croissance 1,6%, emploi 73%, fécondité 1,80",
+    pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+    macroOverrides: { realGrowth: 0.016 },
+  },
+  corCentral: {
+    label: "COR central (réf. 2024)",
+    description: "Croissance 1,0%, emploi 71%, fécondité 1,80",
+    pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+    macroOverrides: { realGrowth: 0.010 },
+  },
+  corPessimiste: {
+    label: "COR pessimiste (réf. 2025)",
+    description: "Croissance 0,7%, emploi 68,5%, fécondité 1,80, déficit 5%",
+    pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+    macroOverrides: { realGrowth: 0.007 },
+  },
+  reformeRetraites: {
+    label: "Réforme retraites",
+    description: "Âge 67, notionnel, désindexation 1,5pt, plafond 15%, capitalisation 10%",
+    pensionReform: { retirementAge: 67, desindexation: 1.5, pensionCap: 15, notionnel: true, capitalisation: 10 },
+    macroOverrides: null,
+  },
+  reformeGlobale: {
+    label: "Réforme globale",
+    description: "Réforme retraites + économique combinée",
+    pensionReform: { retirementAge: 67, desindexation: 1.5, pensionCap: 15, notionnel: true, capitalisation: 10 },
+    macroOverrides: { realGrowth: 0.016 },
+  },
+}
+
+// =============================================================================
 // BEHAVIORAL RESPONSE PARAMETERS (ETI-calibrated)
 // =============================================================================
 // Sources: Dynamic assumptions.txt Modules 2 (ETI) and 3 (emigration)
@@ -186,6 +224,48 @@ export const FISCAL_MULTIPLIERS = {
   solidarity:  { expansion: 0.40, recession: 0.90 }, // transfers
   pensions:    { expansion: 0.40, recession: 0.90 }, // transfers
   health:      { expansion: 0.70, recession: 1.00 }, // mixed
+}
+
+// =============================================================================
+// ONDAM FLOOR CONSTRAINT
+// =============================================================================
+// Source: DREES 2024, FNAIM healthcare access data
+// Health spending cuts face diminishing returns beyond -3% due to
+// uncompressible demand (87% deserts medicaux, 52-day specialist waits,
+// 20.8M emergency visits).
+
+export const ONDAM_FLOOR = {
+  threshold: -3,         // % — cuts below this are damped
+  dampingFactor: 0.50,   // 50% of additional cut beyond threshold materialises
+  hardFloor: -7,         // % — maximum effective cut regardless of requested
+}
+
+/**
+ * Apply ONDAM floor constraint to health spending cuts.
+ * Cuts beyond -3% are damped by 50%; hard floor at -7%.
+ *
+ * @param {number} requestedCut - Requested health spending change (%)
+ * @returns {{ effectiveCut: number, warning: string|null, warningLevel: string|null }}
+ */
+export function applyOndamFloor(requestedCut) {
+  // No constraint for increases or mild cuts
+  if (requestedCut >= ONDAM_FLOOR.threshold) {
+    return { effectiveCut: requestedCut, warning: null, warningLevel: null }
+  }
+
+  // Damped region: only 50% of cut beyond threshold materialises
+  const excess = requestedCut - ONDAM_FLOOR.threshold
+  let effectiveCut = ONDAM_FLOOR.threshold + excess * ONDAM_FLOOR.dampingFactor
+
+  // Hard floor
+  if (effectiveCut < ONDAM_FLOOR.hardFloor) {
+    effectiveCut = ONDAM_FLOOR.hardFloor
+  }
+
+  const warningLevel = requestedCut < -6 ? 'red' : 'yellow'
+  const warning = `Coupe santé demandée ${requestedCut}% → effective ${effectiveCut.toFixed(1)}% (contrainte ONDAM : déserts médicaux, urgences saturées)`
+
+  return { effectiveCut, warning, warningLevel }
 }
 
 // GDP reference for multiplier calculations (Md€)
@@ -248,7 +328,11 @@ export function calculatePolicyImpact(levers = {}) {
 
   // SÉCURITÉ SOCIALE spending changes
   const pensionSpendingChange = pensionIndexation * BASELINE.securiteSociale.vieillesse / 100
-  const healthSpendingChange  = healthSpending    * BASELINE.securiteSociale.maladie    / 100
+
+  // Apply ONDAM floor constraint to health spending cuts
+  const ondamResult = applyOndamFloor(healthSpending)
+  const effectiveHealthSpending = ondamResult.effectiveCut
+  const healthSpendingChange  = effectiveHealthSpending * BASELINE.securiteSociale.maladie / 100
 
   const ssRevenueChange  = socialContribRevenue + csgRevenue
   const ssSpendingChange = pensionSpendingChange + healthSpendingChange
@@ -288,5 +372,10 @@ export function calculatePolicyImpact(levers = {}) {
       revenue: ssRevenueChange,
       spending: ssSpendingChange,
     },
+
+    // ONDAM floor constraint feedback
+    ondamWarning: ondamResult.warning,
+    ondamWarningLevel: ondamResult.warningLevel,
+    ondamEffectiveCut: effectiveHealthSpending,
   }
 }

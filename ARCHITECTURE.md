@@ -103,19 +103,52 @@ Growth effect per category: `spendingChange (Md€) / GDP_BASE × multiplier`
 
 **Academic basis:** IMF WEO (2012) meta-analysis (Blanchard & Leigh), EC QUEST model (Coenen et al. 2012), Banque de France DGSE estimates, OECD cross-country panel.
 
-### 1.5 `calculatePolicyImpact()` return value
+### 1.5 ONDAM floor constraint
+
+Health spending cuts face diminishing returns beyond −3% due to uncompressible demand (87% déserts médicaux, 52-day specialist waits, 20.8M emergency visits):
+
+```
+if requestedCut < -3%:
+    effectiveCut = -3% + (requestedCut + 3%) × 0.50
+    effectiveCut = max(effectiveCut, -7%)   // hard floor
+```
+
+Examples: −3% → −3% | −5% → −4% | −8% → −5.5% | −10% → −6.5% | −20% → −7% (clamped)
+
+**Source:** DREES 2024, FNAIM healthcare access data.
+
+**UI feedback:** Yellow warning for moderate cuts (−4% to −6%), red warning for severe cuts (below −6%).
+
+### 1.6 `calculatePolicyImpact()` return value
 
 ```js
 {
-  revenueChange,   // Md€ — ETI-adjusted total revenue gain (État + SS)
-  spendingChange,  // Md€ — total spending change (État + SS)
-  growthEffect,    // pp nominal growth — tax drag + spending multipliers combined
+  revenueChange,      // Md€ — ETI-adjusted total revenue gain (État + SS)
+  spendingChange,     // Md€ — total spending change (État + SS), ONDAM-adjusted
+  growthEffect,       // pp nominal growth — tax drag + spending multipliers combined
   etat: { revenue, spending },
   ss:   { revenue, spending },
+  ondamWarning,       // string|null — ONDAM floor warning message
+  ondamWarningLevel,  // 'yellow'|'red'|null — warning severity
+  ondamEffectiveCut,  // number — effective health spending cut after floor
 }
 ```
 
 `growthEffect` feeds directly into the projection engine as a **permanent annual shift** to the nominal growth rate.
+
+### 1.7 COR scenario presets (`PENSION_REFORM_PRESETS`)
+
+Five presets mapping Conseil d'Orientation des Retraites scenarios to pension reform parameters:
+
+| Preset | Retirement age | Desindexation | Cap | Notionnel | Growth override |
+|---|---|---|---|---|---|
+| COR optimiste (1,6%) | 64 | 0 | 0 | No | 1.6% real |
+| COR central (réf. 2024) | 64 | 0 | 0 | No | 1.0% real |
+| COR pessimiste (réf. 2025) | 64 | 0 | 0 | No | 0.7% real |
+| Réforme retraites | 67 | 1.5 | 15% | Yes | — |
+| Réforme globale | 67 | 1.5 | 15% | Yes | 1.6% real |
+
+**Source:** francetdb.com COR scenarios.
 
 ---
 
@@ -221,25 +254,128 @@ A scenario with +1 pp nominal growth gain → real growth +1 pp → unemployment
 
 **Note:** This is a simple static Okun relationship applied each year independently. There is no hysteresis (unemployment does not affect potential growth). For the France calibration, coefficient 0.5 is consistent with OECD estimates and INSEE time-series regressions.
 
-### 2.6 Year-by-year projection loop (`projectFiscalPath`)
+### 2.6 Demographic drift
 
-For each year `t = 0, …, 10`:
+Pension (303.4 Md€) and health (262.3 Md€) spending grow faster than GDP due to worsening dependency ratio (births −24% vs 2010, fertility 1.60, first negative natural balance since 1945).
+
+```
+demographicPressure(t) = t × 0.0048 × (303.4 × 0.80 + 262.3 × 0.50) = t × 1.795 Md/year
+```
+
+Year 10: ~17.9 Md€ additional spending. Year 20: ~35.9 Md€. Enabled by default (`enableDemographicDrift = true`).
+
+**Source:** INSEE 2024 Projections de population, COR 2024 annual report.
+
+**Validation:** COR projects ~1% GDP (~28.5 Md€) additional pension spending by 2035 at adverse scenario. Our 11.6 Md€ pension component at year 10 is conservative.
+
+### 2.7 Senior employment → cotisations revenue
+
+When labor market reform is active, senior employment rate increases (58% → 65% EU benchmark), generating cotisations revenue:
+
+```
+rateGain = min(reformMaturityYears × 0.005, 0.07)
+additionalWorkers = 8.5M × rateGain
+seniorRevenue = additionalWorkers × 14 350 EUR / 1e9  (Md€)
+```
+
+Year 10 (8 years maturity): ~4.9 Md€ additional revenue. Cap at 7 pp gain.
+
+**Source:** DARES 2024, Eurostat senior employment, Hartz reform literature.
+
+### 2.8 Pension reform engine (francetdb.com/#retraites)
+
+Structural pension reforms are modeled as dynamic year-by-year adjustments to pension spending. Unlike the static `pensionIndexation` lever (short-term indexation policy), these reforms phase in over multiple years.
+
+**Retirement age effect:**
+```
+ageAboveCurrent = targetAge − 64
+rampFactor = min(t / 8, 1)        // 8-year phase-in
+saving = 303.4 × ageAboveCurrent × 0.025 × rampFactor
+```
+
+Age 67 at year 10 (full ramp): 303.4 × 3 × 0.025 = 22.8 Md€.
+
+**Desindexation (cumulative):**
+```
+annualReduction = desindexationPoints × 0.005
+ramp = min(t / 3, 1)
+saving = 303.4 × annualReduction × t × ramp
+```
+
+1.5 pt desindexation at year 10: 303.4 × 0.0075 × 10 = 22.8 Md€.
+
+**Pension cap:** Direct % cut of pension mass with 3-year ramp-up.
+
+**Notional accounts (Swedish NDC):** −6% of pension mass, 15-year ramp-up starting 2027.
+
+**Pension floor:** Savings cannot reduce pension mass below 65% of baseline (maxSaving = 303.4 × 0.35 = 106.2 Md€).
+
+**Source:** francetdb.com rtRunModel(), COR 2024.
+
+### 2.9 Migration fiscal impact
+
+Net migration creates a fiscal impact through the labor force channel. France experiences a "brain drain" — emigrants are more productive than immigrants on average.
+
+```
+immigrantWorkers = 270k × 0.57 × 0.75 = 115,425 effective workers/year
+emigrantWorkers  = 200k × 0.88 × 1.10 = 193,600 effective workers/year
+netWorkerChange  = −78,175 effective workers/year
+
+migrationFiscalImpact(t) = t × −78,175 × 14,350 EUR / 1e9 = t × −1.12 Md€/year
+```
+
+Year 10: −11.2 Md€ fiscal impact. Year 25: −28.0 Md€. Enabled by default (`enableMigrationImpact = true`).
+
+**Source:** francetdb.com RT_DEFAULT_HYP, INSEE immigration/emigration data 2023.
+
+### 2.10 Dependance (autonomie) spending growth
+
+Autonomie/dépendance spending (43.5 Md€ baseline) grows at 5.5%/year, significantly faster than GDP (2.5% nominal). This is separate from the demographic pension/health drift already modeled.
+
+```
+dependancePressure(t) = 43.5 × ((1.055)^t − (1.025)^t)
+```
+
+Year 10: ~18.6 Md€ additional spending. Year 25: ~84.8 Md€. Enabled by default (`enableDependanceDrift = true`).
+
+**Source:** francetdb.com, DREES projections dépendance, PLFSS 2025.
+
+### 2.11 Political risk premium (21 bps baseline)
+
+The 2024 political crisis widened OAT-Bund 10Y spread by ~21 bps. This is now explicit in the interest rate decomposition:
+
+- `baseInterestRate = −0.04%` (adjusted down from 0.17%)
+- `politicalPremium = 0.21%` (21 bps)
+- Net effect: effective rate unchanged at ~2.1%, but decomposition shows political component
+
+The user's political risk slider adds **additional** premium beyond the already-priced 21 bps.
+
+**Source:** Bloomberg OAT-Bund 10Y spread Q4 2024; ECB Financial Stability Review Nov 2024.
+
+### 2.12 Year-by-year projection loop (`projectFiscalPath`)
+
+For each year `t = 0, …, N`:
 
 1. **Growth rate:** `nominalGrowth = baseline (2.5%) + growthEffect + reformBoost(t)`
-2. **Marginal interest rate:** `calculateInterestRate(debt/GDP, prevDeficitRatio)`
+2. **Marginal interest rate:** `calculateInterestRate(debt/GDP, prevDeficitRatio)` — includes 21 bps political premium
 3. **Interest charge:** `interest = debt × avgPortfolioRate` (inertia)
 4. **Update portfolio rate:** `avgPortfolioRate = avgPortfolioRate × 0.875 + marginalRate × 0.125`
 5. **Primary deficit:** `primaryDeficit = baseline_primaryDeficit − deficitImprovement`
 6. **Total deficit:** `totalDeficit = primaryDeficit + interest`
 7. **Automatic stabilisers:** `growthFeedback = (nominalGrowth − 2.5%) × GDP × taxElasticity (0.45)`
-8. **Adjusted deficit:** `adjustedDeficit = totalDeficit − growthFeedback`
-9. **Unemployment:** Okun (see above)
-10. **Store output:** {gdp, debt, deficit, debtRatio, deficitRatio, effectiveInterestRate, unemploymentRate, nominalGrowthRate, riskPremiumBps}
-11. **Evolve state:** `prevDeficitRatio = |adjustedDeficit/gdp|`; `gdp × (1 + nominalGrowth)`; `debt + adjustedDeficit`
+8. **Demographic pressure:** `t × 1.795 Md/yr` (pension + health aging pressure)
+9. **Senior employment revenue:** If labor reform active past lag: `additionalWorkers × avgCotisations`
+10. **Pension reform savings:** Retirement age + desindexation + cap + notional accounts (dynamic, ramped)
+11. **Migration fiscal impact:** `t × −1.12 Md/yr` (brain drain)
+12. **Dependance pressure:** `43.5 × ((1.055)^t − (1.025)^t)` (autonomie excess growth)
+13. **Adjusted deficit:** `totalDeficit − growthFeedback + demographicPressure − seniorRevenue − pensionReformSaving − migrationImpact + dependancePressure`
+14. **Unemployment:** Okun (see above)
+15. **Store output:** {gdp, debt, deficit, debtRatio, deficitRatio, effectiveInterestRate, unemploymentRate, nominalGrowthRate, riskPremiumBps, demographicPressure, seniorRevenue, pensionReformSaving, migrationImpact, dependancePressure}
+16. **Evolve state:** `prevDeficitRatio = |adjustedDeficit/gdp|`; `gdp × (1 + nominalGrowth)`; `debt + adjustedDeficit`
 
-**Output fields:** The `effectiveInterestRate` reported to the UI is `avgPortfolioRate × 100` (the actual average cost of the debt stock, not the marginal rate). The `riskPremiumBps` field shows the marginal risk premium for transparency.
+**Output fields:** The `effectiveInterestRate` reported to the UI is `avgPortfolioRate × 100` (the actual average cost of the debt stock, not the marginal rate). The `riskPremiumBps` field shows the marginal risk premium for transparency (now includes 21 bps political component).
 
-### 2.7 Doom-loop assessment (`assessDoomLoop`)
+### 2.13 Doom-loop assessment (`assessDoomLoop`)
 
 The `assessDoomLoop()` utility identifies whether the interest-rate feedback loop is active:
 
@@ -255,17 +391,17 @@ The `assessDoomLoop()` utility identifies whether the interest-rate feedback loo
 
 ```
 PRESETS[selected] → levers (slider state)
-levers → calculatePolicyImpact() → { revenueChange, spendingChange, growthEffect }
-policyImpact → projectFiscalPath() → scenarioProjection[0..10]
-               getBaselineProjection() → baselineProjection[0..10]
-scenarioProjection + baselineProjection → chartData[0..10]
+levers → calculatePolicyImpact() → { revenueChange, spendingChange, growthEffect, ondamWarning }
+policyImpact → projectFiscalPath() → scenarioProjection[0..N]
+               getBaselineProjection() → baselineProjection[0..N]
+scenarioProjection + baselineProjection → chartData[0..N]
 ```
 
 The baseline is recomputed once on load; the scenario is recomputed on every slider change.
 
 ### 3.2 Charts
 
-Four charts are displayed:
+Five charts are displayed:
 
 | Chart | Y-axis | Source field | Baseline shown |
 |---|---|---|---|
@@ -273,8 +409,9 @@ Four charts are displayed:
 | Déficit / PIB | % | `deficitRatio` | grey dashed |
 | Croissance nominale | % | `nominalGrowthRate` | grey dashed |
 | Chômage | % | `unemploymentRate` | grey dashed |
+| Cotisants/retraité | ratio | `cotisantsPerRetraite` | — |
 
-The primary debt/GDP chart is full-width; the three smaller charts sit in a grid below it.
+The primary debt/GDP chart is full-width; the four smaller charts sit in a grid below it.
 
 ### 3.3 Metric snapshots
 
@@ -301,13 +438,13 @@ The UI includes a dedicated Assumptions tab listing all model parameters with ac
 
 ## Module 4 — Test Suite (`src/__tests__/`)
 
-181 tests across three files:
+~282 tests across three files:
 
-| File | Scope | Key assertions |
-|---|---|---|
-| `policy-impact.test.js` | Unit — revenue, spending, growth | ETI-adjusted revenue values; spending multiplier effects; NFP/GL regression tests |
-| `projection-engine.test.js` | Unit — projection engine | Interest rate model; deficit stress premium; debt inertia; Okun Law; constants |
-| `integration.test.js` | End-to-end — preset scenarios | Maximum stimulus; structural reforms; political risk; Knafo; maximum austerity |
+| File | Tests | Scope | Key assertions |
+|---|---|---|---|
+| `projection-engine.test.js` | ~158 | Unit — projection engine | Interest rate model; deficit stress; debt inertia; Okun Law; demographic drift; senior employment; energy/planning constants; pension reform (age, desindexation, cap, notional, floor); migration; dependance |
+| `policy-impact.test.js` | ~87 | Unit — revenue, spending, growth | ETI-adjusted revenue; spending multipliers; ONDAM floor constraint; NFP/GL regression; COR presets |
+| `integration.test.js` | ~37 | End-to-end — preset scenarios | Maximum stimulus; structural reforms; political risk; demographic drift integration; ONDAM integration; COR scenarios; pension reform + demographic interaction; migration/dependance validation |
 
 ---
 
@@ -321,6 +458,10 @@ The UI includes a dedicated Assumptions tab listing all model parameters with ac
 6. **Cross-country reform estimates.** Structural reform growth effects are calibrated from OECD cross-country panels. Country-specific uncertainty for France is high.
 7. **No inflation model.** Inflation is held fixed at 1.8% (ECB target). Demand shocks do not affect inflation, and the real/nominal growth split does not endogenously respond to policy.
 8. **No financial sector contagion.** The doom-loop detection is heuristic; no bank-sovereign feedback is modelled.
+9. **Linear demographic drift.** Dependency ratio grows linearly at +0.48 pp/yr; actual demographic trajectory may accelerate or decelerate depending on immigration and fertility trends.
+10. **Senior employment cap.** Employment rate capped at EU benchmark (65%); no skill-mismatch friction or sectoral absorption capacity modeled.
+11. **ONDAM floor simplification.** Damping factor is constant at 50%; real-world diminishing returns may vary by healthcare sub-sector.
+12. **Political premium static.** The 21 bps baseline is a Q4 2024 point estimate; actual OAT-Bund spread fluctuates daily.
 
 ---
 
@@ -334,7 +475,8 @@ The UI includes a dedicated Assumptions tab listing all model parameters with ac
 | Real growth (baseline) | 0.7% | IMF Article IV 2025 |
 | Inflation | 1.8% | ECB target |
 | Primary deficit | 87.2 Md€ | PLF 2025 |
-| Base interest rate | 0.17% | AFT calibrated to 2.1% effective |
+| Base interest rate | −0.04% | AFT calibrated; political premium separate |
+| Political premium (baseline) | 21 bps | Bloomberg OAT-Bund Q4 2024; ECB FSR Nov 2024 |
 | Risk premium slope 1 (60–90%) | 3 bps/pp | IMF/EC consensus |
 | Risk premium slope 2 (90–120%) | 4 bps/pp | France historical |
 | Risk premium slope 3 (>120%) | 10 bps/pp | Crisis risk estimate |
@@ -353,3 +495,34 @@ The UI includes a dedicated Assumptions tab listing all model parameters with ac
 | Defense multiplier (expansion) | 0.60 | IMF WEO 2012 meta-analysis |
 | Transfers multiplier (expansion) | 0.40 | IMF WEO 2012; BdF DGSE |
 | Health multiplier (expansion) | 0.70 | OECD cross-country panel |
+| Dependency ratio drift | +0.48 pp/yr | INSEE 2024 Projections de population |
+| Pension elasticity to dependency | 0.80 | COR 2024 annual report |
+| Health elasticity to dependency | 0.50 | DREES 2024 |
+| Demographic pressure per year | ~1.8 Md€/yr | Computed: 0.0048 × (303.4×0.80 + 262.3×0.50) |
+| Senior employment rate (current) | 58% | DARES 2024 |
+| Senior employment benchmark | 65% | Eurostat EU average |
+| Senior employment gain per reform year | +0.5 pp/yr | Hartz reform literature (conservative) |
+| Avg cotisations per senior worker | 14 350 EUR | DARES 2024 |
+| ONDAM floor threshold | −3% | DREES 2024 |
+| ONDAM damping factor | 50% | Estimated from healthcare constraint data |
+| ONDAM hard floor | −7% | Safety bound |
+| Energy reform growth effect | +0.07 pp/yr | CRE 2024, Eurostat (reduced: France already competitive) |
+| Planning reform growth effect | +0.20 pp/yr | FNAIM 2024, Hilber & Vermeulen (uplifted: France tension) |
+| Pension mass (vieillesse) | 303.4 Md€ | PLFSS 2025, francetdb.com |
+| Cotisants/retraité | 1.70 | COR 2024 |
+| Ratio decline per year | −0.012 | COR 2024 |
+| Retirement age pension mass effect | −2.5%/yr above 64 | francetdb.com rtRunModel() |
+| Retirement age ramp-up | 8 years | francetdb.com |
+| Desindexation revalo reduction | 0.5 pt per point | francetdb.com |
+| Notional accounts reduction | −6% pension mass | francetdb.com, NDC model |
+| Notional accounts ramp-up | 15 years from 2027 | francetdb.com |
+| Pension floor | 65% of baseline | Political constraint |
+| Immigration flow | 270k/yr | INSEE 2023 |
+| Immigration employment rate | 57% | INSEE 2023 |
+| Immigration productivity factor | 0.75 | francetdb.com |
+| Emigration flow | 200k/yr | INSEE 2023 |
+| Emigration employment rate | 88% | INSEE 2023 |
+| Emigration productivity factor | 1.10 | francetdb.com |
+| Net migration fiscal impact | −1.12 Md€/yr | Computed |
+| Dependance baseline | 43.5 Md€ | PLFSS 2025 branche autonomie |
+| Dependance annual growth | 5.5%/yr | francetdb.com, DREES |

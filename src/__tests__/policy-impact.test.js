@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { BASELINE, PRESETS, calculatePolicyImpact, BEHAVIORAL_RESPONSE, FISCAL_MULTIPLIERS } from '../policy-impact'
+import { BASELINE, PRESETS, PENSION_REFORM_PRESETS, calculatePolicyImpact, BEHAVIORAL_RESPONSE, FISCAL_MULTIPLIERS, ONDAM_FLOOR, applyOndamFloor } from '../policy-impact'
 
 // =============================================================================
 // BASELINE constants - regression guards
@@ -245,9 +245,9 @@ describe('calculatePolicyImpact - spending levers', () => {
   })
 
   describe('health spending', () => {
-    it('+10% produces 26.23 Md spending increase', () => {
+    it('+10% produces 26.23 Md spending increase (no ONDAM floor for increases)', () => {
       const result = calculatePolicyImpact({ healthSpending: 10 })
-      // 10 * 262.3 / 100 = 26.23
+      // 10 * 262.3 / 100 = 26.23 (positive, not affected by floor)
       expect(result.spendingChange).toBeCloseTo(26.23, 2)
     })
   })
@@ -510,5 +510,169 @@ describe('calculatePolicyImpact - presets', () => {
       expect(result).toHaveProperty('etat')
       expect(result).toHaveProperty('ss')
     }
+  })
+})
+
+// =============================================================================
+// ONDAM FLOOR CONSTRAINT
+// =============================================================================
+
+describe('ONDAM_FLOOR constants', () => {
+  it('threshold is -3%', () => {
+    expect(ONDAM_FLOOR.threshold).toBe(-3)
+  })
+
+  it('damping factor is 0.50', () => {
+    expect(ONDAM_FLOOR.dampingFactor).toBe(0.50)
+  })
+
+  it('hard floor is -7%', () => {
+    expect(ONDAM_FLOOR.hardFloor).toBe(-7)
+  })
+})
+
+describe('applyOndamFloor', () => {
+  it('no constraint for positive health spending', () => {
+    const result = applyOndamFloor(5)
+    expect(result.effectiveCut).toBe(5)
+    expect(result.warning).toBeNull()
+  })
+
+  it('no constraint at threshold (-3%)', () => {
+    const result = applyOndamFloor(-3)
+    expect(result.effectiveCut).toBe(-3)
+    expect(result.warning).toBeNull()
+  })
+
+  it('no constraint for mild cuts above threshold', () => {
+    const result = applyOndamFloor(-2)
+    expect(result.effectiveCut).toBe(-2)
+    expect(result.warning).toBeNull()
+  })
+
+  it('-5% → -4% (damped)', () => {
+    const result = applyOndamFloor(-5)
+    // excess = -5 - (-3) = -2, effective = -3 + (-2)*0.5 = -4
+    expect(result.effectiveCut).toBeCloseTo(-4, 1)
+    expect(result.warning).not.toBeNull()
+    expect(result.warningLevel).toBe('yellow')
+  })
+
+  it('-8% → -5.5% (damped)', () => {
+    const result = applyOndamFloor(-8)
+    // excess = -8 - (-3) = -5, effective = -3 + (-5)*0.5 = -5.5
+    expect(result.effectiveCut).toBeCloseTo(-5.5, 1)
+    expect(result.warning).not.toBeNull()
+    expect(result.warningLevel).toBe('red')
+  })
+
+  it('-10% → -6.5% (damped)', () => {
+    const result = applyOndamFloor(-10)
+    // excess = -10 - (-3) = -7, effective = -3 + (-7)*0.5 = -6.5
+    expect(result.effectiveCut).toBeCloseTo(-6.5, 1)
+    expect(result.warning).not.toBeNull()
+  })
+
+  it('hard floor clamps at -7%', () => {
+    const result = applyOndamFloor(-20)
+    // excess = -17, effective = -3 + (-17)*0.5 = -11.5, but clamped to -7
+    expect(result.effectiveCut).toBe(-7)
+  })
+
+  it('zero produces no constraint', () => {
+    const result = applyOndamFloor(0)
+    expect(result.effectiveCut).toBe(0)
+    expect(result.warning).toBeNull()
+  })
+
+  it('yellow warning for moderate cuts (-4% to -6%)', () => {
+    const result = applyOndamFloor(-5)
+    expect(result.warningLevel).toBe('yellow')
+  })
+
+  it('red warning for severe cuts (below -6%)', () => {
+    const result = applyOndamFloor(-7)
+    expect(result.warningLevel).toBe('red')
+  })
+})
+
+describe('ONDAM floor in calculatePolicyImpact', () => {
+  it('health spending -10% is damped to effective -6.5%', () => {
+    const result = calculatePolicyImpact({ healthSpending: -10 })
+    // effective = -6.5%, spending = -6.5 * 262.3 / 100 = -17.05
+    expect(result.spendingChange).toBeCloseTo(-17.05, 0)
+    expect(result.ondamWarning).not.toBeNull()
+    expect(result.ondamEffectiveCut).toBeCloseTo(-6.5, 1)
+  })
+
+  it('health spending -3% is not damped', () => {
+    const result = calculatePolicyImpact({ healthSpending: -3 })
+    // -3 * 262.3 / 100 = -7.869
+    expect(result.spendingChange).toBeCloseTo(-7.869, 1)
+    expect(result.ondamWarning).toBeNull()
+  })
+
+  it('health spending +5% is not affected by floor', () => {
+    const result = calculatePolicyImpact({ healthSpending: 5 })
+    // 5 * 262.3 / 100 = 13.115
+    expect(result.spendingChange).toBeCloseTo(13.115, 1)
+    expect(result.ondamWarning).toBeNull()
+  })
+})
+
+// =============================================================================
+// PENSION REFORM PRESETS (COR scenarios)
+// =============================================================================
+
+describe('PENSION_REFORM_PRESETS', () => {
+  it('has all 5 COR presets', () => {
+    expect(Object.keys(PENSION_REFORM_PRESETS)).toHaveLength(5)
+    expect(PENSION_REFORM_PRESETS).toHaveProperty('corOptimiste')
+    expect(PENSION_REFORM_PRESETS).toHaveProperty('corCentral')
+    expect(PENSION_REFORM_PRESETS).toHaveProperty('corPessimiste')
+    expect(PENSION_REFORM_PRESETS).toHaveProperty('reformeRetraites')
+    expect(PENSION_REFORM_PRESETS).toHaveProperty('reformeGlobale')
+  })
+
+  it('each preset has required structure', () => {
+    for (const [, preset] of Object.entries(PENSION_REFORM_PRESETS)) {
+      expect(preset).toHaveProperty('label')
+      expect(preset).toHaveProperty('description')
+      expect(preset).toHaveProperty('pensionReform')
+      expect(preset.pensionReform).toHaveProperty('retirementAge')
+      expect(preset.pensionReform).toHaveProperty('desindexation')
+      expect(preset.pensionReform).toHaveProperty('pensionCap')
+      expect(preset.pensionReform).toHaveProperty('notionnel')
+    }
+  })
+
+  it('COR optimiste has 1.6% growth', () => {
+    expect(PENSION_REFORM_PRESETS.corOptimiste.macroOverrides.realGrowth).toBe(0.016)
+  })
+
+  it('COR pessimiste has 0.7% growth', () => {
+    expect(PENSION_REFORM_PRESETS.corPessimiste.macroOverrides.realGrowth).toBe(0.007)
+  })
+
+  it('COR central has no pension reform (statu quo)', () => {
+    const pr = PENSION_REFORM_PRESETS.corCentral.pensionReform
+    expect(pr.retirementAge).toBe(64)
+    expect(pr.desindexation).toBe(0)
+    expect(pr.pensionCap).toBe(0)
+    expect(pr.notionnel).toBe(false)
+  })
+
+  it('reformeRetraites has full reform package', () => {
+    const pr = PENSION_REFORM_PRESETS.reformeRetraites.pensionReform
+    expect(pr.retirementAge).toBe(67)
+    expect(pr.desindexation).toBe(1.5)
+    expect(pr.pensionCap).toBe(15)
+    expect(pr.notionnel).toBe(true)
+  })
+
+  it('reformeGlobale combines reform + growth', () => {
+    const preset = PENSION_REFORM_PRESETS.reformeGlobale
+    expect(preset.pensionReform.retirementAge).toBe(67)
+    expect(preset.macroOverrides.realGrowth).toBe(0.016)
   })
 })

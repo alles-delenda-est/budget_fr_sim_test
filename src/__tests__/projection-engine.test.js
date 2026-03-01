@@ -5,6 +5,13 @@ import {
   ROLLOVER_RATE,
   DEFICIT_STRESS_THRESHOLD,
   DEFICIT_STRESS_SENSITIVITY,
+  DEMOGRAPHIC_PARAMS,
+  DEMOGRAPHIC_PRESSURE_PER_YEAR,
+  SENIOR_EMPLOYMENT,
+  PENSION_REFORM,
+  MIGRATION_PARAMS,
+  MIGRATION_NET_WORKERS_PER_YEAR,
+  DEPENDANCE_PARAMS,
   calculateInterestRate,
   calculateReformGrowthBoost,
   projectFiscalPath,
@@ -36,7 +43,11 @@ describe('MACRO_BASELINE constants', () => {
   })
 
   it('has correct base interest rate', () => {
-    expect(MACRO_BASELINE.baseInterestRate).toBe(0.0017)
+    expect(MACRO_BASELINE.baseInterestRate).toBe(-0.0004)
+  })
+
+  it('has correct political premium (21 bps)', () => {
+    expect(MACRO_BASELINE.riskPremium.politicalPremium).toBe(0.0021)
   })
 
   it('has correct nominal growth', () => {
@@ -168,9 +179,10 @@ describe('calculateInterestRate', () => {
       expect(rate).toBeCloseTo(0.0017, 6)
     })
 
-    it('accepts custom base rate', () => {
+    it('accepts custom base rate (political premium still added)', () => {
       const rate = calculateInterestRate(0, 0, { baseRate: 0.03 })
-      expect(rate).toBeCloseTo(0.03, 6)
+      // 0.03 + 0 (no debt premium at 0%) + 0.0021 (political premium) = 0.0321
+      expect(rate).toBeCloseTo(0.0321, 6)
     })
 
     it('adds political risk on top of premium', () => {
@@ -650,6 +662,518 @@ describe('validateProjection', () => {
     it('single-element array returns valid=true (loop starts at i=1)', () => {
       const result = validateProjection([{ debtRatio: 300, effectiveInterestRate: 15, gdp: 100 }])
       expect(result.valid).toBe(true)
+    })
+  })
+})
+
+// =============================================================================
+// DEMOGRAPHIC DRIFT
+// =============================================================================
+
+describe('DEMOGRAPHIC_PARAMS constants', () => {
+  it('dependency ratio drift is 0.0048 per year', () => {
+    expect(DEMOGRAPHIC_PARAMS.dependencyRatioDriftPerYear).toBe(0.0048)
+  })
+
+  it('pension elasticity to dependency is 0.80', () => {
+    expect(DEMOGRAPHIC_PARAMS.pensionElasticityToDependency).toBe(0.80)
+  })
+
+  it('health elasticity to dependency is 0.50', () => {
+    expect(DEMOGRAPHIC_PARAMS.healthElasticityToDependency).toBe(0.50)
+  })
+
+  it('pension baseline is 303.4 Md', () => {
+    expect(DEMOGRAPHIC_PARAMS.pensionBaseline).toBe(303.4)
+  })
+
+  it('health baseline is 262.3 Md', () => {
+    expect(DEMOGRAPHIC_PARAMS.healthBaseline).toBe(262.3)
+  })
+
+  it('DEMOGRAPHIC_PRESSURE_PER_YEAR is approximately 1.795 Md/year', () => {
+    // 0.0048 * (303.4 * 0.80 + 262.3 * 0.50) = 0.0048 * 373.87 ≈ 1.795
+    expect(DEMOGRAPHIC_PRESSURE_PER_YEAR).toBeCloseTo(1.795, 1)
+  })
+})
+
+describe('demographic drift in projectFiscalPath', () => {
+  it('year 0 has zero demographic pressure', () => {
+    const result = projectFiscalPath({}, { years: 5, enableDemographicDrift: true })
+    expect(result[0].demographicPressure).toBe(0)
+  })
+
+  it('year 10 has approximately 18 Md additional spending', () => {
+    const result = projectFiscalPath({}, { years: 10, enableDemographicDrift: true })
+    // 10 * 1.795 ≈ 17.95
+    expect(result[10].demographicPressure).toBeCloseTo(17.9, 0)
+  })
+
+  it('demographic pressure increases monotonically', () => {
+    const result = projectFiscalPath({}, { years: 10, enableDemographicDrift: true })
+    for (let i = 1; i < result.length; i++) {
+      expect(result[i].demographicPressure).toBeGreaterThanOrEqual(result[i - 1].demographicPressure)
+    }
+  })
+
+  it('opt-out: enableDemographicDrift=false produces zero pressure', () => {
+    const result = projectFiscalPath({}, { years: 10, enableDemographicDrift: false })
+    result.forEach(entry => {
+      expect(entry.demographicPressure).toBe(0)
+    })
+  })
+
+  it('demographic drift worsens deficit vs opt-out', () => {
+    const withDrift = projectFiscalPath({}, { years: 10, enableDemographicDrift: true })
+    const noDrift = projectFiscalPath({}, { years: 10, enableDemographicDrift: false })
+    expect(withDrift[10].deficit).toBeGreaterThan(noDrift[10].deficit)
+  })
+
+  it('demographic drift worsens debt ratio vs opt-out by year 10', () => {
+    const withDrift = projectFiscalPath({}, { years: 10, enableDemographicDrift: true })
+    const noDrift = projectFiscalPath({}, { years: 10, enableDemographicDrift: false })
+    expect(withDrift[10].debtRatio).toBeGreaterThan(noDrift[10].debtRatio)
+  })
+
+  it('year 20 has approximately 36 Md additional spending', () => {
+    const result = projectFiscalPath({}, { years: 20, enableDemographicDrift: true })
+    // 20 * 1.795 ≈ 35.9
+    expect(result[20].demographicPressure).toBeCloseTo(35.9, 0)
+  })
+
+  it('default is enabled (demographic drift on by default)', () => {
+    const defaultResult = projectFiscalPath({}, { years: 10 })
+    const explicitOn = projectFiscalPath({}, { years: 10, enableDemographicDrift: true })
+    expect(defaultResult[10].demographicPressure).toBe(explicitOn[10].demographicPressure)
+  })
+
+  it('COR validation: pension pressure at year 10 is conservative vs COR adverse scenario', () => {
+    // COR projects ~1% GDP (~28.5 Md) additional pension spending by 2035 at adverse scenario
+    // Our pension component at year 10: 10 * 0.0048 * 303.4 * 0.80 = 11.65 Md (conservative)
+    const pensionPressure10 = 10 * DEMOGRAPHIC_PARAMS.dependencyRatioDriftPerYear *
+      DEMOGRAPHIC_PARAMS.pensionBaseline * DEMOGRAPHIC_PARAMS.pensionElasticityToDependency
+    expect(pensionPressure10).toBeCloseTo(11.65, 0)
+    expect(pensionPressure10).toBeLessThan(28.5) // Conservative vs COR adverse
+  })
+})
+
+// =============================================================================
+// SENIOR EMPLOYMENT
+// =============================================================================
+
+describe('SENIOR_EMPLOYMENT constants', () => {
+  it('current rate is 58%', () => {
+    expect(SENIOR_EMPLOYMENT.currentRate).toBe(0.58)
+  })
+
+  it('EU benchmark is 65%', () => {
+    expect(SENIOR_EMPLOYMENT.euBenchmark).toBe(0.65)
+  })
+
+  it('max gain matches gap between current and benchmark', () => {
+    expect(SENIOR_EMPLOYMENT.maxGain).toBeCloseTo(
+      SENIOR_EMPLOYMENT.euBenchmark - SENIOR_EMPLOYMENT.currentRate, 2
+    )
+  })
+})
+
+describe('senior employment in projectFiscalPath', () => {
+  it('zero senior revenue without reform', () => {
+    const result = projectFiscalPath({}, { years: 10 })
+    result.forEach(entry => {
+      expect(entry.seniorRevenue).toBe(0)
+    })
+  })
+
+  it('zero senior revenue during reform lag period', () => {
+    const result = projectFiscalPath({}, {
+      years: 10,
+      structuralReform: STRUCTURAL_REFORMS.laborMarket,
+    })
+    // laborMarket lag = 2, so years 0 and 1 should have 0 senior revenue
+    expect(result[0].seniorRevenue).toBe(0)
+    expect(result[1].seniorRevenue).toBe(0)
+  })
+
+  it('positive senior revenue after reform lag', () => {
+    const result = projectFiscalPath({}, {
+      years: 10,
+      structuralReform: STRUCTURAL_REFORMS.laborMarket,
+    })
+    // After lag=2, reform maturity starts
+    expect(result[3].seniorRevenue).toBeGreaterThan(0)
+  })
+
+  it('senior revenue at year 10 (8 years maturity) is approximately 4.88 Md', () => {
+    const result = projectFiscalPath({}, {
+      years: 10,
+      structuralReform: STRUCTURAL_REFORMS.laborMarket,
+    })
+    // rateGain = min(8 * 0.005, 0.07) = 0.04
+    // additionalWorkers = 8.5M * 0.04 = 340000
+    // revenue = 340000 * 14350 / 1e9 = 4.879 Md
+    expect(result[10].seniorRevenue).toBeCloseTo(4.9, 0)
+  })
+
+  it('senior revenue caps at max gain', () => {
+    const result = projectFiscalPath({}, {
+      years: 20,
+      structuralReform: STRUCTURAL_REFORMS.laborMarket,
+    })
+    // maxGain = 0.07, at year 20 maturity = 18, gain = min(18*0.005, 0.07) = 0.07
+    // revenue = 8.5M * 0.07 * 14350 / 1e9 = 8.54 Md
+    const maxRevenue = SENIOR_EMPLOYMENT.seniorPopulation * SENIOR_EMPLOYMENT.maxGain *
+      SENIOR_EMPLOYMENT.avgCotisationsPerWorker / 1e9
+    expect(result[20].seniorRevenue).toBeCloseTo(maxRevenue, 0)
+  })
+
+  it('senior revenue reduces deficit when reform is active', () => {
+    const withReform = projectFiscalPath({}, {
+      years: 10,
+      structuralReform: STRUCTURAL_REFORMS.laborMarket,
+      enableDemographicDrift: false,
+    })
+    const noReform = projectFiscalPath({}, {
+      years: 10,
+      enableDemographicDrift: false,
+    })
+    // Reform adds growth AND senior revenue — deficit should be lower
+    expect(withReform[10].deficit).toBeLessThan(noReform[10].deficit)
+  })
+
+  it('ambitious package also generates senior revenue', () => {
+    const result = projectFiscalPath({}, {
+      years: 10,
+      structuralReform: STRUCTURAL_REFORMS.ambitious,
+    })
+    // ambitious has lag=2, so senior revenue kicks in after year 2
+    expect(result[5].seniorRevenue).toBeGreaterThan(0)
+  })
+
+  it('non-labor reform does not generate senior revenue', () => {
+    const result = projectFiscalPath({}, {
+      years: 10,
+      structuralReform: STRUCTURAL_REFORMS.energy,
+    })
+    result.forEach(entry => {
+      expect(entry.seniorRevenue).toBe(0)
+    })
+  })
+})
+
+// =============================================================================
+// ENERGY AND PLANNING CONSTANT CHANGES
+// =============================================================================
+
+describe('updated structural reform constants', () => {
+  it('energy growth effect reduced to 0.0007', () => {
+    expect(STRUCTURAL_REFORMS.energy.growthEffect).toBe(0.0007)
+  })
+
+  it('planning growth effect increased to 0.0020', () => {
+    expect(STRUCTURAL_REFORMS.planning.growthEffect).toBe(0.0020)
+  })
+})
+
+// =============================================================================
+// PENSION REFORM CONSTANTS
+// =============================================================================
+
+describe('PENSION_REFORM constants', () => {
+  it('pension mass matches DEMOGRAPHIC_PARAMS.pensionBaseline', () => {
+    expect(PENSION_REFORM.pensionMass).toBe(303.4)
+    expect(PENSION_REFORM.pensionMass).toBe(DEMOGRAPHIC_PARAMS.pensionBaseline)
+  })
+
+  it('cotisantsPerRetraite is 1.70', () => {
+    expect(PENSION_REFORM.cotisantsPerRetraite).toBe(1.70)
+  })
+
+  it('retirement age current is 64', () => {
+    expect(PENSION_REFORM.retirementAge.current).toBe(64)
+  })
+
+  it('pension mass effect per year is -2.5%', () => {
+    expect(PENSION_REFORM.retirementAge.pensionMassEffectPerYear).toBe(-0.025)
+  })
+
+  it('notional accounts reduction is 6%', () => {
+    expect(PENSION_REFORM.notionnel.pensionMassReduction).toBe(0.06)
+  })
+
+  it('pension floor is 65%', () => {
+    expect(PENSION_REFORM.pensionFloor).toBe(0.65)
+  })
+})
+
+// =============================================================================
+// PENSION REFORM IN projectFiscalPath
+// =============================================================================
+
+describe('pension reform in projectFiscalPath', () => {
+  describe('retirement age mechanics', () => {
+    it('year 0 has zero pension reform saving (ramp factor = 0)', () => {
+      const result = projectFiscalPath({}, {
+        years: 5,
+        pensionReform: { retirementAge: 67, desindexation: 0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+      })
+      expect(result[0].pensionReformSaving).toBe(0)
+    })
+
+    it('ramp-up: year 4 effect is 50% at rampUpYears=8', () => {
+      const result = projectFiscalPath({}, {
+        years: 10,
+        pensionReform: { retirementAge: 67, desindexation: 0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+      })
+      // ageAboveCurrent = 3, rampFactor at t=4 = 4/8 = 0.5
+      // saving = 303.4 * 3 * 0.025 * 0.5 = 11.3775
+      expect(result[4].pensionReformSaving).toBeCloseTo(11.4, 0)
+    })
+
+    it('retirement age 67 at year 10 produces significant saving', () => {
+      const result = projectFiscalPath({}, {
+        years: 10,
+        pensionReform: { retirementAge: 67, desindexation: 0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+      })
+      // ageAboveCurrent = 3, rampFactor at t=10 = min(10/8, 1) = 1
+      // saving = 303.4 * 3 * 0.025 * 1 = 22.755
+      expect(result[10].pensionReformSaving).toBeCloseTo(22.8, 0)
+    })
+
+    it('retirement age below current (60) produces negative saving (higher spending)', () => {
+      const result = projectFiscalPath({}, {
+        years: 10,
+        pensionReform: { retirementAge: 60, desindexation: 0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+      })
+      // ageAboveCurrent = -4, but we use Math.abs so saving is positive... wait
+      // Actually: ageAboveCurrent = -4, saving = 303.4 * (-4) * 0.025 * ramp = negative
+      // No — the code has: pensionReformSaving += basePensionMass * ageAboveCurrent * Math.abs(pensionMassEffectPerYear) * rampFactor
+      // ageAboveCurrent = -4, so this is negative → savings are negative
+      // Then Math.min(pensionReformSaving, maxSaving) — maxSaving is positive ~106
+      // So negative savings pass through
+      expect(result[10].pensionReformSaving).toBeLessThan(0)
+    })
+  })
+
+  describe('desindexation mechanics', () => {
+    it('year 0 has zero desindexation saving', () => {
+      const result = projectFiscalPath({}, {
+        years: 5,
+        pensionReform: { retirementAge: 64, desindexation: 1.5, pensionCap: 0, notionnel: false, capitalisation: 0 },
+      })
+      expect(result[0].pensionReformSaving).toBe(0)
+    })
+
+    it('desindexation savings increase over time (cumulative)', () => {
+      const result = projectFiscalPath({}, {
+        years: 10,
+        pensionReform: { retirementAge: 64, desindexation: 1.5, pensionCap: 0, notionnel: false, capitalisation: 0 },
+      })
+      // Cumulative: annualReduction = 1.5 * 0.005 = 0.0075
+      // year 5 (past ramp): saving = 303.4 * 0.0075 * 5 = 11.4
+      expect(result[5].pensionReformSaving).toBeCloseTo(11.4, 0)
+      // year 10: saving = 303.4 * 0.0075 * 10 = 22.755
+      expect(result[10].pensionReformSaving).toBeCloseTo(22.8, 0)
+    })
+
+    it('desindexation ramp-up over 3 years', () => {
+      const result = projectFiscalPath({}, {
+        years: 5,
+        pensionReform: { retirementAge: 64, desindexation: 1.0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+      })
+      // year 1: ramp = 1/3, annualReduction = 0.005, saving = 303.4 * 0.005 * 1 * (1/3) = 0.506
+      expect(result[1].pensionReformSaving).toBeCloseTo(0.5, 0)
+      // year 3: ramp = 1, saving = 303.4 * 0.005 * 3 = 4.551
+      expect(result[3].pensionReformSaving).toBeCloseTo(4.6, 0)
+    })
+  })
+
+  describe('pension cap mechanics', () => {
+    it('year 0 has zero pension cap saving', () => {
+      const result = projectFiscalPath({}, {
+        years: 5,
+        pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 15, notionnel: false, capitalisation: 0 },
+      })
+      expect(result[0].pensionReformSaving).toBe(0)
+    })
+
+    it('pension cap ramps up over 3 years', () => {
+      const result = projectFiscalPath({}, {
+        years: 5,
+        pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 10, notionnel: false, capitalisation: 0 },
+      })
+      // year 1: ramp = 1/3, saving = 303.4 * 0.10 * (1/3) = 10.11
+      expect(result[1].pensionReformSaving).toBeCloseTo(10.1, 0)
+      // year 3+: full, saving = 303.4 * 0.10 = 30.34
+      expect(result[3].pensionReformSaving).toBeCloseTo(30.3, 0)
+    })
+
+    it('max pension cap (20%) at full ramp', () => {
+      const result = projectFiscalPath({}, {
+        years: 5,
+        pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 20, notionnel: false, capitalisation: 0 },
+      })
+      // year 5: saving = 303.4 * 0.20 = 60.68
+      expect(result[5].pensionReformSaving).toBeCloseTo(60.7, 0)
+    })
+  })
+
+  describe('notional accounts', () => {
+    it('no effect before startYear (2027 = t=2)', () => {
+      const result = projectFiscalPath({}, {
+        years: 10,
+        pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 0, notionnel: true, capitalisation: 0 },
+      })
+      // t=0 (2025): yearsActive = max(0, 0 - 2) = 0
+      expect(result[0].pensionReformSaving).toBe(0)
+      // t=1 (2026): yearsActive = max(0, 1 - 2) = 0
+      expect(result[1].pensionReformSaving).toBe(0)
+    })
+
+    it('ramps up after startYear', () => {
+      const result = projectFiscalPath({}, {
+        years: 10,
+        pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 0, notionnel: true, capitalisation: 0 },
+      })
+      // t=5 (2030): yearsActive = 3, ramp = 3/15 = 0.2
+      // saving = 303.4 * 0.06 * 0.2 = 3.6408
+      expect(result[5].pensionReformSaving).toBeCloseTo(3.6, 0)
+    })
+
+    it('full effect after 15 years from startYear', () => {
+      const result = projectFiscalPath({}, {
+        years: 20,
+        pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 0, notionnel: true, capitalisation: 0 },
+      })
+      // t=17 (2042): yearsActive = 15, ramp = 1.0
+      // saving = 303.4 * 0.06 = 18.204
+      expect(result[17].pensionReformSaving).toBeCloseTo(18.2, 0)
+    })
+  })
+
+  describe('pension floor', () => {
+    it('extreme reform combo is capped at 35% of baseline', () => {
+      const result = projectFiscalPath({}, {
+        years: 20,
+        pensionReform: { retirementAge: 72, desindexation: 2, pensionCap: 20, notionnel: true, capitalisation: 0 },
+      })
+      const maxSaving = PENSION_REFORM.pensionMass * (1 - PENSION_REFORM.pensionFloor)
+      // maxSaving = 303.4 * 0.35 = 106.19
+      result.forEach(entry => {
+        expect(entry.pensionReformSaving).toBeLessThanOrEqual(maxSaving + 0.1) // rounding tolerance
+      })
+    })
+
+    it('moderate reform does not hit floor', () => {
+      const result = projectFiscalPath({}, {
+        years: 10,
+        pensionReform: { retirementAge: 66, desindexation: 0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+      })
+      const maxSaving = PENSION_REFORM.pensionMass * (1 - PENSION_REFORM.pensionFloor)
+      expect(result[10].pensionReformSaving).toBeLessThan(maxSaving)
+    })
+  })
+
+  describe('pension reform reduces deficit', () => {
+    it('pension reform at age 67 reduces deficit vs baseline at year 10', () => {
+      const baseline = projectFiscalPath({}, { years: 10 })
+      const withReform = projectFiscalPath({}, {
+        years: 10,
+        pensionReform: { retirementAge: 67, desindexation: 0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+      })
+      expect(withReform[10].deficit).toBeLessThan(baseline[10].deficit)
+    })
+  })
+
+  describe('no pension reform = no saving', () => {
+    it('null pensionReform produces zero saving', () => {
+      const result = projectFiscalPath({}, { years: 10 })
+      result.forEach(entry => {
+        expect(entry.pensionReformSaving).toBe(0)
+      })
+    })
+  })
+})
+
+// =============================================================================
+// MIGRATION FISCAL IMPACT
+// =============================================================================
+
+describe('MIGRATION_PARAMS constants', () => {
+  it('immigration annual flow is 270000', () => {
+    expect(MIGRATION_PARAMS.immigration.annualFlow).toBe(270000)
+  })
+
+  it('emigration annual flow is 200000', () => {
+    expect(MIGRATION_PARAMS.emigration.annualFlow).toBe(200000)
+  })
+
+  it('net worker change per year is negative (brain drain)', () => {
+    expect(MIGRATION_NET_WORKERS_PER_YEAR).toBeLessThan(0)
+    // 115425 - 193600 = -78175
+    expect(MIGRATION_NET_WORKERS_PER_YEAR).toBeCloseTo(-78175, 0)
+  })
+})
+
+describe('migration fiscal impact in projectFiscalPath', () => {
+  it('year 0 has zero migration impact', () => {
+    const result = projectFiscalPath({}, { years: 5 })
+    expect(result[0].migrationImpact).toBeCloseTo(0, 1)
+  })
+
+  it('year 10 has approximately -11.2 Md impact', () => {
+    const result = projectFiscalPath({}, { years: 10 })
+    // 10 * -78175 * 14350 / 1e9 = -11.218
+    expect(result[10].migrationImpact).toBeCloseTo(-11.2, 0)
+  })
+
+  it('opt-out produces zero migration impact', () => {
+    const result = projectFiscalPath({}, { years: 10, enableMigrationImpact: false })
+    result.forEach(entry => {
+      expect(entry.migrationImpact).toBe(0)
+    })
+  })
+
+  it('migration impact worsens deficit (adds to spending pressure)', () => {
+    const withMigration = projectFiscalPath({}, { years: 10, enableMigrationImpact: true, enableDependanceDrift: false, enableDemographicDrift: false })
+    const noMigration = projectFiscalPath({}, { years: 10, enableMigrationImpact: false, enableDependanceDrift: false, enableDemographicDrift: false })
+    expect(withMigration[10].deficit).toBeGreaterThan(noMigration[10].deficit)
+  })
+})
+
+// =============================================================================
+// DEPENDANCE SPENDING
+// =============================================================================
+
+describe('DEPENDANCE_PARAMS constants', () => {
+  it('baseline is 43.5 Md', () => {
+    expect(DEPENDANCE_PARAMS.baseline).toBe(43.5)
+  })
+
+  it('annual growth rate is 5.5%', () => {
+    expect(DEPENDANCE_PARAMS.annualGrowthRate).toBe(0.055)
+  })
+})
+
+describe('dependance pressure in projectFiscalPath', () => {
+  it('year 0 has zero dependance pressure', () => {
+    const result = projectFiscalPath({}, { years: 5 })
+    expect(result[0].dependancePressure).toBe(0)
+  })
+
+  it('year 10 has significant excess dependance spending', () => {
+    const result = projectFiscalPath({}, { years: 10 })
+    // 43.5 * ((1.055)^10 - (1.025)^10) = 43.5 * (1.7081 - 1.2801) = 43.5 * 0.4280 ≈ 18.6
+    const expected = DEPENDANCE_PARAMS.baseline *
+      (Math.pow(1 + DEPENDANCE_PARAMS.annualGrowthRate, 10) -
+       Math.pow(1 + DEPENDANCE_PARAMS.gdpGrowthBaseline, 10))
+    expect(result[10].dependancePressure).toBeCloseTo(expected, 0)
+  })
+
+  it('opt-out produces zero dependance pressure', () => {
+    const result = projectFiscalPath({}, { years: 10, enableDependanceDrift: false })
+    result.forEach(entry => {
+      expect(entry.dependancePressure).toBe(0)
     })
   })
 })
