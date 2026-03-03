@@ -97,15 +97,29 @@ export const DEFICIT_STRESS_SENSITIVITY = 0.0017 // 17 bps per 1% deficit/GDP ab
  * - Effects materialize with 2-3 year lag, peak at 5-10 years
  */
 export const STRUCTURAL_REFORMS = {
-  // Individual reform packages with estimated effects
-  laborMarket: {
-    label: "Flexibilisation marché du travail",
-    description: "Assouplissement code du travail, réforme assurance chômage",
-    growthEffect: 0.0015,     // +0.15 pp/year
-    lag: 2,                   // Years to materialize
-    duration: 10,             // Years of peak effect
-    source: "IMF Article IV, OECD Labour Market Reviews",
-    confidence: "medium",     // High uncertainty on magnitude
+  // ==========================================================================
+  // Labour market reforms (replace generic laborMarket)
+  // ==========================================================================
+  hartzIV: {
+    label: "Réforme Hartz-IV (fusion RSA/ASS, conditionnalité)",
+    description: "Fusion aide sociale, durcissement conditions recherche, libéralisation intérim",
+    growthEffect: 0.0035,     // +0.35 pp/year
+    lag: 2,
+    duration: 8,
+    seniorEmploymentGain: 0.04,  // +4pp senior employment rate gain
+    source: "Krebs & Scheffel (2013), Dustmann et al. (2014), Launov & Wälde (2016)",
+    confidence: "medium-low",
+  },
+
+  radicalFlex: {
+    label: "Contrat unique + droit de licencier",
+    description: "Abolition CDI/CDD, contrat unique à indemnité progressive, suppression contrôle judiciaire du motif économique",
+    growthEffect: 0.0045,     // +0.45 pp/year
+    lag: 3,
+    duration: 10,
+    seniorEmploymentGain: 0.06,  // +6pp senior employment rate gain
+    source: "Blanchard & Tirole (2003), Cahuc & Kramarz (2004), Bassanini & Duval (2006)",
+    confidence: "low",
   },
 
   productMarketRegulation: {
@@ -118,14 +132,37 @@ export const STRUCTURAL_REFORMS = {
     confidence: "medium-high",
   },
 
-  planning: {
-    label: "Réforme droit de l'urbanisme",
-    description: "Simplification règles urbanisme et construction",
-    growthEffect: 0.0020,     // +0.20 pp/year (uplifted: France housing tension 4.8 > UK 3.5 baseline)
-    lag: 3,                   // Longer lag (housing stock adjustment)
-    duration: 15,             // Very long-lived effects
-    source: "FNAIM 2024 tension locative, INSEE Enquete Logement, Hilber & Vermeulen (2016)",
-    confidence: "low-medium", // Extrapolated from UK with France-specific uplift
+  // ==========================================================================
+  // Housing/urbanism reforms (replace generic planning)
+  // ==========================================================================
+  housingModerate: {
+    label: "Dérégulation modérée (retour à 2010)",
+    description: "Abolition encadrement des loyers + retrait interdictions DPE F/G",
+    growthEffect: 0.0005,     // +0.05 pp/year
+    lag: 2,
+    duration: 8,
+    source: "Diamond et al. (2019), Sims (2007), APUR (2024)",
+    confidence: "low-medium",
+  },
+
+  housingRentControl: {
+    label: "Abolition encadrement des loyers",
+    description: "Suppression totale de l'encadrement des loyers, PLU et DPE inchangés",
+    growthEffect: 0.0003,     // +0.03 pp/year
+    lag: 1,
+    duration: 6,
+    source: "Diamond et al. (2019), Autor et al. (2014), Sims (2007)",
+    confidence: "low-medium",
+  },
+
+  housingAmbitious: {
+    label: "PLU national R+8 gares + abolition encadrement",
+    description: "Droit de construire R+8 à 1km de toute gare + abolition encadrement des loyers",
+    growthEffect: 0.0025,     // +0.25 pp/year
+    lag: 4,
+    duration: 20,
+    source: "Hsieh & Moretti (2019 révisé), Hilber & Vermeulen (2016), Urban Renaissance Japon (2002)",
+    confidence: "low",
   },
 
   education: {
@@ -151,23 +188,47 @@ export const STRUCTURAL_REFORMS = {
   // Composite scenarios
   ambitious: {
     label: "Paquet structurel ambitieux",
-    description: "Combinaison labour + PMR + planning + education",
+    description: "Combinaison Hartz-IV + PMR + PLU R+8 + education",
     growthEffect: 0.0040,     // +0.40 pp/year (some overlap)
     lag: 2,
     duration: 12,
+    seniorEmploymentGain: 0.04,  // Uses Hartz-IV senior employment effect
     source: "OECD (2014) comprehensive reform estimate",
     confidence: "medium",     // Well-studied
   },
 
   modest: {
-    label: "Réformes ciblées (labour + PMR)",
-    description: "Focus marché du travail et professions réglementées",
+    label: "Réformes ciblées (Hartz-IV + PMR)",
+    description: "Focus Hartz-IV et professions réglementées",
     growthEffect: 0.0020,     // +0.20 pp/year
     lag: 2,
     duration: 10,
+    seniorEmploymentGain: 0.04,  // Uses Hartz-IV senior employment effect
     source: "IMF baseline structural reform scenario",
     confidence: "medium-high",
   },
+}
+
+// =============================================================================
+// SOCIAL HOUSING LIQUIDATION PARAMETERS
+// =============================================================================
+// Source: ANCOLS 2025 (5.4M units), MeilleursAgents IdF prix, USH HLM en chiffres 2024
+// UK Right to Buy (1980) as operational precedent
+//
+// Valuation: 5.4M units, avg 65m², segmented by region:
+//   IdF: 1.4M × 65m² × 6200€/m² × 0.70 décote ≈ 395 Md€
+//   Province attractive: 1.5M × 65m² × 3000€/m² × 0.65 ≈ 190 Md€
+//   Province moins attractive: 2.5M × 65m² × 1800€/m² × 0.50 ≈ 146 Md€
+//   Sous-total brut net ≈ 730 Md€, décote vente programmée → central estimate 750 Md€
+
+export const SOCIAL_HOUSING_LIQUIDATION = {
+  totalAssetValue: 750,      // Md€ (range 550-900)
+  saleDurationYears: 10,     // Sold over 10 years
+  annualProceeds: 75,        // Md€/year (750/10)
+  growthEffect: 0.0002,      // +0.02 pp/year (modest, ambiguous direction)
+  ongoingCostReduction: 0,   // No operating cost savings
+  source: "ANCOLS 2025, USH bilan HLM, MeilleursAgents prix m², UK Right to Buy (1980)",
+  confidence: "low",
 }
 
 // =============================================================================
@@ -438,6 +499,7 @@ export function projectFiscalPath(policyChanges, options = {}) {
     pensionReform = null,         // { retirementAge, desindexation, pensionCap, capitalisation, notionnel }
     enableMigrationImpact = true,
     enableDependanceDrift = true,
+    enableSocialHousingLiquidation = false,
   } = options
 
   const {
@@ -505,14 +567,15 @@ export function projectFiscalPath(policyChanges, options = {}) {
     // 5c. Senior employment revenue (only when labor market reform is active)
     let seniorRevenue = 0
     // Reforms that include labor market component and thus generate senior employment gains
-    const laborReformKeys = ['laborMarket', 'ambitious', 'modest']
-    const hasLaborReform = (structuralReformKeys && structuralReformKeys.includes('laborMarket')) ||
-      (structuralReform && structuralReform === STRUCTURAL_REFORMS.laborMarket) ||
-      (structuralReform && structuralReform === STRUCTURAL_REFORMS.ambitious) ||
-      (structuralReform && structuralReform === STRUCTURAL_REFORMS.modest)
+    const laborReformKeys = ['hartzIV', 'radicalFlex', 'ambitious', 'modest']
+    const hasLaborReform = structuralReform && (
+      structuralReform.seniorEmploymentGain != null ||
+      (structuralReformKeys && laborReformKeys.some(k => structuralReformKeys.includes(k)))
+    )
     if (hasLaborReform && structuralReform) {
+      const maxGain = structuralReform.seniorEmploymentGain || SENIOR_EMPLOYMENT.maxGain
       const reformMaturityYears = Math.max(0, t - structuralReform.lag)
-      const rateGain = Math.min(reformMaturityYears * SENIOR_EMPLOYMENT.rateGainPerReformYear, SENIOR_EMPLOYMENT.maxGain)
+      const rateGain = Math.min(reformMaturityYears * SENIOR_EMPLOYMENT.rateGainPerReformYear, maxGain)
       const additionalWorkers = SENIOR_EMPLOYMENT.seniorPopulation * rateGain
       seniorRevenue = additionalWorkers * SENIOR_EMPLOYMENT.avgCotisationsPerWorker / 1e9  // Md EUR
     }
@@ -571,8 +634,15 @@ export function projectFiscalPath(policyChanges, options = {}) {
          Math.pow(1 + DEPENDANCE_PARAMS.gdpGrowthBaseline, t))
     }
 
+    // 5g. Social housing liquidation windfall (one-time asset sale, years 1-10)
+    let socialHousingWindfall = 0
+    if (enableSocialHousingLiquidation && t >= 1 && t <= SOCIAL_HOUSING_LIQUIDATION.saleDurationYears) {
+      socialHousingWindfall = SOCIAL_HOUSING_LIQUIDATION.annualProceeds  // 75 Md€/yr for 10 years
+    }
+
     const adjustedDeficit = totalDeficit - growthFeedback + demographicPressure
       - seniorRevenue - pensionReformSaving - migrationImpact + dependancePressure
+      - socialHousingWindfall
 
     // 6. Unemployment via Okun's Law
     // Δunemployment = -okunCoefficient × (realGrowth - potentialRealGrowth)
@@ -616,6 +686,7 @@ export function projectFiscalPath(policyChanges, options = {}) {
       pensionReformSaving: Math.round(pensionReformSaving * 10) / 10,
       migrationImpact: Math.round(migrationImpact * 10) / 10,
       dependancePressure: Math.round(dependancePressure * 10) / 10,
+      socialHousingWindfall: Math.round(socialHousingWindfall * 10) / 10,
     })
 
     // 8. Evolve to next year
@@ -750,6 +821,7 @@ export default {
   DEFICIT_STRESS_THRESHOLD,
   DEFICIT_STRESS_SENSITIVITY,
   STRUCTURAL_REFORMS,
+  SOCIAL_HOUSING_LIQUIDATION,
   DEMOGRAPHIC_PARAMS,
   DEMOGRAPHIC_PRESSURE_PER_YEAR,
   SENIOR_EMPLOYMENT,

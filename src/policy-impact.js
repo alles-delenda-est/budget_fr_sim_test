@@ -96,7 +96,7 @@ export const PRESETS = {
       socialContributions: -2,
       csgRate: 0,
     },
-    reforms: ['laborMarket', 'planning'],
+    reforms: ['hartzIV', 'housingAmbitious'],
   },
 
   knafo: {
@@ -188,26 +188,31 @@ export const BEHAVIORAL_RESPONSE = {
     increaseEfficiency: 0.70,  // ETI top-10% 0.25, top-1% 0.55; France ≈54% combined marginal
     decreaseEfficiency: 1.05,
     growthDragPerPp:   -0.0012, // semi-elasticity migration 0.17 (Module 3)
+    growthBoostPerPp:   0.0008, // 67% of drag; Romer & Romer (2010), Kleven et al. (2014)
   },
   corporateTax: {
     increaseEfficiency: 0.55,  // ETI broad capital 0.50, dividends 1.00; profit-shifting
     decreaseEfficiency: 1.10,  // investment attraction
     growthDragPerPp:   -0.0025,
+    growthBoostPerPp:   0.0012, // 48% of drag; Gechert & Heimberger (2022), Mertens & Ravn (2013)
   },
   vat: {
     increaseEfficiency: 0.92,  // most efficient; consumption substitution only
     decreaseEfficiency: 1.00,
     growthDragPerPp:   -0.0004,
+    growthBoostPerPp:   0.0003, // 75% of drag; consumption tax, minimal supply-side gain
   },
   csg: {
     increaseEfficiency: 0.82,  // ETI labour income weighted; broad base
     decreaseEfficiency: 1.02,
     growthDragPerPp:   -0.0008,
+    growthBoostPerPp:   0.0006, // 75% of drag; Mirrlees Review (2011), Saez et al. (2012)
   },
   socialContributions: {
     increaseEfficiency: 0.58,  // France highest OECD wedge; ETI ≈0.25 at this level
     decreaseEfficiency: 1.08,  // employer cut → hiring
     growthDragPerPp:   -0.0018,
+    growthBoostPerPp:   0.0020, // 111% of drag; Crépon & Desplatz (2001), France Stratégie CICE (2020)
   },
 }
 
@@ -348,6 +353,14 @@ export function calculatePolicyImpact(levers = {}) {
   const csgGrowthDrag            = BEHAVIORAL_RESPONSE.csg.growthDragPerPp             * Math.max(0, csgRate)
   const socialContribGrowthDrag  = BEHAVIORAL_RESPONSE.socialContributions.growthDragPerPp * Math.max(0, socialContributions)
 
+  // Growth effects — tax cut boosts (only for DECREASES, symmetric to drag)
+  // Sources: Romer & Romer (2010), Gechert & Heimberger (2022), Crépon & Desplatz (2001)
+  const incomeTaxGrowthBoost     = (BEHAVIORAL_RESPONSE.incomeTax.growthBoostPerPp || 0)           * Math.max(0, -incomeTaxChange)
+  const vatGrowthBoost           = (BEHAVIORAL_RESPONSE.vat.growthBoostPerPp || 0)                 * Math.max(0, -vatChange)
+  const corpTaxGrowthBoost       = (BEHAVIORAL_RESPONSE.corporateTax.growthBoostPerPp || 0)        * Math.max(0, -corpTaxChange)
+  const csgGrowthBoost           = (BEHAVIORAL_RESPONSE.csg.growthBoostPerPp || 0)                 * Math.max(0, -csgRate)
+  const socialContribGrowthBoost = (BEHAVIORAL_RESPONSE.socialContributions.growthBoostPerPp || 0) * Math.max(0, -socialContributions)
+
   // Growth effects — fiscal multipliers for spending (positive for increases, negative for cuts)
   const educationGrowthEffect  = educationSpending    / GDP_BASE * FISCAL_MULTIPLIERS.education.expansion
   const defenseGrowthEffect    = defenseSpending      / GDP_BASE * FISCAL_MULTIPLIERS.defense.expansion
@@ -357,6 +370,7 @@ export function calculatePolicyImpact(levers = {}) {
 
   const growthEffect =
     incomeTaxGrowthDrag + vatGrowthDrag + corpTaxGrowthDrag + csgGrowthDrag + socialContribGrowthDrag +
+    incomeTaxGrowthBoost + vatGrowthBoost + corpTaxGrowthBoost + csgGrowthBoost + socialContribGrowthBoost +
     educationGrowthEffect + defenseGrowthEffect + solidarityGrowthEffect + healthGrowthEffect + pensionGrowthEffect
 
   return {

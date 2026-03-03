@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   MACRO_BASELINE,
   STRUCTURAL_REFORMS,
+  SOCIAL_HOUSING_LIQUIDATION,
   ROLLOVER_RATE,
   DEFICIT_STRESS_THRESHOLD,
   DEFICIT_STRESS_SENSITIVITY,
@@ -240,39 +241,38 @@ describe('calculateInterestRate', () => {
 // =============================================================================
 
 describe('calculateReformGrowthBoost', () => {
-  const laborMarket = STRUCTURAL_REFORMS.laborMarket
-  // growthEffect: 0.0015, lag: 2, duration: 10
+  const hartzIV = STRUCTURAL_REFORMS.hartzIV
+  // growthEffect: 0.0035, lag: 2, duration: 8
 
-  describe('phase lifecycle (laborMarket)', () => {
+  describe('phase lifecycle (hartzIV)', () => {
     it('returns 0 at year 0', () => {
-      expect(calculateReformGrowthBoost(0, laborMarket)).toBe(0)
+      expect(calculateReformGrowthBoost(0, hartzIV)).toBe(0)
     })
 
     it('linear phase-in at year 1 (50% of effect)', () => {
-      expect(calculateReformGrowthBoost(1, laborMarket)).toBeCloseTo(0.00075, 6)
+      expect(calculateReformGrowthBoost(1, hartzIV)).toBeCloseTo(0.0035 * 0.5, 6)
     })
 
     it('reaches full effect at lag year', () => {
-      expect(calculateReformGrowthBoost(2, laborMarket)).toBeCloseTo(0.0015, 6)
+      expect(calculateReformGrowthBoost(2, hartzIV)).toBeCloseTo(0.0035, 6)
     })
 
     it('maintains full effect during peak period', () => {
-      expect(calculateReformGrowthBoost(5, laborMarket)).toBeCloseTo(0.0015, 6)
-      expect(calculateReformGrowthBoost(11, laborMarket)).toBeCloseTo(0.0015, 6)
+      expect(calculateReformGrowthBoost(5, hartzIV)).toBeCloseTo(0.0035, 6)
+      expect(calculateReformGrowthBoost(9, hartzIV)).toBeCloseTo(0.0035, 6)
     })
 
     it('begins decay at lag+duration', () => {
-      // year 12 = lag(2) + duration(10), yearsSincePeak = 0
-      // effect = 0.0015 * 0.93^0 = 0.0015
-      expect(calculateReformGrowthBoost(12, laborMarket)).toBeCloseTo(0.0015, 6)
+      // year 10 = lag(2) + duration(8), yearsSincePeak = 0
+      expect(calculateReformGrowthBoost(10, hartzIV)).toBeCloseTo(0.0035, 6)
     })
 
     it('decays exponentially after peak', () => {
-      // year 13: 0.0015 * 0.93^1 = 0.001395
-      expect(calculateReformGrowthBoost(13, laborMarket)).toBeCloseTo(0.001395, 6)
-      // year 15: 0.0015 * 0.93^3
-      expect(calculateReformGrowthBoost(15, laborMarket)).toBeCloseTo(
-        0.0015 * Math.pow(0.93, 3), 6
+      // year 11: 0.0035 * 0.93^1
+      expect(calculateReformGrowthBoost(11, hartzIV)).toBeCloseTo(0.0035 * 0.93, 6)
+      // year 13: 0.0035 * 0.93^3
+      expect(calculateReformGrowthBoost(13, hartzIV)).toBeCloseTo(
+        0.0035 * Math.pow(0.93, 3), 6
       )
     })
   })
@@ -309,9 +309,9 @@ describe('calculateReformGrowthBoost', () => {
 
   describe('edge cases (documenting behavior)', () => {
     it('negative year produces negative boost via phase-in formula', () => {
-      // year = -1, boost = 0.0015 * (-1/2) = -0.00075
-      const boost = calculateReformGrowthBoost(-1, laborMarket)
-      expect(boost).toBeCloseTo(-0.00075, 6)
+      // year = -1, boost = 0.0035 * (-1/2) = -0.00175
+      const boost = calculateReformGrowthBoost(-1, hartzIV)
+      expect(boost).toBeCloseTo(-0.00175, 6)
     })
   })
 })
@@ -788,9 +788,9 @@ describe('senior employment in projectFiscalPath', () => {
   it('zero senior revenue during reform lag period', () => {
     const result = projectFiscalPath({}, {
       years: 10,
-      structuralReform: STRUCTURAL_REFORMS.laborMarket,
+      structuralReform: STRUCTURAL_REFORMS.hartzIV,
     })
-    // laborMarket lag = 2, so years 0 and 1 should have 0 senior revenue
+    // hartzIV lag = 2, so years 0 and 1 should have 0 senior revenue
     expect(result[0].seniorRevenue).toBe(0)
     expect(result[1].seniorRevenue).toBe(0)
   })
@@ -798,31 +798,43 @@ describe('senior employment in projectFiscalPath', () => {
   it('positive senior revenue after reform lag', () => {
     const result = projectFiscalPath({}, {
       years: 10,
-      structuralReform: STRUCTURAL_REFORMS.laborMarket,
+      structuralReform: STRUCTURAL_REFORMS.hartzIV,
     })
     // After lag=2, reform maturity starts
     expect(result[3].seniorRevenue).toBeGreaterThan(0)
   })
 
-  it('senior revenue at year 10 (8 years maturity) is approximately 4.88 Md', () => {
+  it('hartzIV senior revenue at year 10 uses seniorEmploymentGain=0.04', () => {
     const result = projectFiscalPath({}, {
       years: 10,
-      structuralReform: STRUCTURAL_REFORMS.laborMarket,
+      structuralReform: STRUCTURAL_REFORMS.hartzIV,
     })
-    // rateGain = min(8 * 0.005, 0.07) = 0.04
+    // maxGain = 0.04 (from seniorEmploymentGain)
+    // rateGain = min(8 * 0.005, 0.04) = 0.04
     // additionalWorkers = 8.5M * 0.04 = 340000
     // revenue = 340000 * 14350 / 1e9 = 4.879 Md
     expect(result[10].seniorRevenue).toBeCloseTo(4.9, 0)
   })
 
-  it('senior revenue caps at max gain', () => {
+  it('radicalFlex uses higher seniorEmploymentGain=0.06', () => {
     const result = projectFiscalPath({}, {
       years: 20,
-      structuralReform: STRUCTURAL_REFORMS.laborMarket,
+      structuralReform: STRUCTURAL_REFORMS.radicalFlex,
     })
-    // maxGain = 0.07, at year 20 maturity = 18, gain = min(18*0.005, 0.07) = 0.07
-    // revenue = 8.5M * 0.07 * 14350 / 1e9 = 8.54 Md
-    const maxRevenue = SENIOR_EMPLOYMENT.seniorPopulation * SENIOR_EMPLOYMENT.maxGain *
+    // maxGain = 0.06, at year 20 maturity = 17 (lag=3), gain = min(17*0.005, 0.06) = 0.06
+    // revenue = 8.5M * 0.06 * 14350 / 1e9 = 7.32 Md
+    const expectedRevenue = SENIOR_EMPLOYMENT.seniorPopulation * 0.06 *
+      SENIOR_EMPLOYMENT.avgCotisationsPerWorker / 1e9
+    expect(result[20].seniorRevenue).toBeCloseTo(expectedRevenue, 0)
+  })
+
+  it('senior revenue caps at reform-specific max gain', () => {
+    const result = projectFiscalPath({}, {
+      years: 20,
+      structuralReform: STRUCTURAL_REFORMS.hartzIV,
+    })
+    // maxGain = 0.04, at year 20 maturity = 18, gain = min(18*0.005, 0.04) = 0.04
+    const maxRevenue = SENIOR_EMPLOYMENT.seniorPopulation * 0.04 *
       SENIOR_EMPLOYMENT.avgCotisationsPerWorker / 1e9
     expect(result[20].seniorRevenue).toBeCloseTo(maxRevenue, 0)
   })
@@ -830,7 +842,7 @@ describe('senior employment in projectFiscalPath', () => {
   it('senior revenue reduces deficit when reform is active', () => {
     const withReform = projectFiscalPath({}, {
       years: 10,
-      structuralReform: STRUCTURAL_REFORMS.laborMarket,
+      structuralReform: STRUCTURAL_REFORMS.hartzIV,
       enableDemographicDrift: false,
     })
     const noReform = projectFiscalPath({}, {
@@ -865,13 +877,105 @@ describe('senior employment in projectFiscalPath', () => {
 // ENERGY AND PLANNING CONSTANT CHANGES
 // =============================================================================
 
-describe('updated structural reform constants', () => {
-  it('energy growth effect reduced to 0.0007', () => {
+describe('structural reform constants', () => {
+  it('energy growth effect is 0.0007', () => {
     expect(STRUCTURAL_REFORMS.energy.growthEffect).toBe(0.0007)
   })
 
-  it('planning growth effect increased to 0.0020', () => {
-    expect(STRUCTURAL_REFORMS.planning.growthEffect).toBe(0.0020)
+  it('hartzIV growth effect is 0.0035', () => {
+    expect(STRUCTURAL_REFORMS.hartzIV.growthEffect).toBe(0.0035)
+  })
+
+  it('radicalFlex growth effect is 0.0045', () => {
+    expect(STRUCTURAL_REFORMS.radicalFlex.growthEffect).toBe(0.0045)
+  })
+
+  it('housingModerate growth effect is 0.0005', () => {
+    expect(STRUCTURAL_REFORMS.housingModerate.growthEffect).toBe(0.0005)
+  })
+
+  it('housingRentControl growth effect is 0.0003', () => {
+    expect(STRUCTURAL_REFORMS.housingRentControl.growthEffect).toBe(0.0003)
+  })
+
+  it('housingAmbitious growth effect is 0.0025', () => {
+    expect(STRUCTURAL_REFORMS.housingAmbitious.growthEffect).toBe(0.0025)
+  })
+
+  it('hartzIV has seniorEmploymentGain of 0.04', () => {
+    expect(STRUCTURAL_REFORMS.hartzIV.seniorEmploymentGain).toBe(0.04)
+  })
+
+  it('radicalFlex has seniorEmploymentGain of 0.06', () => {
+    expect(STRUCTURAL_REFORMS.radicalFlex.seniorEmploymentGain).toBe(0.06)
+  })
+
+  it('housing reforms have no seniorEmploymentGain', () => {
+    expect(STRUCTURAL_REFORMS.housingModerate.seniorEmploymentGain).toBeUndefined()
+    expect(STRUCTURAL_REFORMS.housingRentControl.seniorEmploymentGain).toBeUndefined()
+    expect(STRUCTURAL_REFORMS.housingAmbitious.seniorEmploymentGain).toBeUndefined()
+  })
+
+  it('old laborMarket and planning keys are removed', () => {
+    expect(STRUCTURAL_REFORMS.laborMarket).toBeUndefined()
+    expect(STRUCTURAL_REFORMS.planning).toBeUndefined()
+  })
+})
+
+describe('SOCIAL_HOUSING_LIQUIDATION constants', () => {
+  it('total asset value is 750 Md', () => {
+    expect(SOCIAL_HOUSING_LIQUIDATION.totalAssetValue).toBe(750)
+  })
+
+  it('sale duration is 10 years', () => {
+    expect(SOCIAL_HOUSING_LIQUIDATION.saleDurationYears).toBe(10)
+  })
+
+  it('annual proceeds is 75 Md', () => {
+    expect(SOCIAL_HOUSING_LIQUIDATION.annualProceeds).toBe(75)
+  })
+
+  it('growth effect is 0.0002', () => {
+    expect(SOCIAL_HOUSING_LIQUIDATION.growthEffect).toBe(0.0002)
+  })
+})
+
+describe('social housing liquidation in projectFiscalPath', () => {
+  it('year 0 has zero windfall', () => {
+    const result = projectFiscalPath({}, { years: 10, enableSocialHousingLiquidation: true })
+    expect(result[0].socialHousingWindfall).toBe(0)
+  })
+
+  it('years 1-10 have 75 Md windfall', () => {
+    const result = projectFiscalPath({}, { years: 12, enableSocialHousingLiquidation: true })
+    for (let t = 1; t <= 10; t++) {
+      expect(result[t].socialHousingWindfall).toBe(75)
+    }
+  })
+
+  it('year 11+ has zero windfall', () => {
+    const result = projectFiscalPath({}, { years: 12, enableSocialHousingLiquidation: true })
+    expect(result[11].socialHousingWindfall).toBe(0)
+    expect(result[12].socialHousingWindfall).toBe(0)
+  })
+
+  it('social housing reduces deficit during years 1-10', () => {
+    const withHousing = projectFiscalPath({}, { years: 10, enableSocialHousingLiquidation: true })
+    const noHousing = projectFiscalPath({}, { years: 10, enableSocialHousingLiquidation: false })
+    expect(withHousing[5].deficit).toBeLessThan(noHousing[5].deficit)
+  })
+
+  it('social housing reduces debt ratio at year 10', () => {
+    const withHousing = projectFiscalPath({}, { years: 10, enableSocialHousingLiquidation: true })
+    const noHousing = projectFiscalPath({}, { years: 10, enableSocialHousingLiquidation: false })
+    expect(withHousing[10].debtRatio).toBeLessThan(noHousing[10].debtRatio)
+  })
+
+  it('disabled by default', () => {
+    const result = projectFiscalPath({}, { years: 5 })
+    result.forEach(entry => {
+      expect(entry.socialHousingWindfall).toBe(0)
+    })
   })
 })
 

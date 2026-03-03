@@ -19,6 +19,7 @@ import './App.css'
 import {
   MACRO_BASELINE,
   STRUCTURAL_REFORMS,
+  SOCIAL_HOUSING_LIQUIDATION,
   ROLLOVER_RATE,
   DEFICIT_STRESS_THRESHOLD,
   DEFICIT_STRESS_SENSITIVITY,
@@ -180,11 +181,18 @@ const ASSUMPTIONS = {
   ],
   reforms: [
     {
-      parameter: "Réforme marché du travail",
-      value: "+0,15 pp/an",
-      impact: "Croissance potentielle sur 10 ans, délai 2 ans",
-      source: "FMI Article IV France (2024)",
-      link: "https://www.imf.org/en/Countries/FRA"
+      parameter: "Hartz-IV (fusion RSA/ASS)",
+      value: "+0,35 pp/an",
+      impact: "Croissance potentielle, délai 2 ans, emploi seniors +4pp",
+      source: "Krebs & Scheffel (2013), Dustmann et al. (2014)",
+      link: null
+    },
+    {
+      parameter: "Contrat unique + droit de licencier",
+      value: "+0,45 pp/an",
+      impact: "Flexibilisation radicale, délai 3 ans, emploi seniors +6pp",
+      source: "Blanchard & Tirole (2003), Bassanini & Duval (2006)",
+      link: null
     },
     {
       parameter: "Déréglementation marchés (PMR)",
@@ -194,11 +202,32 @@ const ASSUMPTIONS = {
       link: "https://www.oecd.org/economy/reform/indicators-of-product-market-regulation/"
     },
     {
-      parameter: "Réforme planification urbaine",
-      value: "+0,20 pp/an",
-      impact: "Productivité via logement, délai 3 ans (uplift France: tension 4.8)",
-      source: "FNAIM 2024, Hilber & Vermeulen (2016)",
+      parameter: "Dérégulation logement modérée",
+      value: "+0,05 pp/an",
+      impact: "Retour à 2010, abolition encadrement loyers + DPE",
+      source: "Diamond et al. (2019), Sims (2007)",
+      link: null
+    },
+    {
+      parameter: "Abolition encadrement des loyers",
+      value: "+0,03 pp/an",
+      impact: "Suppression contrôle loyers, PLU/DPE inchangés",
+      source: "Diamond et al. (2019), Autor et al. (2014)",
+      link: null
+    },
+    {
+      parameter: "PLU national R+8 gares + abolition encadrement",
+      value: "+0,25 pp/an",
+      impact: "Construction R+8 à 1km gares, délai 4 ans, durée 20 ans",
+      source: "Hsieh & Moretti (2019), Hilber & Vermeulen (2016)",
       link: "https://doi.org/10.1016/j.jue.2015.11.003"
+    },
+    {
+      parameter: "Liquidation parc HLM",
+      value: "750 Md€ sur 10 ans",
+      impact: "75 Md€/an réduction dette, effet croissance +0,02pp/an",
+      source: "ANCOLS 2025, MeilleursAgents, USH, UK Right to Buy",
+      link: null
     },
     {
       parameter: "Réforme éducation/formation",
@@ -213,6 +242,43 @@ const ASSUMPTIONS = {
       impact: "Compétitivité industrielle, délai 2 ans (réduit: France déjà compétitive)",
       source: "CRE 2024, Eurostat energy prices",
       link: "https://www.cre.fr/"
+    },
+  ],
+  taxCutBoosts: [
+    {
+      parameter: "IR: boost croissance par pp de baisse",
+      value: "+0,08 pp",
+      impact: "67% du drag; asymétrique (émigration irréversible)",
+      source: "Romer & Romer (2010), Kleven et al. (2014)",
+      link: null
+    },
+    {
+      parameter: "IS: boost croissance par pp de baisse",
+      value: "+0,12 pp",
+      impact: "48% du drag; investissement, profit-shifting retour",
+      source: "Gechert & Heimberger (2022), Mertens & Ravn (2013)",
+      link: null
+    },
+    {
+      parameter: "TVA: boost croissance par pp de baisse",
+      value: "+0,03 pp",
+      impact: "75% du drag; taxe conso, peu d'effet offre",
+      source: "Mirrlees Review (2011)",
+      link: null
+    },
+    {
+      parameter: "CSG: boost croissance par pp de baisse",
+      value: "+0,06 pp",
+      impact: "75% du drag; base large, faible distorsion",
+      source: "Mirrlees Review (2011), Saez et al. (2012)",
+      link: null
+    },
+    {
+      parameter: "Cotisations: boost croissance par pp de baisse",
+      value: "+0,20 pp",
+      impact: "111% du drag; coin fiscal France 47%, effet emploi SMIC",
+      source: "Crépon & Desplatz (2001), France Stratégie CICE (2020)",
+      link: null
     },
   ],
   pensionReform: [
@@ -269,6 +335,21 @@ const ASSUMPTIONS = {
 }
 
 // =============================================================================
+// REFORM GROUPING
+// =============================================================================
+
+const HOUSING_REFORM_KEYS = ['housingModerate', 'housingRentControl', 'housingAmbitious']
+const CHECKBOX_REFORM_KEYS = Object.keys(STRUCTURAL_REFORMS).filter(
+  k => !HOUSING_REFORM_KEYS.includes(k)
+)
+
+const REFORM_GROUPS = [
+  { label: "Marché du travail", keys: ['hartzIV', 'radicalFlex'] },
+  { label: "Autre", keys: ['productMarketRegulation', 'education', 'energy'] },
+  { label: "Paquets composites", keys: ['ambitious', 'modest'] },
+]
+
+// =============================================================================
 // MAIN APP COMPONENT
 // =============================================================================
 
@@ -296,28 +377,40 @@ function App() {
   // Tab navigation
   const [activeTab, setActiveTab] = useState('simulator')
 
-  // Structural reform selector - SUPPORTS MULTIPLE
+  // Structural reform selector - SUPPORTS MULTIPLE (checkbox reforms)
   const [selectedReforms, setSelectedReforms] = useState([])  // Array of reform keys
+  // Housing reform selector - mutually exclusive (radio buttons)
+  const [selectedHousingReform, setSelectedHousingReform] = useState(null)  // string | null
+  // Social housing liquidation toggle
+  const [enableSocialHousingLiquidation, setEnableSocialHousingLiquidation] = useState(false)
 
-  // Calculate combined reform effect
+  // Calculate combined reform effect (checkbox reforms + housing radio)
   const combinedReformEffect = useMemo(() => {
-    if (selectedReforms.length === 0) return null
+    const allKeys = [...selectedReforms]
+    if (selectedHousingReform) allKeys.push(selectedHousingReform)
+
+    if (allKeys.length === 0) return null
 
     // Sum growth effects (with diminishing returns for overlap)
-    const totalGrowthEffect = selectedReforms.reduce((sum, key) => {
+    const totalGrowthEffect = allKeys.reduce((sum, key) => {
       return sum + STRUCTURAL_REFORMS[key].growthEffect
     }, 0) * 0.85  // 15% overlap penalty when combining
 
+    // Use seniorEmploymentGain from the first reform that has one
+    const seniorReform = allKeys.find(k => STRUCTURAL_REFORMS[k].seniorEmploymentGain != null)
+    const seniorEmploymentGain = seniorReform ? STRUCTURAL_REFORMS[seniorReform].seniorEmploymentGain : undefined
+
     return {
-      label: `${selectedReforms.length} réformes combinées`,
+      label: `${allKeys.length} réformes combinées`,
       growthEffect: totalGrowthEffect,
-      lag: Math.min(...selectedReforms.map(k => STRUCTURAL_REFORMS[k].lag)),
-      duration: Math.max(...selectedReforms.map(k => STRUCTURAL_REFORMS[k].duration)),
+      lag: Math.min(...allKeys.map(k => STRUCTURAL_REFORMS[k].lag)),
+      duration: Math.max(...allKeys.map(k => STRUCTURAL_REFORMS[k].duration)),
       source: "Combinaison personnalisée",
       confidence: "variable",
-      reforms: selectedReforms.map(k => STRUCTURAL_REFORMS[k].label),
+      reforms: allKeys.map(k => STRUCTURAL_REFORMS[k].label),
+      ...(seniorEmploymentGain != null ? { seniorEmploymentGain } : {}),
     }
-  }, [selectedReforms])
+  }, [selectedReforms, selectedHousingReform])
 
   // Toggle reform selection
   const toggleReform = (reformKey) => {
@@ -347,8 +440,12 @@ function App() {
     setSocialContributions(levers.socialContributions)
     setCsgRate(levers.csgRate)
 
-    // Apply reforms
-    setSelectedReforms(reforms)
+    // Apply reforms — separate housing reforms (radio) from checkbox reforms
+    const housingKeys = ['housingModerate', 'housingRentControl', 'housingAmbitious']
+    const housingReform = reforms.find(k => housingKeys.includes(k)) || null
+    const checkboxReforms = reforms.filter(k => !housingKeys.includes(k))
+    setSelectedReforms(checkboxReforms)
+    setSelectedHousingReform(housingReform)
   }
 
   // Apply COR / pension reform preset
@@ -405,12 +502,16 @@ function App() {
 
     // Policy + Reform scenario
     const reform = combinedReformEffect
+    const allReformKeys = [...selectedReforms]
+    if (selectedHousingReform) allReformKeys.push(selectedHousingReform)
     const fullScenario = projectFiscalPath(policyImpact, {
       years: projectionYears,
       enableRiskPremium: true,
       politicalRiskPremium: politicalRisk / 10000,
       structuralReform: reform,
+      structuralReformKeys: allReformKeys.length > 0 ? allReformKeys : null,
       pensionReform: pensionReformOption,
+      enableSocialHousingLiquidation,
     })
 
     // Merge baseline fields into fullScenario for chart comparison
@@ -427,7 +528,7 @@ function App() {
     }))
 
     return { baseline, policyScenario, fullScenario, chartData }
-  }, [policyImpact, projectionYears, selectedReforms, politicalRisk, combinedReformEffect, pensionReformOption])
+  }, [policyImpact, projectionYears, selectedReforms, selectedHousingReform, politicalRisk, combinedReformEffect, pensionReformOption, enableSocialHousingLiquidation])
 
   // Assess doom loop risk
   const doomLoopAssessment = useMemo(() => {
@@ -761,6 +862,12 @@ function App() {
                     <span>Pression dépendance :</span>
                     <span className="sustainability-value">+{projections.fullScenario[10].dependancePressure} Md€</span>
                   </div>
+                  {enableSocialHousingLiquidation && (
+                    <div className="sustainability-row">
+                      <span>Cession HLM (an 10) :</span>
+                      <span className="sustainability-value">{projections.fullScenario[10].socialHousingWindfall} Md€</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1029,29 +1136,93 @@ function App() {
         <section className="controls-section">
           <h2>Réformes structurelles</h2>
           <p className="section-help">
-            Sélectionner plusieurs réformes (effet cumulatif avec pénalité de 15% pour chevauchements)
+            Sélectionner plusieurs réformes (effet cumulatif avec pénalité de 15% pour chevauchements).
+            Les réformes logement sont mutuellement exclusives (radio).
           </p>
 
-          <div className="reform-checkboxes">
-            {Object.entries(STRUCTURAL_REFORMS).map(([key, reform]) => (
-              <label key={key} className="reform-checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={selectedReforms.includes(key)}
-                  onChange={() => toggleReform(key)}
-                />
-                <div className="reform-checkbox-content">
-                  <strong>{reform.label}</strong>
-                  <span className="reform-effect">+{(reform.growthEffect * 100).toFixed(2)}pp/an</span>
-                  <span className="reform-details">
-                    Délai: {reform.lag} ans • Durée: {reform.duration} ans
-                  </span>
-                </div>
-              </label>
-            ))}
+          {/* Checkbox reforms grouped by category */}
+          {REFORM_GROUPS.map(group => (
+            <div key={group.label} className="reform-group">
+              <h4 className="reform-group-title">{group.label}</h4>
+              <div className="reform-checkboxes">
+                {group.keys.filter(k => STRUCTURAL_REFORMS[k]).map(key => {
+                  const reform = STRUCTURAL_REFORMS[key]
+                  return (
+                    <label key={key} className="reform-checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={selectedReforms.includes(key)}
+                        onChange={() => toggleReform(key)}
+                      />
+                      <div className="reform-checkbox-content">
+                        <strong>{reform.label}</strong>
+                        <span className="reform-effect">+{(reform.growthEffect * 100).toFixed(2)}pp/an</span>
+                        <span className="reform-details">
+                          Délai: {reform.lag} ans • Durée: {reform.duration} ans
+                          {reform.seniorEmploymentGain != null && ` • Emploi seniors: +${(reform.seniorEmploymentGain * 100).toFixed(0)}pp`}
+                        </span>
+                      </div>
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+
+          {/* Housing reforms - radio buttons (mutually exclusive) */}
+          <div className="reform-group">
+            <h4 className="reform-group-title">Logement / Urbanisme</h4>
+            <div className="reform-checkboxes">
+              {HOUSING_REFORM_KEYS.map(key => {
+                const reform = STRUCTURAL_REFORMS[key]
+                return (
+                  <label key={key} className="reform-checkbox-label">
+                    <input
+                      type="radio"
+                      name="housingReform"
+                      checked={selectedHousingReform === key}
+                      onChange={() => setSelectedHousingReform(
+                        selectedHousingReform === key ? null : key
+                      )}
+                    />
+                    <div className="reform-checkbox-content">
+                      <strong>{reform.label}</strong>
+                      <span className="reform-effect">+{(reform.growthEffect * 100).toFixed(2)}pp/an</span>
+                      <span className="reform-details">
+                        Délai: {reform.lag} ans • Durée: {reform.duration} ans
+                      </span>
+                    </div>
+                  </label>
+                )
+              })}
+              {selectedHousingReform && (
+                <button
+                  className="reform-clear-btn"
+                  onClick={() => setSelectedHousingReform(null)}
+                >
+                  Aucune réforme logement
+                </button>
+              )}
+            </div>
+
+            {/* Social housing liquidation toggle */}
+            <label className="reform-checkbox-label" style={{ marginTop: '8px', borderTop: '1px solid #e2e8f0', paddingTop: '8px' }}>
+              <input
+                type="checkbox"
+                checked={enableSocialHousingLiquidation}
+                onChange={(e) => setEnableSocialHousingLiquidation(e.target.checked)}
+              />
+              <div className="reform-checkbox-content">
+                <strong>Liquidation parc HLM</strong>
+                <span className="reform-effect">{SOCIAL_HOUSING_LIQUIDATION.annualProceeds} Md€/an pendant {SOCIAL_HOUSING_LIQUIDATION.saleDurationYears} ans</span>
+                <span className="reform-details">
+                  Actif total: {SOCIAL_HOUSING_LIQUIDATION.totalAssetValue} Md€ • {SOCIAL_HOUSING_LIQUIDATION.source}
+                </span>
+              </div>
+            </label>
           </div>
 
-          {selectedReforms.length > 0 && combinedReformEffect && (
+          {(selectedReforms.length > 0 || selectedHousingReform) && combinedReformEffect && (
             <div className="combined-reforms-summary">
               <h4>Réformes sélectionnées :</h4>
               <ul className="combined-reforms-list">
@@ -1151,10 +1322,10 @@ function App() {
               </ResponsiveContainer>
             </div>
 
-            {selectedReforms.length > 0 && combinedReformEffect && (
+            {(selectedReforms.length > 0 || selectedHousingReform) && combinedReformEffect && (
               <div className="reform-impact-note">
                 <p>
-                  ✓ <strong>{selectedReforms.length} réforme(s) structurelle(s)</strong> activée(s)
+                  ✓ <strong>{combinedReformEffect.reforms.length} réforme(s) structurelle(s)</strong> activée(s)
                   avec effet croissance de <strong>+{(combinedReformEffect.growthEffect * 100).toFixed(2)}pp/an</strong>
                 </p>
                 <p className="reform-list">
@@ -1376,7 +1547,8 @@ function App() {
                 Module 2 (ETI) + Module 3 (émigration fiscale).
                 increaseEfficiency = fraction du rendement statique réalisée pour une hausse.
                 decreaseEfficiency = multiplicateur pour une baisse (effet offre modéré).
-                growthDragPerPp = frein croissance par pp de hausse (traîne nulle pour les baisses).
+                growthDragPerPp = frein croissance par pp de hausse.
+                growthBoostPerPp = boost croissance par pp de baisse (asymétrique).
               </p>
               <table className="assumptions-table">
                 <thead>
@@ -1484,6 +1656,30 @@ function App() {
                 </thead>
                 <tbody>
                   {ASSUMPTIONS.pensionReform.map((item, i) => (
+                    <tr key={i}>
+                      <td>{item.parameter}</td>
+                      <td className="value">{item.value}</td>
+                      <td>{item.impact}</td>
+                      <td>{item.link ? <a href={item.link} target="_blank" rel="noopener noreferrer">{item.source}</a> : item.source}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* TAX CUT GROWTH BOOSTS */}
+            <div className="assumptions-category">
+              <h3>Boost croissance des baisses d'impôts</h3>
+              <p className="assumptions-note">
+                Effet symétrique (mais asymétrique en magnitude) des baisses d'impôts sur la croissance.
+                Les hausses créent un frein (growthDragPerPp), les baisses un boost (growthBoostPerPp).
+              </p>
+              <table className="assumptions-table">
+                <thead>
+                  <tr><th>Hypothèse</th><th>Valeur</th><th>Impact</th><th>Source</th></tr>
+                </thead>
+                <tbody>
+                  {ASSUMPTIONS.taxCutBoosts.map((item, i) => (
                     <tr key={i}>
                       <td>{item.parameter}</td>
                       <td className="value">{item.value}</td>
