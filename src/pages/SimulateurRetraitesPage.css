@@ -1,0 +1,42 @@
+.retraites-page .page-intro {
+  color: #64748b;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+  max-width: 800px;
+}
+
+.demographic-context {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.demo-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+.demo-card h4 {
+  color: #2563eb;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+.demo-card p {
+  color: #64748b;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0.25rem 0;
+}
+
+.sustainability-value.negative {
+  color: #dc2626;
+}
+
+@media (max-width: 768px) {
+  .demographic-context {
+    grid-template-columns: 1fr;
+  }
+}
