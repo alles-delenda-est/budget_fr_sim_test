@@ -527,8 +527,8 @@ export function projectFiscalPath(policyChanges, options = {}) {
   // ≈ 5.49% (primary deficit/GDP + interest/GDP at baseline)
 
   for (let t = 0; t <= years; t++) {
-    // Guard: halt if GDP has collapsed to zero or negative (prevents NaN/Infinity)
-    if (!isFinite(gdp) || gdp <= 0) {
+    // Guard: halt if GDP has collapsed below 100 Md€ (~96% collapse — model is meaningless)
+    if (!isFinite(gdp) || gdp < 100) {
       // Fill remaining years with last valid result to prevent chart breakage
       const lastValid = results[results.length - 1]
       for (let remaining = t; remaining <= years; remaining++) {
