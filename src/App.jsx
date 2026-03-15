@@ -7,14 +7,14 @@ import SimulateurRetraitesPage from './pages/SimulateurRetraitesPage'
 import HypothesesPage from './pages/HypothesesPage'
 
 function App() {
-  const { currentPage, navigateTo } = useHashNavigation('budget')
+  const { currentPage, navigateTo } = useHashNavigation('intro')
 
   return (
     <div className="app">
       <header className="header">
         <h1>Simulateur Budget France <span className="version-badge">v2.0</span></h1>
         <p className="subtitle">
-          Vue integree Etat + Securite Sociale (APU totales) &bull; Reponse comportementale ETI &bull; Inertie dette
+          Vue intégrée État + Sécurité Sociale (APU totales) &bull; Réponse comportementale ETI &bull; Inertie dette
         </p>
       </header>
 
@@ -28,9 +28,9 @@ function App() {
       </main>
 
       <footer className="footer">
-        <p>Simulateur Budget France v2.0 &bull; Sources : PLF 2025, PLFSS 2026, IMF, OECD, ECB, AFT</p>
+        <p>Simulateur Budget France v2.0 &bull; Sources : PLF 2025, PLFSS 2026, FMI, OCDE, BCE, AFT</p>
         <p className="footer-note">
-          Vue consolidee Etat + Securite Sociale. Reponse comportementale ETI. Inertie taux OAT.
+          Vue consolidée État + Sécurité Sociale. Réponse comportementale ETI. Inertie taux OAT.
         </p>
       </footer>
     </div>

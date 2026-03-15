@@ -4,12 +4,12 @@ const TABS = [
   { id: 'intro', label: 'Introduction' },
   { id: 'budget', label: 'Simulateur Budget' },
   { id: 'retraites', label: 'Simulateur Retraites' },
-  { id: 'hypotheses', label: 'Hypotheses & Parametres' },
+  { id: 'hypotheses', label: 'Hypothèses & Paramètres' },
 ]
 
 export default function Navigation({ currentPage, navigateTo }) {
   return (
-    <nav className="nav-tabs" role="tablist">
+    <nav className="nav-tabs" role="tablist" aria-label="Navigation principale">
       {TABS.map(tab => (
         <button
           key={tab.id}

@@ -4,30 +4,9 @@
 }
 
 .hypotheses-page h2 {
-  color: #1e293b;
-  border-bottom: 2px solid #e2e8f0;
+  color: var(--color-ink);
+  border-bottom: 2px solid var(--color-border);
   padding-bottom: 0.5rem;
   margin-bottom: 1rem;
 }
 
-.section-subtitle {
-  color: #64748b;
-  margin-bottom: 1.5rem;
-}
-
-.source-note {
-  color: #94a3b8;
-  font-size: 0.85rem;
-  font-style: italic;
-  margin-top: 1rem;
-}
-
-.methodology-note {
-  color: #64748b;
-  font-style: italic;
-  margin-top: 2rem;
-  padding: 1rem;
-  background: #f8fafc;
-  border-radius: 8px;
-  border-left: 3px solid #2563eb;
-}
