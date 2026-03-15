@@ -17,15 +17,17 @@ Interactive simulator for French public finances, modelling the consolidated Ét
   - Structural reform growth effects (phase-in / peak / decay lifecycle)
   - Unemployment via Okun's Law
   - Doom-loop detection
-- **Visualisation**: 4 charts (debt/GDP, deficit/GDP, nominal growth, unemployment) each showing scenario vs baseline; Year-1, Year-5, Year-10 metric snapshots
+- **Visualisation**: 5 charts (debt/GDP, deficit/GDP, nominal growth, unemployment, cotisants/retraite) each showing scenario vs baseline; Year-1, Year-5, Year-10 metric snapshots
+- **Pension simulator tab**: dedicated pension reform sliders (retirement age, desindexation, pension cap, notional accounts) with COR scenario presets
+- **Intro page**: guided overview of the simulator's purpose and methodology
 - **Transparent assumptions tab**: all model parameters with academic sources
 
 ## Tech Stack
 
-- React 18 + Vite
+- React 19 + Vite
 - Recharts
 - Pure CSS (no framework)
-- Vitest (181 unit + integration tests)
+- Vitest (~282 unit + integration tests)
 
 ## Running Locally
 

@@ -54,7 +54,7 @@ export const BASELINE = {
   integrated: {
     revenuTotal: 974.7,      // 315.3 + 659.4
     spendingTotal: 1131.6,   // 444.97 + 686.6
-    deficit: -147.2,         // -129.7 + (-17.5)
+    deficit: -147.2,         // -129.7 + (-17.5); ≠ revenue - spending (-156.9) due to intra-APU transfer netting
   },
 }
 
@@ -274,7 +274,8 @@ export function applyOndamFloor(requestedCut) {
 }
 
 // GDP reference for multiplier calculations (Md€)
-const GDP_BASE = 2850  // MACRO_BASELINE.gdp
+import { MACRO_BASELINE } from './projection-engine-v1.8'
+const GDP_BASE = MACRO_BASELINE.gdp
 
 // =============================================================================
 // POLICY IMPACT CALCULATION
