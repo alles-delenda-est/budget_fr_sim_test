@@ -9,18 +9,18 @@
   /* Subdued color palette */
   --color-ink: #1a1a1a;
   --color-ink-light: #4a4a4a;
-  --color-ink-muted: #8a8a8a;
+  --color-ink-muted: #6b6b6b;
   --color-border: #e0e0e0;
   --color-border-light: #f0f0f0;
   --color-surface: #ffffff;
   --color-background: #fafafa;
 
-  /* Accent colors (used sparingly) */
+  /* Accent colors — WCAG AA compliant (≥4.5:1 on white) */
   --color-accent: #5c6bc0;
   --color-accent-light: #e8eaf6;
-  --color-positive: #558b2f;
+  --color-positive: #2e7d32;
   --color-negative: #b71c1c;
-  --color-warning: #e65100;
+  --color-warning: #bf4000;
 
   /* Spacing */
   --space-xs: 0.5rem;
@@ -142,12 +142,19 @@ body {
   border-bottom: none;
 }
 
-.controls-section h2 {
+/* Shared section heading style (controls, results, chart sections) */
+.controls-section h2,
+.results-section h2,
+.chart-section h2 {
   font-family: var(--font-serif);
   font-size: 1.375rem;
   font-weight: 400;
   color: var(--color-ink);
   margin-bottom: var(--space-md);
+}
+
+.chart-section h2 {
+  margin-bottom: var(--space-sm);
 }
 
 .section-help {
@@ -491,29 +498,33 @@ body {
   gap: var(--space-lg);
 }
 
-.slider-control {
+/* SliderControl component classes */
+.control {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
 }
 
-.slider-control label {
+.control-header {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+}
+
+.control-header label {
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--color-ink);
 }
 
-.slider-control .value {
+.control-value {
   font-family: var(--font-mono);
   font-size: 1rem;
   font-weight: 500;
   color: var(--color-ink);
 }
 
-.slider-control input[type="range"] {
+.slider {
   width: 100%;
   height: 2px;
   border-radius: 1px;
@@ -523,7 +534,7 @@ body {
   margin: var(--space-sm) 0;
 }
 
-.slider-control input[type="range"]::-webkit-slider-thumb {
+.slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 14px;
   height: 14px;
@@ -534,13 +545,20 @@ body {
   box-shadow: 0 0 0 1px var(--color-ink);
 }
 
-.slider-control input[type="range"]::-moz-range-thumb {
+.slider::-moz-range-thumb {
   width: 14px;
   height: 14px;
   border-radius: 50%;
   background: var(--color-ink);
   cursor: pointer;
   border: 2px solid var(--color-surface);
+}
+
+.control-help {
+  font-size: 0.8125rem;
+  color: var(--color-ink-muted);
+  line-height: 1.4;
+  margin-top: var(--space-xs);
 }
 
 .slider-labels {
@@ -692,13 +710,7 @@ body {
   margin-bottom: var(--space-md);
 }
 
-.results-section h2 {
-  font-family: var(--font-serif);
-  font-size: 1.375rem;
-  font-weight: 400;
-  margin-bottom: var(--space-md);
-  color: var(--color-ink);
-}
+/* .results-section h2 — consolidated into shared rule above */
 
 .breakdown-row {
   display: flex;
@@ -813,13 +825,7 @@ body {
   margin-top: var(--space-sm);
 }
 
-.chart-section h2 {
-  font-family: var(--font-serif);
-  font-size: 1.375rem;
-  font-weight: 400;
-  margin-bottom: var(--space-sm);
-  color: var(--color-ink);
-}
+/* .chart-section h2 — consolidated into shared rule above (override for spacing only) */
 
 .chart-help {
   color: var(--color-ink-muted);
@@ -1253,6 +1259,243 @@ body {
 }
 
 /* =============================================================================
+   SIMULATOR PAGE
+============================================================================= */
+
+.simulator-page {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* =============================================================================
+   REFORM GROUP STYLES
+============================================================================= */
+
+.reform-group {
+  margin-bottom: var(--space-md);
+  padding: var(--space-sm) 0;
+}
+
+.reform-group-title {
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--color-ink);
+  margin-bottom: var(--space-sm);
+}
+
+.reform-checkbox-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.reform-details {
+  font-size: 0.8125rem;
+  color: var(--color-ink-muted);
+}
+
+.reform-clear-btn {
+  padding: var(--space-xs) var(--space-sm);
+  font-size: 0.8125rem;
+  color: var(--color-ink-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 2px;
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.reform-clear-btn:hover {
+  border-color: var(--color-ink-muted);
+}
+
+/* =============================================================================
+   COMBINED REFORMS SUMMARY
+============================================================================= */
+
+.combined-reforms-summary {
+  margin-top: var(--space-md);
+  padding: var(--space-md);
+  background: var(--color-background);
+  border-radius: 2px;
+  border-left: 2px solid var(--color-accent);
+}
+
+.combined-reforms-summary h4 {
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--color-ink);
+  margin-bottom: var(--space-sm);
+}
+
+.combined-effect {
+  font-size: 0.9375rem;
+  color: var(--color-ink-light);
+}
+
+.combined-effect strong {
+  color: var(--color-ink);
+}
+
+/* =============================================================================
+   SUSTAINABILITY METRICS
+============================================================================= */
+
+.sustainability-metrics {
+  margin-top: var(--space-md);
+  padding: var(--space-sm) 0;
+}
+
+.sustainability-metrics h4 {
+  font-family: var(--font-serif);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-ink);
+  margin-bottom: var(--space-sm);
+}
+
+.sustainability-row {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--space-xs) 0;
+  font-size: 0.875rem;
+  color: var(--color-ink-light);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.sustainability-row:last-child {
+  border-bottom: none;
+}
+
+.sustainability-row.total {
+  padding-top: var(--space-sm);
+  border-bottom: none;
+}
+
+.sustainability-value {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+/* =============================================================================
+   ONDAM WARNING
+============================================================================= */
+
+.ondam-warning {
+  padding: var(--space-sm);
+  border-radius: 2px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.ondam-yellow {
+  background: #fffbf0;
+  border-left: 3px solid var(--color-warning);
+  color: var(--color-ink-light);
+}
+
+.ondam-red {
+  background: #fef5f5;
+  border-left: 3px solid var(--color-negative);
+  color: var(--color-negative);
+}
+
+/* =============================================================================
+   DOOM LOOP WARNING
+============================================================================= */
+
+.doom-loop-warning {
+  padding: var(--space-md);
+  font-size: 0.9375rem;
+  color: var(--color-ink-light);
+}
+
+.doom-loop-warning ul {
+  margin: var(--space-sm) 0 var(--space-sm) var(--space-md);
+}
+
+.doom-loop-warning li {
+  margin-bottom: var(--space-xs);
+}
+
+.doom-loop-explanation {
+  margin-top: var(--space-sm);
+  font-size: 0.875rem;
+  color: var(--color-ink-muted);
+  font-style: italic;
+}
+
+/* =============================================================================
+   VALIDATION WARNINGS
+============================================================================= */
+
+.validation-warnings {
+  margin-left: var(--space-md);
+  color: var(--color-ink-light);
+  font-size: 0.9375rem;
+}
+
+.validation-warnings li {
+  margin-bottom: var(--space-xs);
+}
+
+/* =============================================================================
+   REFORM IMPACT NOTE
+============================================================================= */
+
+.reform-impact-note {
+  margin-top: var(--space-md);
+  padding: var(--space-sm);
+  background: var(--color-background);
+  border-radius: 2px;
+  font-size: 0.875rem;
+  color: var(--color-ink-light);
+}
+
+.reform-impact-note strong {
+  color: var(--color-ink);
+}
+
+.reform-list {
+  margin-top: var(--space-xs);
+  color: var(--color-ink-muted);
+  font-size: 0.8125rem;
+}
+
+/* =============================================================================
+   PRESET BUTTON SMALL
+============================================================================= */
+
+.preset-btn-sm {
+  padding: var(--space-sm);
+}
+
+.preset-btn-sm strong {
+  font-size: 0.875rem;
+}
+
+/* =============================================================================
+   PRIMARY CHART SECTION
+============================================================================= */
+
+.primary-chart-section h2 {
+  color: var(--color-ink);
+}
+
+/* Radio button styling (same as checkbox) */
+.reform-checkbox-label input[type="radio"] {
+  margin-right: var(--space-sm);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--color-ink);
+}
+
+/* =============================================================================
    RESPONSIVE
    ============================================================================= */
 
@@ -1321,7 +1564,7 @@ body {
 
 .small-charts-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: var(--space-md);
 }
 
@@ -1332,7 +1575,7 @@ body {
 }
 
 .small-chart-container {
-  background: var(--color-bg);
+  background: var(--color-background);
   border: 1px solid var(--color-border-light);
   border-radius: 6px;
   padding: var(--space-sm);

@@ -1,0 +1,22 @@
+.retraites-page .page-intro {
+  color: var(--color-ink-muted);
+  margin-bottom: 2rem;
+  line-height: 1.6;
+  max-width: 800px;
+}
+
+.demographic-context {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.sustainability-value.negative {
+  color: var(--color-negative);
+}
+
+@media (max-width: 768px) {
+  .demographic-context {
+    grid-template-columns: 1fr;
+  }
+}

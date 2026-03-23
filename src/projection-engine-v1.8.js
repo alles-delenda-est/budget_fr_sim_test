@@ -28,7 +28,7 @@ export const MACRO_BASELINE = {
   // Interest rate parameters
   // Note: Effective rate on existing stock is ~2.1% (much debt locked at low rates)
   // PLF 2025 charge de la dette: ~54 Md€ État, ~70 Md€ total APU
-  // At 115.8% debt/GDP, risk premium adds ~1.93%, so base must be ~0.17% for total = 2.1%
+  // At 115.8% debt/GDP, risk premium adds ~2.14%, so base is ~-0.04% for total = 2.1%
   baseInterestRate: -0.0004,   // Base rate (risk premium + political premium brings total to ~2.1%)
 
   // Sovereign risk premium model (France-specific calibration)
@@ -226,7 +226,6 @@ export const SOCIAL_HOUSING_LIQUIDATION = {
   saleDurationYears: 10,     // Sold over 10 years
   annualProceeds: 75,        // Md€/year (750/10)
   growthEffect: 0.0002,      // +0.02 pp/year (modest, ambiguous direction)
-  ongoingCostReduction: 0,   // No operating cost savings
   source: "ANCOLS 2025, USH bilan HLM, MeilleursAgents prix m², UK Right to Buy (1980)",
   confidence: "low",
 }
@@ -282,9 +281,6 @@ export const PENSION_REFORM = {
   pensionMass: 303.4,
   cotisantsPerRetraite: 1.70,
   ratioDeclinePerYear: 0.012,
-  part65: 21.5,
-  part65GrowthPerYear: 0.4,
-
   // Retirement age mechanics (francetdb: rtRunModel)
   retirementAge: {
     current: 64,
@@ -304,6 +300,7 @@ export const PENSION_REFORM = {
     rampYears: 3,                        // 3-year phase-in
   },
 
+  // TODO: capitalisation reform is defined but not yet implemented in the projection loop
   // Capitalisation (redirection of cotisations to private funds)
   capitalisation: {
     transitionYears: 20,
@@ -500,6 +497,7 @@ export function projectFiscalPath(policyChanges, options = {}) {
     enableMigrationImpact = true,
     enableDependanceDrift = true,
     enableSocialHousingLiquidation = false,
+    realGrowthOverride = null,   // Override real growth rate (for COR scenarios)
   } = options
 
   const {
@@ -526,11 +524,24 @@ export function projectFiscalPath(policyChanges, options = {}) {
 
   // Initial deficit/GDP ratio for deficit stress premium (France 2025 actual)
   let prevDeficitRatio = Math.abs(MACRO_BASELINE.primaryDeficit / MACRO_BASELINE.gdp * 100) + 2.43
-  // ≈ 5.17% (primary deficit/GDP + interest/GDP at baseline)
+  // ≈ 5.49% (primary deficit/GDP + interest/GDP at baseline)
 
   for (let t = 0; t <= years; t++) {
+    // Guard: halt if GDP has collapsed below 100 Md€ (~96% collapse — model is meaningless)
+    if (!isFinite(gdp) || gdp < 100) {
+      // Fill remaining years with last valid result to prevent chart breakage
+      const lastValid = results[results.length - 1]
+      for (let remaining = t; remaining <= years; remaining++) {
+        results.push({ ...lastValid, year: MACRO_BASELINE.year + remaining })
+      }
+      break
+    }
+
     // 1. Calculate growth rate this year
-    let nominalGrowth = MACRO_BASELINE.nominalGrowth
+    // If COR scenario overrides real growth, recalculate nominal growth
+    let nominalGrowth = realGrowthOverride != null
+      ? realGrowthOverride + MACRO_BASELINE.inflation
+      : MACRO_BASELINE.nominalGrowth
 
     // Add policy-driven growth effect
     nominalGrowth += growthEffect
@@ -646,9 +657,11 @@ export function projectFiscalPath(policyChanges, options = {}) {
 
     // 6. Unemployment via Okun's Law
     // Δunemployment = -okunCoefficient × (realGrowth - potentialRealGrowth)
+    // Clamped to [0, 25] to prevent unrealistic values over long projections
     const realGrowthThisYear = nominalGrowth - MACRO_BASELINE.inflation
-    const unemploymentRate = MACRO_BASELINE.unemploymentRate
+    const rawUnemployment = MACRO_BASELINE.unemploymentRate
       + (MACRO_BASELINE.realGrowth - realGrowthThisYear) * MACRO_BASELINE.okunCoefficient
+    const unemploymentRate = Math.max(0, Math.min(25, rawUnemployment))
 
     // 7. Store results
     results.push({
