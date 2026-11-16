@@ -1,29 +1,55 @@
 # Citation verification table
 
-STATUS: WORK IN PROGRESS. Rows marked "NOT YET CHECKED" have not been verified and must not be read as supported.
-Date started: 2026-11-16. Method: primary sources fetched with WebSearch/WebFetch; no memory-only row is marked "supports".
+STATUS: WORK IN PROGRESS (groups 1-3 of 5 filled). Rows marked "NOT YET CHECKED" are unverified and must not be read as supported.
+Started 2026-11-16. Method: WebSearch + WebFetch only. "Supports" is used only where retrieved text bears on the value. Rows say whether I saw the full text or only an abstract/catalogue page. Fetch tool returns summaries of pages; page/table references below are as reported by those summaries and should be spot-checked by a reviewer.
 
 ## Summary
-(to be filled in once all groups are done)
+(to be completed at the end)
 
-## Rows
-| Block | Parameter (code value) | Citation as written in repo | Verdict |
-|---|---|---|---|
-| Tax cut boosts | IS growth boost +0.12 pp/pp | Gechert & Heimberger (2022); Mertens & Ravn (2013) | NOT YET CHECKED |
-| Tax cut boosts | IR growth boost +0.08 pp/pp | Romer & Romer (2010); Kleven et al. (2014) | NOT YET CHECKED |
-| Tax cut boosts | TVA +0.03, CSG +0.06 | Mirrlees Review (2011); Saez et al. (2012) | NOT YET CHECKED |
-| Tax cut boosts | Cotisations +0.20 | Crepon & Desplatz (2001); France Strategie CICE (2020) | NOT YET CHECKED |
-| ETI / efficiency | IR 0.70 | Kleven & Schultz (2014); Landais et al. (2011) | NOT YET CHECKED |
-| ETI / efficiency | IS 0.55 | Zucman (2014); European Commission (2016) | NOT YET CHECKED |
-| ETI / efficiency | TVA 0.92 | Keen & Lockwood (2010) | NOT YET CHECKED |
-| ETI / efficiency | CSG 0.82 | Landais et al. (2011); DARES | NOT YET CHECKED |
-| ETI / efficiency | Cotisations 0.58 | OECD Employment Outlook 2019 | NOT YET CHECKED |
-| Multipliers | Education 0.90, defense 0.60, transfers 0.40, health 0.70 | Blanchard & Leigh (2013); Coenen et al. (2012); "IMF WEO 2012 meta-analysis"; BdF DGSE | NOT YET CHECKED |
-| ONDAM | floor -3% / -7% | DREES 2024; FNAIM | NOT YET CHECKED |
-| Interest rate | slopes 3/4/10 bps per pp | Kumar & Baldacci (2010) (WP/10/184 vs WP/17/87); IMF (2017); EC (2018) | NOT YET CHECKED |
-| Structural reforms | Hartz-IV +0.35 pp/yr | Krebs & Scheffel (2013); Dustmann et al. (2014); Launov & Walde (2016) | NOT YET CHECKED |
-| Structural reforms | Contrat unique +0.45 | Blanchard & Tirole (2003); Cahuc & Kramarz (2004); Bassanini & Duval (2006) | NOT YET CHECKED |
-| Structural reforms | PMR +0.10 | OECD PMR indicators | NOT YET CHECKED |
-| Structural reforms | Housing +0.05 / +0.03 / +0.25 | Diamond et al. (2019); Sims (2007); Autor et al. (2014); Hsieh & Moretti (2019); Hilber & Vermeulen (2016) | NOT YET CHECKED |
-| Structural reforms | Education +0.08; Energy +0.07; packages +0.40/+0.20 | OECD EAG; CRE 2024; OECD (2014); IMF | NOT YET CHECKED |
-| Macro / demographic / pension | various | INSEE, COR, DREES, DARES, Girouard & Andre (2005), francetdb.com | NOT YET CHECKED |
+## Verdict key
+supports / partly supports / does not support / source not found / could not access
+
+## A. Tax-cut growth boosts (policy-impact.js BEHAVIORAL_RESPONSE.growthBoostPerPp)
+
+| Parameter (code value) | Citation as written | Correct reference | What the source estimates | Verdict | Where | Better source |
+|---|---|---|---|---|---|---|
+| IS growth boost +0.12 pp per pp of cut (corporateTax) | Gechert & Heimberger (2022) | Gechert, S. and Heimberger, P. (2022), "Do corporate tax cuts boost economic growth?", European Economic Review 147 (working-paper version: wiiw WP 201, 2021) | Meta-analysis of 441 estimates from 42 studies of corporate tax and growth. After correcting for publication selectivity the authors cannot reject a zero effect | DOES NOT SUPPORT (the paper argues against a positive growth boost) | Abstract only (wiiw/RePEc record) | None found for a positive boost; keep as a cited counter-source |
+| IS growth boost (same row) | Mertens & Ravn (2013) | Mertens, K. and Ravn, M. (2013), "The dynamic effects of personal and corporate income tax changes in the United States", AER 103(4): 1212-47 | US quarterly post-WWII data; structural VAR with narrative tax shocks; short-run output effects of tax shocks are large, and personal and corporate taxes are distinguished | PARTLY SUPPORTS direction only; US, not France; no per-pp annual growth figure in what I retrieved | Abstract only | none found |
+| IR growth boost +0.08 | Romer & Romer (2010) | Romer, C. and Romer, D. (2010), "The macroeconomic effects of tax changes: estimates based on a new measure of fiscal shocks", AER 100(3): 763-801 | US 1945-2007 narrative tax shocks; a tax rise of 1% of GDP lowers real GDP by about 3% over roughly ten quarters (p. 763, p. 782). Treats cuts as the mirror image of rises, no separate estimate. Not about income-tax rate points, not about emigration | PARTLY SUPPORTS direction (aggregate tax cuts raise output); does not give a per-pp-of-IR-rate or annual-growth figure | Full text read for headline results | none found |
+| IR growth boost (same row) | Kleven et al. (2014) | Probably Kleven, Landais, Saez, Schultz (2014), "Migration and wage effects of taxing top earners: evidence from the foreigners' tax scheme in Denmark", QJE 129(1) (identification from memory, not fetched) | Denmark top-earner mobility | COULD NOT CHECK (not retrieved; "Kleven et al. (2014)" is ambiguous) | not fetched | none |
+| TVA +0.03 and CSG +0.06 | Mirrlees Review (2011) | Mirrlees, J. et al. (2011), Tax by Design, IFS / OUP | UK tax-system review | NOT YET CHECKED | | |
+| CSG +0.06 | Saez et al. (2012) | likely Saez, Slemrod, Giertz (2012), JEL 50(1) | | NOT YET CHECKED | | |
+| Cotisations +0.20 (111% of drag) | Crépon & Desplatz (2001) | Crépon, B. and Desplatz, R. (2001), "Une nouvelle évaluation des effets des allégements de charges sociales sur les bas salaires", Économie et Statistique 348: 3-24 (https://www.insee.fr/fr/statistiques/fichier/1376044/es348a1.pdf) | French firm-level data 1994-97; about 460,000 jobs created or preserved by the 1995-96 low-wage contribution cuts (range 255,000-670,000), value added up 2.6% industry / 4.7% services per point of ex ante cost cut. Explicitly excludes macro feedback and financing | PARTLY SUPPORTS that contribution cuts raise employment in France; DOES NOT SUPPORT a growth figure in pp per year, which the article does not estimate | Full text (pp. 17-18) | none found for the growth conversion |
+| Cotisations +0.20 | France Stratégie CICE (2020) | France Stratégie / Comité de suivi du CICE, final evaluation report, Sept 2020 (press release read) | CICE (a payroll-tax credit): micro estimate about 100,000 jobs, macro-sectoral 200,000-400,000 jobs, about 160,000 net of financing; macro figures described as statistically fragile | PARTLY SUPPORTS employment effect; no GDP growth effect in the retrieved text | Press-release summary only, not the full report | none |
+
+## B. Behavioural efficiency haircuts (ETI) (policy-impact.js increaseEfficiency; ARCHITECTURE s1.3)
+
+| Parameter | Citation as written | Correct reference | What the source estimates | Verdict | Where | Better source |
+|---|---|---|---|---|---|---|
+| IR 0.70 ("ETI top-10% 0.25, top-1% 0.55") | Kleven & Schultz (2014) | Kleven, H. and Schultz, E. (2014), "Estimating taxable income responses using Danish tax reforms", AEJ: Economic Policy 6(4): 271-301 | DENMARK, administrative panel from 1980. Labour-income ETI about 0.05 (employees) to 0.10 (self-employed), under 0.2 for every subgroup incl. top 10% (about 0.085); capital income 0.10-0.14. Graphical DiD 0.2-0.3. No France | DOES NOT SUPPORT as a source for French ETIs of 0.25 / 0.55 | Full text (Tables 3, 4, 6; pp. 289-294) | Cabannes & Landais (2008, preprint) is the French source I found: see next row |
+| IR 0.70 | Landais et al. (2011) | CANNOT IDENTIFY. Candidates: Landais, Piketty, Saez (2011) book "Pour une revolution fiscale" (Seuil) (not retrieved); Cabannes and Landais (2008) preprint, "The elasticity of taxable income and the optimal taxation of top incomes", French income-tax returns 1998-2006 (not 2011) | Cabannes-Landais: France, income tax only; ETI about 0.05 whole population, 0.24-0.27 for P80-100 and P90-100, about 0.15-0.2 for top 0.1%; long-run top-income elasticity near zero. Piketty-Saez-Stantcheva (CEPR DP 8675, 2011) is cross-country, overall elasticity about 0.5, no France-specific estimate, CSG not covered | PARTLY SUPPORTS the order of magnitude for the French top-decile income-tax ETI (0.25) if Cabannes-Landais is meant; nothing for a top-1% figure of 0.55 found | Full text of preprint | Cabannes & Landais (2008); Piketty-Saez-Stantcheva (2014 AEJ:Policy) |
+| CSG 0.82 | Landais et al. (2011); DARES | same | Cabannes-Landais models the income tax only; CSG is never mentioned | DOES NOT SUPPORT (no source found for any CSG elasticity); "DARES estimates" not specified, no document identified | | none found |
+| TVA 0.92 | Keen & Lockwood (2010) | Keen, M. and Lockwood, B. (2010), "The value added tax: its causes and consequences", Journal of Development Economics 92(2): 138-151 | Panel of 143 countries over 25 years: probability of adopting a VAT, and its effect on the total tax-revenue ratio. Not about the share of static revenue that survives a rate rise (behavioural leakage); not about France specifically | DOES NOT SUPPORT as a source for a revenue-efficiency coefficient of 0.92 (about effect of adopting a VAT on revenue ratios) | Abstract only (Warwick WRAP record) | none found |
+| IS 0.55 | Zucman (2014) | Zucman, G. (2014), "Taxing across borders: tracking personal wealth and corporate profits", JEP 28(4): 121-48 | Mainly US corporations: about 20% of US corporate profits booked in tax havens; no France-specific "10% of the tax base" figure in the abstract | DOES NOT SUPPORT the "about 10% of the French base" statement as far as the abstract shows | Abstract only (LSE eprint) | A France-specific profit-shifting estimate would be needed; none found yet |
+| IS 0.55 ("elasticity of about 0.50 for broad capital") | European Commission (2016) | CANNOT IDENTIFY. Nearest candidate: European Commission Taxation Papers no. 61 (2016), "Study on structures of aggressive tax planning and indicators" (Ramboll / Corit); abstract contains no elasticity | | SOURCE NOT FOUND | Abstract only | none found |
+| Cotisations 0.58 | OECD Employment Outlook 2019 | not checked | | NOT YET CHECKED | | |
+
+## C. Fiscal multipliers (policy-impact.js FISCAL_MULTIPLIERS)
+
+| Parameter | Citation as written | Correct reference | What the source estimates | Verdict | Where | Better source |
+|---|---|---|---|---|---|---|
+| Education 0.90 / defense 0.60 / transfers 0.40 / health 0.70 (expansion); 1.40 / 1.10 / 0.90 / 1.00 (recession) | "IMF WEO 2012 meta-analysis (Blanchard & Leigh)"; Blanchard & Leigh (2013) | Blanchard, O. and Leigh, D. (2013), "Growth forecast errors and fiscal multipliers", IMF WP/13/1; AER P&P 103(3). The WEO October 2012 Box 1.1 is the staff analysis behind it | 26 European economies, 2010-11 growth forecast errors regressed on planned consolidation; coefficient about -1.1, i.e. implied multipliers too low by about 1. It is NOT a meta-analysis, gives NO breakdown by spending category (only a spending-vs-revenue split, difference not significant), and the authors say it is not a direct multiplier estimate | DOES NOT SUPPORT the category-level values or the "meta-analysis" label. Partly supports the general point that multipliers can exceed 0.5 in a weak-demand environment | Full text of WP/13/1 (pp. 6-8, 15, 17, Table 5); WEO box figure page | Gechert (2015), below |
+| same | Coenen et al. (2012) | Coenen, G. et al. (2012), "Effects of fiscal stimulus in structural models", AEJ: Macroeconomics 4(1): 22-68 (IMF WP version 2010) | Comparison of seven structural models (US/euro-area calibrations) of temporary stimulus; multipliers larger when persistent and when monetary policy accommodates | PARTLY SUPPORTS that multipliers differ by instrument and monetary stance. No category values retrieved: AEJ full text paywalled, IMF WP page gave abstract only | Abstract only | none |
+| Category ranking (public investment above transfers) | (suggested) | Gechert, S. (2015), "What fiscal policy is most effective? A meta-regression analysis", Oxford Economic Papers 67(3): 553-580 | Meta-regression of 104 studies: general spending multiplier about 1, tax and transfers about 0.3-0.4 lower, public investment about 0.5 higher | This is a better source for the ordering, but it supports different values than the code's 0.9 / 0.6 / 0.4 / 0.7 | Abstract only | as stated |
+| Monetary offset 0.00 / "(Blanchard & Leigh 2013 explicitly model this)" (ARCHITECTURE line 100) | Blanchard & Leigh (2013) | | No formal monetary-offset model; the paper only discusses the zero lower bound qualitatively (pp. 3-4) | DOES NOT SUPPORT the statement that they "explicitly model" it | Full text | none |
+| Health multiplier 0.70; Defense 0.60 | "OECD cross-country panel"; "BdF DGSE" | no OECD paper or BdF DGSE document is named | | SOURCE NOT FOUND (unspecified) | | none |
+
+## D. Sovereign interest-rate model (projection-engine MACRO_BASELINE.riskPremium)
+
+| Parameter | Citation as written | Correct reference | What the source estimates | Verdict | Where | Better source |
+|---|---|---|---|---|---|---|
+| +3 bps per pp debt/GDP (60-90%) | "Kumar & Baldacci (2010), FMI" (assumptions.js link wp10184.pdf); ARCHITECTURE says "IMF WP/17/87 (Kumar & Baldacci 2010)" | Kumar, M. and Baldacci, E. (2010), "Fiscal deficits, public debt, and sovereign bond yields", IMF WP/10/184. WP/17/87 is a wrong number: the assumptions.js link (wp10184) is the correct one. I could not identify what WP/17/87 is | 31 advanced and emerging economies, 1980-2007. A 1 pp rise in the deficit raises 10-year nominal yields by about 17 bp (Table 2); debt effect about 3-5 bp per pp; initial debt above 60% adds about 6 bp to the deficit effect (p. 18). No 90% or 120% thresholds and no France-specific slope | PARTLY SUPPORTS: the 3 bp debt slope is inside their 3-5 bp range, and 17 bp matches the code's deficit premium (+17 bps per %). The 90/120% regime breaks are not from this paper | Full text (Table 2, pp. 14-18) | none found for the 90% and 120% breaks |
+| +4 bps per pp (90-120%) | EC Debt Sustainability Monitor | European Commission, Debt Sustainability Monitor (DG ECFIN) | link goes to a generic fiscal-sustainability landing page | NOT YET CHECKED | | |
+| +10 bps per pp (>120%) | "Consensus academique, OAT 2010-2012" | none | | SOURCE NOT FOUND (no reference) | | none |
+
+(Further groups to be added: structural reforms, macro/fiscal, demographics, pensions, ONDAM/FNAIM.)
