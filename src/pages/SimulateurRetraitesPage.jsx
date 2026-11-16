@@ -206,7 +206,7 @@ export default function SimulateurRetraitesPage() {
             <LineChart data={projections.chartData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="year" />
-              <YAxis label={{ value: 'Md\u20ac', angle: -90, position: 'insideLeft' }} />
+              <YAxis label={{ value: 'Md€', angle: -90, position: 'insideLeft' }} />
               <Tooltip />
               <Legend />
               <ReferenceLine y={0} stroke="#94a3b8" strokeDasharray="3 3" />
@@ -281,23 +281,23 @@ export default function SimulateurRetraitesPage() {
               <div className="sustainability-metrics">
                 <div className="sustainability-row">
                   <span>Économies pension :</span>
-                  <span className="sustainability-value">{projections.reformScenario[yr]?.pensionReformSaving ?? 0} Md\u20ac</span>
+                  <span className="sustainability-value">{projections.reformScenario[yr]?.pensionReformSaving ?? 0} Md€</span>
                 </div>
                 <div className="sustainability-row">
                   <span>Cotisations seniors :</span>
-                  <span className="sustainability-value">{projections.reformScenario[yr]?.seniorRevenue ?? 0} Md\u20ac</span>
+                  <span className="sustainability-value">{projections.reformScenario[yr]?.seniorRevenue ?? 0} Md€</span>
                 </div>
                 <div className="sustainability-row">
                   <span>Pression démographique :</span>
-                  <span className="sustainability-value negative">+{projections.reformScenario[yr]?.demographicPressure ?? 0} Md\u20ac</span>
+                  <span className="sustainability-value negative">+{projections.reformScenario[yr]?.demographicPressure ?? 0} Md€</span>
                 </div>
                 <div className="sustainability-row">
                   <span>Impact migration :</span>
-                  <span className="sustainability-value">{projections.reformScenario[yr]?.migrationImpact ?? 0} Md\u20ac</span>
+                  <span className="sustainability-value">{projections.reformScenario[yr]?.migrationImpact ?? 0} Md€</span>
                 </div>
                 <div className="sustainability-row">
                   <span>Pression dépendance :</span>
-                  <span className="sustainability-value negative">+{projections.reformScenario[yr]?.dependancePressure ?? 0} Md\u20ac</span>
+                  <span className="sustainability-value negative">+{projections.reformScenario[yr]?.dependancePressure ?? 0} Md€</span>
                 </div>
                 <div className="sustainability-row">
                   <span>Cotisants/retraité :</span>
@@ -321,28 +321,28 @@ export default function SimulateurRetraitesPage() {
         <div className="demographic-context">
           <div className="demo-card">
             <h4>Vieillissement</h4>
-            <p>Pression annuelle : <strong>+{DEMOGRAPHIC_PRESSURE_PER_YEAR.toFixed(1)} Md\u20ac/an</strong></p>
+            <p>Pression annuelle : <strong>+{DEMOGRAPHIC_PRESSURE_PER_YEAR.toFixed(1)} Md€/an</strong></p>
             <p>Dérive ratio dépendance : +{(DEMOGRAPHIC_PARAMS.dependencyRatioDriftPerYear * 100).toFixed(1)} pp/an</p>
-            <p>Masse retraites : {DEMOGRAPHIC_PARAMS.pensionBaseline} Md\u20ac (élasticité {DEMOGRAPHIC_PARAMS.pensionElasticityToDependency})</p>
-            <p>Masse santé : {DEMOGRAPHIC_PARAMS.healthBaseline} Md\u20ac (élasticité {DEMOGRAPHIC_PARAMS.healthElasticityToDependency})</p>
+            <p>Masse retraites : {DEMOGRAPHIC_PARAMS.pensionBaseline} Md€ (élasticité {DEMOGRAPHIC_PARAMS.pensionElasticityToDependency})</p>
+            <p>Masse santé : {DEMOGRAPHIC_PARAMS.healthBaseline} Md€ (élasticité {DEMOGRAPHIC_PARAMS.healthElasticityToDependency})</p>
           </div>
           <div className="demo-card">
             <h4>Migration (brain drain)</h4>
             <p>Immigration : {MIGRATION_PARAMS.immigration.annualFlow.toLocaleString()} / an (taux emploi {(MIGRATION_PARAMS.immigration.employmentRate * 100).toFixed(0)}%)</p>
             <p>Émigration : {MIGRATION_PARAMS.emigration.annualFlow.toLocaleString()} / an (taux emploi {(MIGRATION_PARAMS.emigration.employmentRate * 100).toFixed(0)}%)</p>
-            <p>Impact net : <strong>{(MIGRATION_NET_WORKERS_PER_YEAR * MIGRATION_PARAMS.avgCotisationsPerWorker / 1e9).toFixed(1)} Md\u20ac/an</strong></p>
+            <p>Impact net : <strong>{(MIGRATION_NET_WORKERS_PER_YEAR * MIGRATION_PARAMS.avgCotisationsPerWorker / 1e9).toFixed(1)} Md€/an</strong></p>
           </div>
           <div className="demo-card">
             <h4>Dépendance / autonomie</h4>
-            <p>Dépense actuelle : {DEPENDANCE_PARAMS.baseline} Md\u20ac</p>
+            <p>Dépense actuelle : {DEPENDANCE_PARAMS.baseline} Md€</p>
             <p>Croissance : {(DEPENDANCE_PARAMS.annualGrowthRate * 100).toFixed(1)}%/an (vs PIB {(DEPENDANCE_PARAMS.gdpGrowthBaseline * 100).toFixed(1)}%)</p>
-            <p>Surplus à 10 ans : ~{(DEPENDANCE_PARAMS.baseline * (Math.pow(1 + DEPENDANCE_PARAMS.annualGrowthRate, 10) - Math.pow(1 + DEPENDANCE_PARAMS.gdpGrowthBaseline, 10))).toFixed(0)} Md\u20ac</p>
+            <p>Surplus à 10 ans : ~{(DEPENDANCE_PARAMS.baseline * (Math.pow(1 + DEPENDANCE_PARAMS.annualGrowthRate, 10) - Math.pow(1 + DEPENDANCE_PARAMS.gdpGrowthBaseline, 10))).toFixed(0)} Md€</p>
           </div>
           <div className="demo-card">
             <h4>Emploi seniors</h4>
             <p>Taux actuel : {(SENIOR_EMPLOYMENT.currentRate * 100).toFixed(0)}% (benchmark UE: {(SENIOR_EMPLOYMENT.euBenchmark * 100).toFixed(0)}%)</p>
             <p>Population concernée : {(SENIOR_EMPLOYMENT.seniorPopulation / 1e6).toFixed(1)}M</p>
-            <p>Cotisation moyenne : {SENIOR_EMPLOYMENT.avgCotisationsPerWorker.toLocaleString()} \u20ac/an</p>
+            <p>Cotisation moyenne : {SENIOR_EMPLOYMENT.avgCotisationsPerWorker.toLocaleString()} €/an</p>
           </div>
         </div>
       </section>

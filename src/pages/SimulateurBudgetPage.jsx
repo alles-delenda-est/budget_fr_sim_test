@@ -292,10 +292,10 @@ export default function SimulateurBudgetPage() {
         <section className="results-section">
           <h2>Indicateurs clés (Année 1)</h2>
           <div className="metrics-grid">
-            <MetricCard label="Déficit année 1" value={projections.fullScenario[0].deficit} unit="Md\u20ac" baseline={BASELINE.integrated.deficit} format="billions" invertSign />
+            <MetricCard label="Déficit année 1" value={projections.fullScenario[0].deficit} unit="Md€" baseline={BASELINE.integrated.deficit} format="billions" invertSign />
             <MetricCard label="Dette/PIB" value={projections.fullScenario[0].debtRatio} unit="%" baseline={projections.baseline[0].debtRatio} format="percent" />
             <MetricCard label="Taux d'intérêt effectif" value={projections.fullScenario[0].effectiveInterestRate} unit="%" baseline={projections.baseline[0].effectiveInterestRate} format="percent" decimals={2} />
-            <MetricCard label="Charge d'intérêts" value={projections.fullScenario[0].interest} unit="Md\u20ac" baseline={projections.baseline[0].interest} format="billions" />
+            <MetricCard label="Charge d'intérêts" value={projections.fullScenario[0].interest} unit="Md€" baseline={projections.baseline[0].interest} format="billions" />
           </div>
         </section>
       )}
@@ -308,17 +308,17 @@ export default function SimulateurBudgetPage() {
             <div className="snapshot-group">
               <h3 className="snapshot-label">Année 5 ({MACRO_BASELINE.year + 5})</h3>
               <div className="metrics-grid metrics-grid-3">
-                <MetricCard label="Dette" value={projections.fullScenario[5].debt} unit="Md\u20ac" baseline={projections.baseline[5].debt} format="billions" decimals={0} />
-                <MetricCard label="Déficit" value={projections.fullScenario[5].deficit} unit="Md\u20ac" baseline={projections.baseline[5].deficit} format="billions" decimals={0} invertSign />
-                <MetricCard label="Intérêts" value={projections.fullScenario[5].interest} unit="Md\u20ac" baseline={projections.baseline[5].interest} format="billions" decimals={0} />
+                <MetricCard label="Dette" value={projections.fullScenario[5].debt} unit="Md€" baseline={projections.baseline[5].debt} format="billions" decimals={0} />
+                <MetricCard label="Déficit" value={projections.fullScenario[5].deficit} unit="Md€" baseline={projections.baseline[5].deficit} format="billions" decimals={0} invertSign />
+                <MetricCard label="Intérêts" value={projections.fullScenario[5].interest} unit="Md€" baseline={projections.baseline[5].interest} format="billions" decimals={0} />
               </div>
             </div>
             <div className="snapshot-group">
               <h3 className="snapshot-label">Année 10 ({MACRO_BASELINE.year + 10})</h3>
               <div className="metrics-grid metrics-grid-3">
-                <MetricCard label="Dette" value={projections.fullScenario[10].debt} unit="Md\u20ac" baseline={projections.baseline[10].debt} format="billions" decimals={0} />
-                <MetricCard label="Déficit" value={projections.fullScenario[10].deficit} unit="Md\u20ac" baseline={projections.baseline[10].deficit} format="billions" decimals={0} invertSign />
-                <MetricCard label="Intérêts" value={projections.fullScenario[10].interest} unit="Md\u20ac" baseline={projections.baseline[10].interest} format="billions" decimals={0} />
+                <MetricCard label="Dette" value={projections.fullScenario[10].debt} unit="Md€" baseline={projections.baseline[10].debt} format="billions" decimals={0} />
+                <MetricCard label="Déficit" value={projections.fullScenario[10].deficit} unit="Md€" baseline={projections.baseline[10].deficit} format="billions" decimals={0} invertSign />
+                <MetricCard label="Intérêts" value={projections.fullScenario[10].interest} unit="Md€" baseline={projections.baseline[10].interest} format="billions" decimals={0} />
               </div>
 
               <div className="sustainability-metrics">
@@ -333,20 +333,20 @@ export default function SimulateurBudgetPage() {
                 </div>
                 <div className="sustainability-row">
                   <span>Économies retraites :</span>
-                  <span className="sustainability-value">{projections.fullScenario[10].pensionReformSaving} Md\u20ac</span>
+                  <span className="sustainability-value">{projections.fullScenario[10].pensionReformSaving} Md€</span>
                 </div>
                 <div className="sustainability-row">
                   <span>Impact migration :</span>
-                  <span className="sustainability-value">{projections.fullScenario[10].migrationImpact} Md\u20ac</span>
+                  <span className="sustainability-value">{projections.fullScenario[10].migrationImpact} Md€</span>
                 </div>
                 <div className="sustainability-row">
                   <span>Pression dépendance :</span>
-                  <span className="sustainability-value">+{projections.fullScenario[10].dependancePressure} Md\u20ac</span>
+                  <span className="sustainability-value">+{projections.fullScenario[10].dependancePressure} Md€</span>
                 </div>
                 {enableSocialHousingLiquidation && (
                   <div className="sustainability-row">
                     <span>Cession HLM (an 10) :</span>
-                    <span className="sustainability-value">{projections.fullScenario[10].socialHousingWindfall} Md\u20ac</span>
+                    <span className="sustainability-value">{projections.fullScenario[10].socialHousingWindfall} Md€</span>
                   </div>
                 )}
               </div>
@@ -403,8 +403,8 @@ export default function SimulateurBudgetPage() {
             <SliderControl label="Indexation retraites" value={pensionIndexation} onChange={setPensionIndexation} min={-2} max={1} step={0.1} unit="pp vs inflation" decimals={1} />
             <div className="policy-refs">
               <h4>Références politiques :</h4>
-              <div className="ref-item"><strong>PLFSS 2025:</strong> Gel Jan-Jul = -3.6 Md\u20ac</div>
-              <div className="ref-item"><strong>PLFSS 2026:</strong> Gel total = -2.9 Md\u20ac</div>
+              <div className="ref-item"><strong>PLFSS 2025:</strong> Gel Jan-Jul = -3.6 Md€</div>
+              <div className="ref-item"><strong>PLFSS 2026:</strong> Gel total = -2.9 Md€</div>
             </div>
           </div>
           <div className="control-with-refs">
@@ -422,10 +422,10 @@ export default function SimulateurBudgetPage() {
         <div className="ss-context">
           <h4>Contexte PLFSS 2026 :</h4>
           <ul>
-            <li><strong>Déficit prévu :</strong> -19.4 Md\u20ac (vs -17.5 Md\u20ac initial)</li>
-            <li><strong>ONDAM :</strong> 274.4 Md\u20ac (+3.1%, vs +1.6% initial)</li>
-            <li><strong>CSG capital :</strong> +1.5 Md\u20ac (9.2% &rarr; 10.6%)</li>
-            <li><strong>Mesures abandonnées :</strong> Gel retraites, franchises médicales (-2.3 Md\u20ac)</li>
+            <li><strong>Déficit prévu :</strong> -19.4 Md€ (vs -17.5 Md€ initial)</li>
+            <li><strong>ONDAM :</strong> 274.4 Md€ (+3.1%, vs +1.6% initial)</li>
+            <li><strong>CSG capital :</strong> +1.5 Md€ (9.2% &rarr; 10.6%)</li>
+            <li><strong>Mesures abandonnées :</strong> Gel retraites, franchises médicales (-2.3 Md€)</li>
           </ul>
         </div>
       </section>
@@ -458,7 +458,7 @@ export default function SimulateurBudgetPage() {
           <div className="combined-reforms-summary">
             <h4>Impact réforme retraites :</h4>
             <div className="combined-effect">
-              <strong>Économie pension (Année 10) :</strong> {projections.fullScenario[10].pensionReformSaving} Md\u20ac
+              <strong>Économie pension (Année 10) :</strong> {projections.fullScenario[10].pensionReformSaving} Md€
             </div>
           </div>
         )}
@@ -482,7 +482,7 @@ export default function SimulateurBudgetPage() {
                       <span className="reform-effect">+{(reform.growthEffect * 100).toFixed(2)}pp/an</span>
                       <span className="reform-details">
                         Délai: {reform.lag} ans &bull; Durée: {reform.duration} ans
-                        {reform.seniorEmploymentGain != null && ` \u2022 Emploi seniors: +${(reform.seniorEmploymentGain * 100).toFixed(0)}pp`}
+                        {reform.seniorEmploymentGain != null && ` • Emploi seniors: +${(reform.seniorEmploymentGain * 100).toFixed(0)}pp`}
                       </span>
                     </div>
                   </label>
@@ -515,8 +515,8 @@ export default function SimulateurBudgetPage() {
             <input type="checkbox" checked={enableSocialHousingLiquidation} onChange={(e) => setEnableSocialHousingLiquidation(e.target.checked)} />
             <div className="reform-checkbox-content">
               <strong>Liquidation parc HLM</strong>
-              <span className="reform-effect">{SOCIAL_HOUSING_LIQUIDATION.annualProceeds} Md\u20ac/an pendant {SOCIAL_HOUSING_LIQUIDATION.saleDurationYears} ans</span>
-              <span className="reform-details">Actif total: {SOCIAL_HOUSING_LIQUIDATION.totalAssetValue} Md\u20ac &bull; {SOCIAL_HOUSING_LIQUIDATION.source}</span>
+              <span className="reform-effect">{SOCIAL_HOUSING_LIQUIDATION.annualProceeds} Md€/an pendant {SOCIAL_HOUSING_LIQUIDATION.saleDurationYears} ans</span>
+              <span className="reform-details">Actif total: {SOCIAL_HOUSING_LIQUIDATION.totalAssetValue} Md€ &bull; {SOCIAL_HOUSING_LIQUIDATION.source}</span>
             </div>
           </label>
         </div>
@@ -550,15 +550,15 @@ export default function SimulateurBudgetPage() {
           <div className="budget-breakdown">
             <div className="breakdown-row">
               <span>État seul :</span>
-              <span className="breakdown-value">{(BASELINE.etat.deficit + policyImpact.etat.revenue - policyImpact.etat.spending).toFixed(1)} Md\u20ac</span>
+              <span className="breakdown-value">{(BASELINE.etat.deficit + policyImpact.etat.revenue - policyImpact.etat.spending).toFixed(1)} Md€</span>
             </div>
             <div className="breakdown-row">
               <span>Sécurité sociale :</span>
-              <span className="breakdown-value">{(BASELINE.securiteSociale.deficit + policyImpact.ss.revenue - policyImpact.ss.spending).toFixed(1)} Md\u20ac</span>
+              <span className="breakdown-value">{(BASELINE.securiteSociale.deficit + policyImpact.ss.revenue - policyImpact.ss.spending).toFixed(1)} Md€</span>
             </div>
             <div className="breakdown-row total">
               <span><strong>Total APU :</strong></span>
-              <span className="breakdown-value"><strong>{projections.fullScenario[0].deficit.toFixed(1)} Md\u20ac</strong></span>
+              <span className="breakdown-value"><strong>{projections.fullScenario[0].deficit.toFixed(1)} Md€</strong></span>
             </div>
           </div>
         </section>
@@ -573,7 +573,7 @@ export default function SimulateurBudgetPage() {
               <BarChart data={[{ name: 'Impact', 'Recettes': policyImpact.revenueChange, 'Dépenses': -policyImpact.spendingChange, 'Solde': policyImpact.revenueChange - policyImpact.spendingChange }]}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
-                <YAxis label={{ value: 'Milliards \u20ac', angle: -90, position: 'insideLeft' }} />
+                <YAxis label={{ value: 'Milliards €', angle: -90, position: 'insideLeft' }} />
                 <Tooltip />
                 <Legend />
                 <Bar dataKey="Recettes" fill="#10b981" />
@@ -585,7 +585,7 @@ export default function SimulateurBudgetPage() {
           {(selectedReforms.length > 0 || selectedHousingReform) && combinedReformEffect && (
             <div className="reform-impact-note">
               <p><strong>{combinedReformEffect.reforms.length} réforme(s) structurelle(s)</strong> activée(s) avec effet croissance de <strong>+{(combinedReformEffect.growthEffect * 100).toFixed(2)}pp/an</strong></p>
-              <p className="reform-list">{combinedReformEffect.reforms.join(' \u2022 ')}</p>
+              <p className="reform-list">{combinedReformEffect.reforms.join(' • ')}</p>
             </div>
           )}
         </section>
