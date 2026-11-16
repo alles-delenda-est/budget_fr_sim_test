@@ -226,6 +226,8 @@ describe('Demographic drift integration', () => {
     const result = validateProjection(proj20)
     // With demographic drift, 20-year baseline debt ratio exceeds 200% — expected
     expect(proj20[20].debtRatio).toBeGreaterThan(180)
+    expect(result.valid).toBe(false)
+    expect(result.warnings.length).toBeGreaterThan(0)
   })
 
   it('reform + demographic drift: reform partially offsets demographic pressure', () => {
@@ -262,7 +264,7 @@ describe('ONDAM floor integration with projection', () => {
 
 describe('COR scenario integration', () => {
   it('each COR preset produces a valid projection', () => {
-    for (const [key, preset] of Object.entries(PENSION_REFORM_PRESETS)) {
+    for (const preset of Object.values(PENSION_REFORM_PRESETS)) {
       const result = projectFiscalPath({}, {
         years: 10,
         pensionReform: preset.pensionReform,
@@ -349,7 +351,7 @@ describe('Demographic and dependance integration', () => {
   })
 
   it('existing presets still produce valid projections with new channels', () => {
-    for (const [key, preset] of Object.entries(PRESETS)) {
+    for (const preset of Object.values(PRESETS)) {
       const impact = calculatePolicyImpact(preset.levers)
       const result = projectFiscalPath(impact, { years: 10 })
       expect(result).toHaveLength(11)

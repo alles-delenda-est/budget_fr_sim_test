@@ -4,7 +4,7 @@
 // duplicated elsewhere. Retained for belt-and-suspenders coverage.
 import { describe, it, expect } from 'vitest'
 import { calculatePolicyImpact, BASELINE, BEHAVIORAL_RESPONSE, FISCAL_MULTIPLIERS } from '../policy-impact'
-import { projectFiscalPath, calculateInterestRate, getBaselineProjection } from '../projection-engine-v1.8'
+import { projectFiscalPath, getBaselineProjection } from '../projection-engine-v1.8'
 
 // =============================================================================
 // AGENT 2: REVENUE MECHANICS & BEHAVIORAL RESPONSE

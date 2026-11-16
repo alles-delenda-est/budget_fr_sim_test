@@ -551,7 +551,7 @@ describe('calculatePolicyImpact - presets', () => {
   })
 
   it('each preset produces correct shape', () => {
-    for (const [key, preset] of Object.entries(PRESETS)) {
+    for (const preset of Object.values(PRESETS)) {
       const result = calculatePolicyImpact(preset.levers)
       expect(result).toHaveProperty('revenueChange')
       expect(result).toHaveProperty('spendingChange')
