@@ -1,10 +1,23 @@
 # Citation verification table
 
-STATUS: WORK IN PROGRESS (groups 1-3 of 5 filled). Rows marked "NOT YET CHECKED" are unverified and must not be read as supported.
+STATUS: INCOMPLETE. Work stopped at a usage limit; groups A-F below are filled, group G and the rows marked NOT YET CHECKED are not. Rows marked "NOT YET CHECKED" are unverified and must not be read as supported.
 Started 2026-11-16. Method: WebSearch + WebFetch only. "Supports" is used only where retrieved text bears on the value. Rows say whether I saw the full text or only an abstract/catalogue page. Fetch tool returns summaries of pages; page/table references below are as reported by those summaries and should be spot-checked by a reviewer.
 
 ## Summary
-(to be completed at the end)
+Not final: counts below cover only the rows checked so far (about 30 source-citations). Rows marked NOT YET CHECKED are excluded.
+
+Most serious problems found so far:
+1. Gechert & Heimberger (2022), cited for a +0.12 pp growth boost from corporate tax cuts, concludes the opposite: after bias correction a zero effect cannot be rejected (abstract only).
+2. "FNAIM", cited for the ONDAM health floor, is the national federation of real-estate professionals; nothing in it relates to health-care access.
+3. Kleven & Schultz (2014) is a Danish study with labour-income ETIs of about 0.05-0.10 (all subgroups under 0.2); it cannot support French ETIs of 0.25 / 0.55.
+4. "Landais et al. (2011)" cannot be identified; the closest French source (Cabannes & Landais 2008 preprint) covers income tax only, never the CSG.
+5. Keen & Lockwood (2010) studies VAT adoption and total revenue ratios across 143 countries; it does not estimate a 0.92 revenue-efficiency coefficient.
+6. Blanchard & Leigh (2013) is not a meta-analysis, gives no multipliers by spending category, and does not model monetary offset; the "IMF WEO 2012 meta-analysis" label is wrong.
+7. "European Commission (2016)" elasticity of 0.50 for broad capital: no matching document found; Zucman (2014) abstract gives US figures, not "10% of the French base".
+8. Hartz-IV +0.35 pp/yr: Krebs & Scheffel (2013) report about +0.1 pp annual long-run growth (Germany, calibrated model, no senior-employment effect); Dustmann et al. (2014) attribute Germany's recovery mainly to labour-market institutions rather than the Hartz reforms (abstract only).
+9. Blanchard & Tirole (2003) is a policy-design paper with no growth estimates; Bassanini & Duval (2006) estimate unemployment and employment rates, not GDP growth. Neither supports +0.45 pp/yr.
+10. Hilber & Vermeulen link in assumptions.js (DOI 10.1016/j.jue.2015.11.003) does not resolve to that paper; Hsieh & Moretti is US-only and cannot support a French R+8 station upzoning figure of +0.25 pp/yr.
+Also: ARCHITECTURE.md cites "IMF WP/17/87" for Kumar & Baldacci; the correct number is WP/10/184. ARCHITECTURE.md s2 reform table values (e.g. labour +0.15, planning +0.15) differ from the code values (Hartz +0.35, radicalFlex +0.45, housing +0.25).
 
 ## Verdict key
 supports / partly supports / does not support / source not found / could not access
@@ -52,4 +65,36 @@ supports / partly supports / does not support / source not found / could not acc
 | +4 bps per pp (90-120%) | EC Debt Sustainability Monitor | European Commission, Debt Sustainability Monitor (DG ECFIN) | link goes to a generic fiscal-sustainability landing page | NOT YET CHECKED | | |
 | +10 bps per pp (>120%) | "Consensus academique, OAT 2010-2012" | none | | SOURCE NOT FOUND (no reference) | | none |
 
-(Further groups to be added: structural reforms, macro/fiscal, demographics, pensions, ONDAM/FNAIM.)
+## E. Structural reforms (projection-engine STRUCTURAL_REFORMS growthEffect, pp of annual growth)
+
+Common issue: the code expresses each reform as a sustained annual growth increment for a number of years. Most cited papers estimate level effects, unemployment rates or house prices, which cannot be turned into pp per year without an extra step the repo does not document.
+
+| Parameter | Citation as written | Correct reference | What the source estimates | Verdict | Where | Better source |
+|---|---|---|---|---|---|---|
+| Hartz-IV +0.35 pp/yr, senior employment +4 pp | Krebs & Scheffel (2013) | Krebs, T. and Scheffel, M. (2013), "Macroeconomic evaluation of labor market reform in Germany", IMF Economic Review 61(4): 664-701 (also IMF WP/13/42) | Calibrated model for Germany: Hartz IV lowers steady-state unemployment from 9% to 7.6%; annual long-run growth up about 0.1 pp (1% to 1.08%); Hartz I-IV together about 1.14%. No senior-employment effect; budget assumed balanced | DOES NOT SUPPORT 0.35 (paper implies about 0.1) and does not support the +4 pp senior employment | Full text (pp. 666, 684-689) | none found |
+| same | Dustmann et al. (2014) | Dustmann, Fitzenberger, Schonberg, Spitz-Oener (2014), "From sick man of Europe to economic superstar: Germany's resurgent economy", JEP 28(1): 167-88 | Attributes German performance mainly to labour-market institutions (flexible, decentralised wage setting) | DOES NOT SUPPORT as a growth source for Hartz-IV (abstract only; the UCL press release headline says wage bargaining, not Hartz) | Abstract only | none |
+| same | Launov & Walde (2016) | Launov, A. and Walde, K. (2016), "The employment effect of reforming a public employment agency", European Economic Review 84: 140-164 | German reform; better PEA effectiveness explains about 20% and benefit cuts about 5% of the post-reform unemployment fall | DOES NOT SUPPORT a growth or senior-employment figure | Abstract only | none |
+| Contrat unique +0.45 pp/yr, seniors +6 pp | Blanchard & Tirole (2003) | Blanchard, O. and Tirole, J. (2003), "Contours of employment protection reform", MIT Dept. of Economics WP 03-35 | Design proposal (layoff contribution tied to unemployment-benefit cost) with a France section; no quantitative growth estimate | DOES NOT SUPPORT 0.45 | Full text | none found |
+| same | Cahuc & Kramarz (2004) | Cahuc, P. and Kramarz, F. (2004), "De la precarite a la mobilite: vers une Securite sociale professionnelle", report to the French government | report located (vie-publique.fr), not read | COULD NOT CHECK (not read) | catalogue only | |
+| same | Bassanini & Duval (2006) | Bassanini, A. and Duval, R. (2006), "Employment patterns in OECD countries: reassessing the role of policies and institutions", OECD Economics Dept WP 486 | 21 OECD countries, 1982-2003; effects of benefits, tax wedges, product-market regulation, bargaining on unemployment and employment rates; not GDP growth | DOES NOT SUPPORT a growth figure; partly supports direction (flexibility lowers unemployment) | Abstract/summary only | none |
+| Housing +0.05 / +0.03 | Diamond et al. (2019) | Diamond, McQuade, Qian (2019), "The effects of rent control expansion on tenants, landlords, and inequality: evidence from San Francisco", AER 109(9): 3365-94 | San Francisco: covered tenants about 20% likelier to stay; landlords cut rental supply about 15%, raising citywide rents 5.1%. No national growth effect | PARTLY SUPPORTS the claim that rent control reduces rental supply; does not support any growth-rate value | Abstract only | none |
+| Housing +0.03 | Autor et al. (2014) | Autor, Palmer, Pathak (2014), JPE, end of rent control in Cambridge, MA | located (NBER 18125), not read | COULD NOT CHECK (not read) | | |
+| Housing +0.05 | Sims (2007) | not identified; no search done | | NOT YET CHECKED | | |
+| PLU R+8 near stations +0.25 pp/yr (20 years) | Hsieh & Moretti (2019) | Hsieh, C.-T. and Moretti, E. (2019), "Housing constraints and spatial misallocation", AEJ: Macroeconomics 11(2): 1-39 | US, 220 metro areas 1964-2009; relaxing constraints in New York, San Jose, San Francisco to median city raises 2009 US GDP about 3.7%; abstract says constraints lowered aggregate US growth by 36% over 1964-2009. No France, no station-based upzoning | PARTLY SUPPORTS that housing supply constraints can have large level effects in the US; DOES NOT SUPPORT 0.25 pp/yr or any French figure | Full text read (first 100k characters) | none |
+| same | Hilber & Vermeulen (2016); link doi.org/10.1016/j.jue.2015.11.003 | Hilber, C. and Vermeulen, W. (2016), "The impact of supply constraints on house prices in England", Economic Journal 126(591): 358-405 (DOI per search result: 10.1111/ecoj.12213) | England, 353 local authorities 1974-2008: house price-earnings elasticity larger where supply is constrained. Not GDP. The repo DOI does not belong to this paper: a nearby DOI (.004) is Jackson (2016), JUE 91, on California land-use rules; I could not resolve .003 | DOES NOT SUPPORT a growth figure; WRONG LINK | Abstract only | none |
+| Education +0.08; Energy +0.07; PMR +0.10; packages +0.40 / +0.20 | OECD EAG; CRE 2024 / Eurostat; OECD PMR; OECD (2014); IMF Art. IV 2025 | | | NOT YET CHECKED | | |
+
+## F. Health, ONDAM and macro
+
+| Parameter | Citation as written | Correct reference | What the source estimates | Verdict | Where | Better source |
+|---|---|---|---|---|---|---|
+| ONDAM floor -3% threshold / 50% damping / -7% hard floor; "87% deserts medicaux, 52-day waits, 20.8M ER visits" | "DREES 2024, FNAIM healthcare access data" (also ARCHITECTURE: "Estimated from healthcare constraint data", "Safety bound") | FNAIM = Federation Nationale de l'Immobilier, a trade body of about 12,000 real-estate professionals (Tegova member page) | No health-care data. DREES document not identified. The 50% damping and -7% floor are described in the repo itself as estimated / a safety bound, i.e. judgement, not sourced | FNAIM: DOES NOT SUPPORT (wrong organisation). DREES: SOURCE NOT FOUND (no document identified, not searched further) | catalogue page | DREES/IRDES publications on medical density; none checked |
+| Planning reform +0.20 (ARCHITECTURE line 510) | FNAIM 2024 | | FNAIM is plausible for housing data only; the value in code is +0.25 and in the ARCHITECTURE reform table +0.15 | DOES NOT SUPPORT as a source for a growth effect; internal inconsistency | | |
+| Tax elasticity to GDP 0.45 ("45% of extra growth becomes revenue") | Girouard & Andre (2005), OECD | Girouard, N. and Andre, C. (2005), "Measuring cyclically-adjusted budget balances for OECD countries", OECD Economics Dept WP 434. The OECD catalogue page I fetched lists the title under C. Andre alone with a different WP number, so the metadata should be checked | Budget-balance sensitivity to the output gap about 0.5% of GDP per 1 pp for the OECD average (page summary). That is a net-lending semi-elasticity, not a "tax elasticity to GDP", and 0.45 is not stated on the page I saw | PARTLY SUPPORTS the order of magnitude only; quantity differs; no France value retrieved | Catalogue page only; full PDF not read | read the PDF tables |
+| Pension / health elasticity to dependency 0.80 / 0.50 | COR 2024; DREES 2024 | | | NOT YET CHECKED | | |
+
+## G. Not yet checked
+
+Macro baseline (INSEE, BdF, AFT; no specific documents named); political premium 21 bps (Bloomberg OAT-Bund, ECB FSR Nov 2024; both proprietary or not retrieved); senior employment 58% to 65% (DARES, Eurostat); OECD Employment Outlook 2019 for cotisations 0.58 (search found only the report landing pages; the tax wedge ranking comes from OECD Taxing Wages, which I did not manage to open); Mirrlees Review and Saez et al. (2012) for TVA/CSG boosts; Sims (2007); Autor et al. (2014) text; Cahuc & Kramarz text; CPO and DGFiP/Cour des comptes for IR 0.9 and IS 0.7 elasticities; COR 2024 and PLFSS 2025 for pension and dependance figures.
+
+"francetdb.com": a search for the site returned only unrelated pension-simulator sites (francetransactions.com, cor-retraites.fr); I could not identify what francetdb.com is, who runs it, or what rtRunModel() and RT_DEFAULT_HYP refer to. It is cited for the pension mass 303.4 Md EUR, retirement-age effect (-2.5%/yr above 64), notional accounts (-6%), pension-reform presets and the dependance trajectory. All those rows are UNVERIFIED and should be treated as "source not identified" until the owner supplies the URL. (Migration and notional-account blocks are being deleted anyway.)
