@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest'
 import {
   MACRO_BASELINE,
   STRUCTURAL_REFORMS,
-  SOCIAL_HOUSING_LIQUIDATION,
   ROLLOVER_RATE,
   DEFICIT_STRESS_THRESHOLD,
   DEFICIT_STRESS_SENSITIVITY,
@@ -10,8 +9,6 @@ import {
   DEMOGRAPHIC_PRESSURE_PER_YEAR,
   SENIOR_EMPLOYMENT,
   PENSION_REFORM,
-  MIGRATION_PARAMS,
-  MIGRATION_NET_WORKERS_PER_YEAR,
   DEPENDANCE_PARAMS,
   calculateInterestRate,
   calculateReformGrowthBoost,
@@ -922,63 +919,6 @@ describe('structural reform constants', () => {
   })
 })
 
-describe('SOCIAL_HOUSING_LIQUIDATION constants', () => {
-  it('total asset value is 750 Md', () => {
-    expect(SOCIAL_HOUSING_LIQUIDATION.totalAssetValue).toBe(750)
-  })
-
-  it('sale duration is 10 years', () => {
-    expect(SOCIAL_HOUSING_LIQUIDATION.saleDurationYears).toBe(10)
-  })
-
-  it('annual proceeds is 75 Md', () => {
-    expect(SOCIAL_HOUSING_LIQUIDATION.annualProceeds).toBe(75)
-  })
-
-  it('growth effect is 0.0002', () => {
-    expect(SOCIAL_HOUSING_LIQUIDATION.growthEffect).toBe(0.0002)
-  })
-})
-
-describe('social housing liquidation in projectFiscalPath', () => {
-  it('year 0 has zero windfall', () => {
-    const result = projectFiscalPath({}, { years: 10, enableSocialHousingLiquidation: true })
-    expect(result[0].socialHousingWindfall).toBe(0)
-  })
-
-  it('years 1-10 have 75 Md windfall', () => {
-    const result = projectFiscalPath({}, { years: 12, enableSocialHousingLiquidation: true })
-    for (let t = 1; t <= 10; t++) {
-      expect(result[t].socialHousingWindfall).toBe(75)
-    }
-  })
-
-  it('year 11+ has zero windfall', () => {
-    const result = projectFiscalPath({}, { years: 12, enableSocialHousingLiquidation: true })
-    expect(result[11].socialHousingWindfall).toBe(0)
-    expect(result[12].socialHousingWindfall).toBe(0)
-  })
-
-  it('social housing reduces deficit during years 1-10', () => {
-    const withHousing = projectFiscalPath({}, { years: 10, enableSocialHousingLiquidation: true })
-    const noHousing = projectFiscalPath({}, { years: 10, enableSocialHousingLiquidation: false })
-    expect(withHousing[5].deficit).toBeLessThan(noHousing[5].deficit)
-  })
-
-  it('social housing reduces debt ratio at year 10', () => {
-    const withHousing = projectFiscalPath({}, { years: 10, enableSocialHousingLiquidation: true })
-    const noHousing = projectFiscalPath({}, { years: 10, enableSocialHousingLiquidation: false })
-    expect(withHousing[10].debtRatio).toBeLessThan(noHousing[10].debtRatio)
-  })
-
-  it('disabled by default', () => {
-    const result = projectFiscalPath({}, { years: 5 })
-    result.forEach(entry => {
-      expect(entry.socialHousingWindfall).toBe(0)
-    })
-  })
-})
-
 // =============================================================================
 // PENSION REFORM CONSTANTS
 // =============================================================================
@@ -1019,7 +959,7 @@ describe('pension reform in projectFiscalPath', () => {
     it('year 0 has zero pension reform saving (ramp factor = 0)', () => {
       const result = projectFiscalPath({}, {
         years: 5,
-        pensionReform: { retirementAge: 67, desindexation: 0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+        pensionReform: { retirementAge: 67, desindexation: 0, pensionCap: 0, notionnel: false },
       })
       expect(result[0].pensionReformSaving).toBe(0)
     })
@@ -1027,7 +967,7 @@ describe('pension reform in projectFiscalPath', () => {
     it('ramp-up: year 4 effect is 50% at rampUpYears=8', () => {
       const result = projectFiscalPath({}, {
         years: 10,
-        pensionReform: { retirementAge: 67, desindexation: 0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+        pensionReform: { retirementAge: 67, desindexation: 0, pensionCap: 0, notionnel: false },
       })
       // ageAboveCurrent = 3, rampFactor at t=4 = 4/8 = 0.5
       // saving = 303.4 * 3 * 0.025 * 0.5 = 11.3775
@@ -1037,7 +977,7 @@ describe('pension reform in projectFiscalPath', () => {
     it('retirement age 67 at year 10 produces significant saving', () => {
       const result = projectFiscalPath({}, {
         years: 10,
-        pensionReform: { retirementAge: 67, desindexation: 0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+        pensionReform: { retirementAge: 67, desindexation: 0, pensionCap: 0, notionnel: false },
       })
       // ageAboveCurrent = 3, rampFactor at t=10 = min(10/8, 1) = 1
       // saving = 303.4 * 3 * 0.025 * 1 = 22.755
@@ -1047,7 +987,7 @@ describe('pension reform in projectFiscalPath', () => {
     it('retirement age below current (60) produces negative saving (higher spending)', () => {
       const result = projectFiscalPath({}, {
         years: 10,
-        pensionReform: { retirementAge: 60, desindexation: 0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+        pensionReform: { retirementAge: 60, desindexation: 0, pensionCap: 0, notionnel: false },
       })
       // ageAboveCurrent = -4, but we use Math.abs so saving is positive... wait
       // Actually: ageAboveCurrent = -4, saving = 303.4 * (-4) * 0.025 * ramp = negative
@@ -1063,7 +1003,7 @@ describe('pension reform in projectFiscalPath', () => {
     it('year 0 has zero desindexation saving', () => {
       const result = projectFiscalPath({}, {
         years: 5,
-        pensionReform: { retirementAge: 64, desindexation: 1.5, pensionCap: 0, notionnel: false, capitalisation: 0 },
+        pensionReform: { retirementAge: 64, desindexation: 1.5, pensionCap: 0, notionnel: false },
       })
       expect(result[0].pensionReformSaving).toBe(0)
     })
@@ -1071,7 +1011,7 @@ describe('pension reform in projectFiscalPath', () => {
     it('desindexation savings increase over time (cumulative)', () => {
       const result = projectFiscalPath({}, {
         years: 10,
-        pensionReform: { retirementAge: 64, desindexation: 1.5, pensionCap: 0, notionnel: false, capitalisation: 0 },
+        pensionReform: { retirementAge: 64, desindexation: 1.5, pensionCap: 0, notionnel: false },
       })
       // Cumulative: annualReduction = 1.5 * 0.005 = 0.0075
       // year 5 (past ramp): saving = 303.4 * 0.0075 * 5 = 11.4
@@ -1083,7 +1023,7 @@ describe('pension reform in projectFiscalPath', () => {
     it('desindexation ramp-up over 3 years', () => {
       const result = projectFiscalPath({}, {
         years: 5,
-        pensionReform: { retirementAge: 64, desindexation: 1.0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+        pensionReform: { retirementAge: 64, desindexation: 1.0, pensionCap: 0, notionnel: false },
       })
       // year 1: ramp = 1/3, annualReduction = 0.005, saving = 303.4 * 0.005 * 1 * (1/3) = 0.506
       expect(result[1].pensionReformSaving).toBeCloseTo(0.5, 0)
@@ -1096,7 +1036,7 @@ describe('pension reform in projectFiscalPath', () => {
     it('year 0 has zero pension cap saving', () => {
       const result = projectFiscalPath({}, {
         years: 5,
-        pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 15, notionnel: false, capitalisation: 0 },
+        pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 15, notionnel: false },
       })
       expect(result[0].pensionReformSaving).toBe(0)
     })
@@ -1104,7 +1044,7 @@ describe('pension reform in projectFiscalPath', () => {
     it('pension cap ramps up over 3 years', () => {
       const result = projectFiscalPath({}, {
         years: 5,
-        pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 10, notionnel: false, capitalisation: 0 },
+        pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 10, notionnel: false },
       })
       // year 1: ramp = 1/3, saving = 303.4 * 0.10 * (1/3) = 10.11
       expect(result[1].pensionReformSaving).toBeCloseTo(10.1, 0)
@@ -1115,7 +1055,7 @@ describe('pension reform in projectFiscalPath', () => {
     it('max pension cap (20%) at full ramp', () => {
       const result = projectFiscalPath({}, {
         years: 5,
-        pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 20, notionnel: false, capitalisation: 0 },
+        pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 20, notionnel: false },
       })
       // year 5: saving = 303.4 * 0.20 = 60.68
       expect(result[5].pensionReformSaving).toBeCloseTo(60.7, 0)
@@ -1126,7 +1066,7 @@ describe('pension reform in projectFiscalPath', () => {
     it('no effect before startYear (2027 = t=2)', () => {
       const result = projectFiscalPath({}, {
         years: 10,
-        pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 0, notionnel: true, capitalisation: 0 },
+        pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 0, notionnel: true },
       })
       // t=0 (2025): yearsActive = max(0, 0 - 2) = 0
       expect(result[0].pensionReformSaving).toBe(0)
@@ -1137,7 +1077,7 @@ describe('pension reform in projectFiscalPath', () => {
     it('ramps up after startYear', () => {
       const result = projectFiscalPath({}, {
         years: 10,
-        pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 0, notionnel: true, capitalisation: 0 },
+        pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 0, notionnel: true },
       })
       // t=5 (2030): yearsActive = 3, ramp = 3/15 = 0.2
       // saving = 303.4 * 0.06 * 0.2 = 3.6408
@@ -1147,7 +1087,7 @@ describe('pension reform in projectFiscalPath', () => {
     it('full effect after 15 years from startYear', () => {
       const result = projectFiscalPath({}, {
         years: 20,
-        pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 0, notionnel: true, capitalisation: 0 },
+        pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 0, notionnel: true },
       })
       // t=17 (2042): yearsActive = 15, ramp = 1.0
       // saving = 303.4 * 0.06 = 18.204
@@ -1159,7 +1099,7 @@ describe('pension reform in projectFiscalPath', () => {
     it('extreme reform combo is capped at 35% of baseline', () => {
       const result = projectFiscalPath({}, {
         years: 20,
-        pensionReform: { retirementAge: 72, desindexation: 2, pensionCap: 20, notionnel: true, capitalisation: 0 },
+        pensionReform: { retirementAge: 72, desindexation: 2, pensionCap: 20, notionnel: true },
       })
       const maxSaving = PENSION_REFORM.pensionMass * (1 - PENSION_REFORM.pensionFloor)
       // maxSaving = 303.4 * 0.35 = 106.19
@@ -1171,7 +1111,7 @@ describe('pension reform in projectFiscalPath', () => {
     it('moderate reform does not hit floor', () => {
       const result = projectFiscalPath({}, {
         years: 10,
-        pensionReform: { retirementAge: 66, desindexation: 0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+        pensionReform: { retirementAge: 66, desindexation: 0, pensionCap: 0, notionnel: false },
       })
       const maxSaving = PENSION_REFORM.pensionMass * (1 - PENSION_REFORM.pensionFloor)
       expect(result[10].pensionReformSaving).toBeLessThan(maxSaving)
@@ -1183,7 +1123,7 @@ describe('pension reform in projectFiscalPath', () => {
       const baseline = projectFiscalPath({}, { years: 10 })
       const withReform = projectFiscalPath({}, {
         years: 10,
-        pensionReform: { retirementAge: 67, desindexation: 0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+        pensionReform: { retirementAge: 67, desindexation: 0, pensionCap: 0, notionnel: false },
       })
       expect(withReform[10].deficit).toBeLessThan(baseline[10].deficit)
     })
@@ -1196,52 +1136,6 @@ describe('pension reform in projectFiscalPath', () => {
         expect(entry.pensionReformSaving).toBe(0)
       })
     })
-  })
-})
-
-// =============================================================================
-// MIGRATION FISCAL IMPACT
-// =============================================================================
-
-describe('MIGRATION_PARAMS constants', () => {
-  it('immigration annual flow is 270000', () => {
-    expect(MIGRATION_PARAMS.immigration.annualFlow).toBe(270000)
-  })
-
-  it('emigration annual flow is 200000', () => {
-    expect(MIGRATION_PARAMS.emigration.annualFlow).toBe(200000)
-  })
-
-  it('net worker change per year is negative (brain drain)', () => {
-    expect(MIGRATION_NET_WORKERS_PER_YEAR).toBeLessThan(0)
-    // 115425 - 193600 = -78175
-    expect(MIGRATION_NET_WORKERS_PER_YEAR).toBeCloseTo(-78175, 0)
-  })
-})
-
-describe('migration fiscal impact in projectFiscalPath', () => {
-  it('year 0 has zero migration impact', () => {
-    const result = projectFiscalPath({}, { years: 5 })
-    expect(result[0].migrationImpact).toBeCloseTo(0, 1)
-  })
-
-  it('year 10 has approximately -11.2 Md impact', () => {
-    const result = projectFiscalPath({}, { years: 10 })
-    // 10 * -78175 * 14350 / 1e9 = -11.218
-    expect(result[10].migrationImpact).toBeCloseTo(-11.2, 0)
-  })
-
-  it('opt-out produces zero migration impact', () => {
-    const result = projectFiscalPath({}, { years: 10, enableMigrationImpact: false })
-    result.forEach(entry => {
-      expect(entry.migrationImpact).toBe(0)
-    })
-  })
-
-  it('migration impact worsens deficit (adds to spending pressure)', () => {
-    const withMigration = projectFiscalPath({}, { years: 10, enableMigrationImpact: true, enableDependanceDrift: false, enableDemographicDrift: false })
-    const noMigration = projectFiscalPath({}, { years: 10, enableMigrationImpact: false, enableDependanceDrift: false, enableDemographicDrift: false })
-    expect(withMigration[10].deficit).toBeGreaterThan(noMigration[10].deficit)
   })
 })
 

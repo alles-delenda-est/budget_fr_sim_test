@@ -38,7 +38,6 @@ const ASSUMPTIONS = {
     { parameter: "Dérégulation logement modérée", value: "+0,05 pp/an", impact: "Retour à 2010, abolition encadrement loyers + DPE", source: "Diamond et al. (2019), Sims (2007)", link: null },
     { parameter: "Abolition encadrement des loyers", value: "+0,03 pp/an", impact: "Suppression contrôle loyers, PLU/DPE inchangés", source: "Diamond et al. (2019), Autor et al. (2014)", link: null },
     { parameter: "PLU national R+8 gares + abolition encadrement", value: "+0,25 pp/an", impact: "Construction R+8 à 1km gares, délai 4 ans, durée 20 ans", source: "Hsieh & Moretti (2019), Hilber & Vermeulen (2016)", link: "https://doi.org/10.1016/j.jue.2015.11.003" },
-    { parameter: "Liquidation parc HLM", value: "750 Md€ sur 10 ans", impact: "75 Md€/an réduction dette, effet croissance +0,02pp/an", source: "ANCOLS 2025, MeilleursAgents, USH, UK Right to Buy", link: null },
     { parameter: "Réforme éducation/formation", value: "+0,08 pp/an", impact: "Capital humain, délai 5 ans, durée 20 ans", source: "OCDE Education at a Glance", link: "https://www.oecd.org/education/education-at-a-glance/" },
     { parameter: "Déréglementation énergie", value: "+0,07 pp/an", impact: "Compétitivité industrielle, délai 2 ans (réduit: France déjà compétitive)", source: "CRE 2024, Eurostat energy prices", link: "https://www.cre.fr/" },
   ],
@@ -55,7 +54,6 @@ const ASSUMPTIONS = {
     { parameter: "Effet âge retraite", value: "-2,5%/an au-delà de 64", impact: "Chaque année supplémentaire réduit la masse pension", source: "francetdb.com rtRunModel()", link: null },
     { parameter: "Comptes notionnels (suédois)", value: "-6% masse pension", impact: "Mise en place sur 15 ans à partir de 2027", source: "francetdb.com, modèle NDC", link: null },
     { parameter: "Plancher pension", value: "65% du niveau initial", impact: "Les réformes ne peuvent réduire les pensions au-delà", source: "Contrainte politique modélisée", link: null },
-    { parameter: "Immigration nette", value: "270k entrants, 200k sortants/an", impact: "-1,1 Md€/an impact fiscal (brain drain)", source: "INSEE 2023, francetdb.com", link: null },
     { parameter: "Dépendance/autonomie", value: "43,5 Md€, +5,5%/an", impact: "Croissance excédentaire vs PIB (+16 Md€ à 10 ans)", source: "PLFSS 2025, DREES", link: null },
   ],
 }

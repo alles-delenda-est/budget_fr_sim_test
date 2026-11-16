@@ -116,7 +116,7 @@ export default function IntroPage({ navigateTo }) {
             <p>
               Vue focalisée sur le système de retraites : âge de départ, désindexation,
               plafonnement, comptes notionnels, scénarios COR, emploi seniors.
-              Contextualisé par la démographie, la migration, et la dépendance.
+              Contextualisé par la démographie et la dépendance.
             </p>
           </div>
         </div>

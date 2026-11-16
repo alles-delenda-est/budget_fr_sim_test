@@ -6,7 +6,6 @@ import MetricCard from '../components/MetricCard'
 import {
   MACRO_BASELINE,
   STRUCTURAL_REFORMS,
-  SOCIAL_HOUSING_LIQUIDATION,
   PENSION_REFORM,
   projectFiscalPath,
   getBaselineProjection,
@@ -51,7 +50,6 @@ export default function SimulateurBudgetPage() {
   // Structural reforms
   const [selectedReforms, setSelectedReforms] = useState([])
   const [selectedHousingReform, setSelectedHousingReform] = useState(null)
-  const [enableSocialHousingLiquidation, setEnableSocialHousingLiquidation] = useState(false)
 
   // Advanced
   const [politicalRisk, setPoliticalRisk] = useState(0)
@@ -110,7 +108,6 @@ export default function SimulateurBudgetPage() {
     setNotionnel(false)
     setSelectedReforms([])
     setSelectedHousingReform(null)
-    setEnableSocialHousingLiquidation(false)
     setPoliticalRisk(0)
     setRealGrowthOverride(null)
   }
@@ -159,7 +156,7 @@ export default function SimulateurBudgetPage() {
   const pensionReformOption = useMemo(() => {
     const isDefault = retirementAge === 64 && desindexation === 0 && pensionCap === 0 && !notionnel
     if (isDefault) return null
-    return { retirementAge, desindexation, pensionCap, notionnel, capitalisation: 0 }
+    return { retirementAge, desindexation, pensionCap, notionnel }
   }, [retirementAge, desindexation, pensionCap, notionnel])
 
   // Projections
@@ -176,7 +173,6 @@ export default function SimulateurBudgetPage() {
       structuralReform: reform,
       structuralReformKeys: allReformKeys.length > 0 ? allReformKeys : null,
       pensionReform: pensionReformOption,
-      enableSocialHousingLiquidation,
       realGrowthOverride,
     })
 
@@ -192,7 +188,7 @@ export default function SimulateurBudgetPage() {
     }))
 
     return { baseline, fullScenario, chartData }
-  }, [policyImpact, projectionYears, selectedReforms, selectedHousingReform, politicalRisk, combinedReformEffect, pensionReformOption, enableSocialHousingLiquidation, realGrowthOverride])
+  }, [policyImpact, projectionYears, selectedReforms, selectedHousingReform, politicalRisk, combinedReformEffect, pensionReformOption, realGrowthOverride])
 
   const doomLoopAssessment = useMemo(() => assessDoomLoop(projections.fullScenario), [projections.fullScenario])
   const validation = useMemo(() => validateProjection(projections.fullScenario), [projections.fullScenario])
@@ -336,19 +332,9 @@ export default function SimulateurBudgetPage() {
                   <span className="sustainability-value">{projections.fullScenario[10].pensionReformSaving} Md€</span>
                 </div>
                 <div className="sustainability-row">
-                  <span>Impact migration :</span>
-                  <span className="sustainability-value">{projections.fullScenario[10].migrationImpact} Md€</span>
-                </div>
-                <div className="sustainability-row">
                   <span>Pression dépendance :</span>
                   <span className="sustainability-value">+{projections.fullScenario[10].dependancePressure} Md€</span>
                 </div>
-                {enableSocialHousingLiquidation && (
-                  <div className="sustainability-row">
-                    <span>Cession HLM (an 10) :</span>
-                    <span className="sustainability-value">{projections.fullScenario[10].socialHousingWindfall} Md€</span>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -511,14 +497,6 @@ export default function SimulateurBudgetPage() {
               <button className="reform-clear-btn" onClick={() => setSelectedHousingReform(null)}>Aucune réforme logement</button>
             )}
           </div>
-          <label className="reform-checkbox-label" style={{ marginTop: '8px', borderTop: '1px solid var(--color-border)', paddingTop: '8px' }}>
-            <input type="checkbox" checked={enableSocialHousingLiquidation} onChange={(e) => setEnableSocialHousingLiquidation(e.target.checked)} />
-            <div className="reform-checkbox-content">
-              <strong>Liquidation parc HLM</strong>
-              <span className="reform-effect">{SOCIAL_HOUSING_LIQUIDATION.annualProceeds} Md€/an pendant {SOCIAL_HOUSING_LIQUIDATION.saleDurationYears} ans</span>
-              <span className="reform-details">Actif total: {SOCIAL_HOUSING_LIQUIDATION.totalAssetValue} Md€ &bull; {SOCIAL_HOUSING_LIQUIDATION.source}</span>
-            </div>
-          </label>
         </div>
         {(selectedReforms.length > 0 || selectedHousingReform) && combinedReformEffect && (
           <div className="combined-reforms-summary">

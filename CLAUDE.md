@@ -13,7 +13,7 @@ You are the **architecture and algorithms update agent** for the Simulateur Budg
 | File | Role | Key exports |
 |---|---|---|
 | `src/policy-impact.js` | Static policy layer — converts slider positions to fiscal impacts | `calculatePolicyImpact()`, `BASELINE`, `PRESETS`, `PENSION_REFORM_PRESETS`, `BEHAVIORAL_RESPONSE`, `FISCAL_MULTIPLIERS`, `ONDAM_FLOOR`, `applyOndamFloor()` |
-| `src/projection-engine-v1.8.js` | Dynamic projection engine — multi-year fiscal trajectory | `projectFiscalPath()`, `calculateInterestRate()`, `MACRO_BASELINE`, `STRUCTURAL_REFORMS`, `DEMOGRAPHIC_PARAMS`, `SENIOR_EMPLOYMENT`, `PENSION_REFORM`, `MIGRATION_PARAMS`, `DEPENDANCE_PARAMS` |
+| `src/projection-engine-v1.8.js` | Dynamic projection engine — multi-year fiscal trajectory | `projectFiscalPath()`, `calculateInterestRate()`, `MACRO_BASELINE`, `STRUCTURAL_REFORMS`, `DEMOGRAPHIC_PARAMS`, `SENIOR_EMPLOYMENT`, `PENSION_REFORM`, `DEPENDANCE_PARAMS` |
 | `src/App.jsx` | React UI — charts, sliders, presets, assumptions tab | `App` component, `ASSUMPTIONS` data |
 
 ### Data Flow
@@ -30,16 +30,16 @@ policy-impact.js
 projection-engine-v1.8.js
    projectFiscalPath()      ← interest rate model, debt inertia, demographic drift,
         │                      senior employment, deficit stress, Okun unemployment,
-        │                      pension reform, migration, dependance
+        │                      pension reform, dependance
         │
         │  year-by-year array [{gdp, debt, deficit, interestRate, unemployment,
         │                       demographicPressure, seniorRevenue, pensionReformSaving,
-        │                       migrationImpact, dependancePressure, …}]
+        │                       dependancePressure, …}]
         ▼
 App.jsx                     ← charts, metric cards, presets, assumptions tab
 ```
 
-### Projection Loop Steps (16-step)
+### Projection Loop Steps (15-step)
 
 For each year `t = 0, …, N`:
 
@@ -53,12 +53,11 @@ For each year `t = 0, …, N`:
 8. **Demographic pressure:** `t × 1.795 Md/yr` (pension + health spending growth from aging)
 9. **Senior employment revenue:** If labor reform active and past lag: `additionalWorkers × avgCotisations`
 10. **Pension reform savings:** Retirement age + desindexation + cap + notional accounts (dynamic, ramped, floor-constrained)
-11. **Migration fiscal impact:** `t × −1.12 Md/yr` (brain drain — negative revenue from net emigration)
-12. **Dependance pressure:** `43.5 × ((1.055)^t − (1.025)^t)` (autonomie excess growth over GDP)
-13. **Adjusted deficit:** `totalDeficit − growthFeedback + demographicPressure − seniorRevenue − pensionReformSaving − migrationImpact + dependancePressure`
-14. **Unemployment:** Okun's Law
-15. **Store output:** Including pensionReformSaving, migrationImpact, dependancePressure
-16. **Evolve state:** Update GDP, debt, deficit ratio
+11. **Dependance pressure:** `43.5 × ((1.055)^t − (1.025)^t)` (autonomie excess growth over GDP)
+12. **Adjusted deficit:** `totalDeficit − growthFeedback + demographicPressure − seniorRevenue − pensionReformSaving + dependancePressure`
+13. **Unemployment:** Okun's Law
+14. **Store output:** Including pensionReformSaving, dependancePressure
+15. **Evolve state:** Update GDP, debt, deficit ratio
 
 ---
 
@@ -82,7 +81,6 @@ For each year `t = 0, …, N`:
 - **SENIOR_EMPLOYMENT:** Reform-contingent cotisations revenue (58% → 65% senior employment)
 - **STRUCTURAL_REFORMS:** 7 reform packages with lag/duration/decay
 - **PENSION_REFORM:** Retirement age, desindexation, cap, notional accounts, noria effect, pension floor
-- **MIGRATION_PARAMS:** Immigration/emigration flows, employment rates, productivity factors
 - **DEPENDANCE_PARAMS:** Autonomie spending baseline and excess growth rate
 
 ### Module 3: UI (`src/App.jsx`)
@@ -97,7 +95,7 @@ For each year `t = 0, …, N`:
 
 ### Module 4: Tests (`src/__tests__/`)
 
-- `projection-engine.test.js` — ~158 tests (constants, interest rate, projection, demographic, senior employment, pension reform, migration, dependance)
+- `projection-engine.test.js` — ~158 tests (constants, interest rate, projection, demographic, senior employment, pension reform, dependance)
 - `policy-impact.test.js` — ~87 tests (revenue, spending, growth, ONDAM floor, COR presets)
 - `integration.test.js` — ~37 tests (presets end-to-end, stress tests, demographic integration, COR scenarios, pension reform interaction)
 - Total: ~282 tests
@@ -118,7 +116,6 @@ For each year `t = 0, …, N`:
 | Senior employment | DARES, Eurostat | **Annual** | `projection-engine`: SENIOR_EMPLOYMENT |
 | ONDAM constraints | DREES, FNAIM | **Annual** | `policy-impact`: ONDAM_FLOOR |
 | Pension reform params | COR annual report, francetdb | **Annual** | `projection-engine`: PENSION_REFORM |
-| Migration flows | INSEE Bilan migratoire | **Annual** | `projection-engine`: MIGRATION_PARAMS |
 | Dependance spending | PLFSS, DREES | **October** (annual) | `projection-engine`: DEPENDANCE_PARAMS |
 
 ---
@@ -180,7 +177,6 @@ Test that model changes produce directionally correct results:
 - Demographic drift → higher deficit over time
 - ONDAM floor → damped health spending cuts
 - Pension reform → reduced pension spending, pension floor prevents extreme cuts
-- Migration → worsened deficit from brain drain
 - Dependance → additional spending pressure over time
 - COR presets → valid projections with correct reform parameters
 

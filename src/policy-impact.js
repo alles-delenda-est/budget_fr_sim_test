@@ -145,31 +145,31 @@ export const PENSION_REFORM_PRESETS = {
   corOptimiste: {
     label: "COR optimiste (1,6%)",
     description: "Croissance 1,6%, emploi 73%, fécondité 1,80",
-    pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+    pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 0, notionnel: false },
     macroOverrides: { realGrowth: 0.016 },
   },
   corCentral: {
     label: "COR central (réf. 2024)",
     description: "Croissance 1,0%, emploi 71%, fécondité 1,80",
-    pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+    pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 0, notionnel: false },
     macroOverrides: { realGrowth: 0.010 },
   },
   corPessimiste: {
     label: "COR pessimiste (réf. 2025)",
     description: "Croissance 0,7%, emploi 68,5%, fécondité 1,80, déficit 5%",
-    pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+    pensionReform: { retirementAge: 64, desindexation: 0, pensionCap: 0, notionnel: false },
     macroOverrides: { realGrowth: 0.007 },
   },
   reformeRetraites: {
     label: "Réforme retraites",
-    description: "Âge 67, notionnel, désindexation 1,5pt, plafond 15%, capitalisation 10%",
-    pensionReform: { retirementAge: 67, desindexation: 1.5, pensionCap: 15, notionnel: true, capitalisation: 10 },
+    description: "Âge 67, notionnel, désindexation 1,5pt, plafond 15%",
+    pensionReform: { retirementAge: 67, desindexation: 1.5, pensionCap: 15, notionnel: true },
     macroOverrides: null,
   },
   reformeGlobale: {
     label: "Réforme globale",
     description: "Réforme retraites + économique combinée",
-    pensionReform: { retirementAge: 67, desindexation: 1.5, pensionCap: 15, notionnel: true, capitalisation: 10 },
+    pensionReform: { retirementAge: 67, desindexation: 1.5, pensionCap: 15, notionnel: true },
     macroOverrides: { realGrowth: 0.016 },
   },
 }

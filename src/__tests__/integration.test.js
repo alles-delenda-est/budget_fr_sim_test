@@ -312,7 +312,7 @@ describe('Pension reform + demographic drift interaction', () => {
     const reformPlusDrift = projectFiscalPath({}, {
       years: 10,
       enableDemographicDrift: true,
-      pensionReform: { retirementAge: 67, desindexation: 1.0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+      pensionReform: { retirementAge: 67, desindexation: 1.0, pensionCap: 0, notionnel: false },
     })
     // Reform should reduce deficit vs drift-only
     expect(reformPlusDrift[10].deficit).toBeLessThan(driftOnly[10].deficit)
@@ -322,23 +322,22 @@ describe('Pension reform + demographic drift interaction', () => {
     const reformNoDrift = projectFiscalPath({}, {
       years: 10,
       enableDemographicDrift: false,
-      pensionReform: { retirementAge: 67, desindexation: 1.0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+      pensionReform: { retirementAge: 67, desindexation: 1.0, pensionCap: 0, notionnel: false },
     })
     const reformPlusDrift = projectFiscalPath({}, {
       years: 10,
       enableDemographicDrift: true,
-      pensionReform: { retirementAge: 67, desindexation: 1.0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+      pensionReform: { retirementAge: 67, desindexation: 1.0, pensionCap: 0, notionnel: false },
     })
     expect(reformPlusDrift[10].deficit).toBeGreaterThan(reformNoDrift[10].deficit)
   })
 })
 
-describe('Migration and dependance integration', () => {
+describe('Demographic and dependance integration', () => {
   it('all channels enabled produces valid 20-year projection', () => {
     const result = projectFiscalPath({}, {
       years: 20,
       enableDemographicDrift: true,
-      enableMigrationImpact: true,
       enableDependanceDrift: true,
     })
     expect(result).toHaveLength(21)

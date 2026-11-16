@@ -194,7 +194,7 @@ export default function HypothesesPage() {
         <AssumptionTable title="Paramètres démographiques et structurels (francetdb.com)" items={ASSUMPTIONS.demographic}
           note="Intégrations de données réelles : dérive démographique, prime politique OAT, plancher ONDAM, emploi seniors." />
         <AssumptionTable title="Réforme des retraites et soutenabilité (francetdb.com/#retraites)" items={ASSUMPTIONS.pensionReform}
-          note="Paramètres du modèle de réforme des retraites, migration, et dépendance. Source : francetdb.com, COR 2024, INSEE, DREES." />
+          note="Paramètres du modèle de réforme des retraites et de dépendance. Source : francetdb.com, COR 2024, INSEE, DREES." />
         <AssumptionTable title="Boost croissance des baisses d'impôts" items={ASSUMPTIONS.taxCutBoosts}
           note="Effet symétrique (mais asymétrique en magnitude) des baisses d'impôts sur la croissance." />
         <AssumptionTable title="Réformes structurelles" items={ASSUMPTIONS.reforms} />

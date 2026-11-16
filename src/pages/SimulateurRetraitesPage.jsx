@@ -10,8 +10,6 @@ import {
   PENSION_REFORM,
   DEMOGRAPHIC_PARAMS,
   DEMOGRAPHIC_PRESSURE_PER_YEAR,
-  MIGRATION_PARAMS,
-  MIGRATION_NET_WORKERS_PER_YEAR,
   DEPENDANCE_PARAMS,
   SENIOR_EMPLOYMENT,
   projectFiscalPath,
@@ -52,7 +50,7 @@ export default function SimulateurRetraitesPage() {
   const pensionReformOption = useMemo(() => {
     const isDefault = retirementAge === 64 && desindexation === 0 && pensionCap === 0 && !notionnel
     if (isDefault) return null
-    return { retirementAge, desindexation, pensionCap, notionnel, capitalisation: 0 }
+    return { retirementAge, desindexation, pensionCap, notionnel }
   }, [retirementAge, desindexation, pensionCap, notionnel])
 
   // Build structural reform for senior employment
@@ -91,7 +89,6 @@ export default function SimulateurRetraitesPage() {
         baselineCotisantsPerRetraite: baselineCotisants,
         cotisantsPerRetraite: reformCotisants,
         cumulativeDemographicCost: (i * DEMOGRAPHIC_PRESSURE_PER_YEAR),
-        cumulativeMigrationCost: Math.abs(i * MIGRATION_NET_WORKERS_PER_YEAR * MIGRATION_PARAMS.avgCotisationsPerWorker / 1e9),
         dependancePressureCalc: DEPENDANCE_PARAMS.baseline * (Math.pow(1 + DEPENDANCE_PARAMS.annualGrowthRate, i) - Math.pow(1 + DEPENDANCE_PARAMS.gdpGrowthBaseline, i)),
       }
     })
@@ -292,10 +289,6 @@ export default function SimulateurRetraitesPage() {
                   <span className="sustainability-value negative">+{projections.reformScenario[yr]?.demographicPressure ?? 0} Md€</span>
                 </div>
                 <div className="sustainability-row">
-                  <span>Impact migration :</span>
-                  <span className="sustainability-value">{projections.reformScenario[yr]?.migrationImpact ?? 0} Md€</span>
-                </div>
-                <div className="sustainability-row">
                   <span>Pression dépendance :</span>
                   <span className="sustainability-value negative">+{projections.reformScenario[yr]?.dependancePressure ?? 0} Md€</span>
                 </div>
@@ -325,12 +318,6 @@ export default function SimulateurRetraitesPage() {
             <p>Dérive ratio dépendance : +{(DEMOGRAPHIC_PARAMS.dependencyRatioDriftPerYear * 100).toFixed(1)} pp/an</p>
             <p>Masse retraites : {DEMOGRAPHIC_PARAMS.pensionBaseline} Md€ (élasticité {DEMOGRAPHIC_PARAMS.pensionElasticityToDependency})</p>
             <p>Masse santé : {DEMOGRAPHIC_PARAMS.healthBaseline} Md€ (élasticité {DEMOGRAPHIC_PARAMS.healthElasticityToDependency})</p>
-          </div>
-          <div className="demo-card">
-            <h4>Migration (brain drain)</h4>
-            <p>Immigration : {MIGRATION_PARAMS.immigration.annualFlow.toLocaleString()} / an (taux emploi {(MIGRATION_PARAMS.immigration.employmentRate * 100).toFixed(0)}%)</p>
-            <p>Émigration : {MIGRATION_PARAMS.emigration.annualFlow.toLocaleString()} / an (taux emploi {(MIGRATION_PARAMS.emigration.employmentRate * 100).toFixed(0)}%)</p>
-            <p>Impact net : <strong>{(MIGRATION_NET_WORKERS_PER_YEAR * MIGRATION_PARAMS.avgCotisationsPerWorker / 1e9).toFixed(1)} Md€/an</strong></p>
           </div>
           <div className="demo-card">
             <h4>Dépendance / autonomie</h4>
