@@ -398,7 +398,7 @@ The primary debt/GDP chart is full-width; the four smaller charts sit in a grid 
 
 ### 3.3 Metric snapshots
 
-Three time horizons are displayed: Year 1 (immediate), Year 5 (medium term), Year 10 (long term). For each horizon, three metrics are shown: debt level (Md€), deficit (Md€), and interest charge (Md€). Colour coding reflects direction vs baseline (green = improvement, red = deterioration).
+Three time horizons are displayed: the base year (2025), 5 years ahead and 10 years ahead. For each horizon, three metrics are shown: debt level (Md€), deficit (Md€), and interest charge (Md€). Colour coding reflects direction vs baseline (green = improvement, red = deterioration).
 
 ### 3.4 Political presets
 
@@ -425,9 +425,9 @@ The UI includes a dedicated Assumptions tab listing all model parameters with ac
 
 | File | Tests | Scope | Key assertions |
 |---|---|---|---|
-| `projection-engine.test.js` | ~158 | Unit — projection engine | Interest rate model; deficit stress; debt inertia; Okun Law; demographic drift; senior employment; energy/planning constants; pension reform (age, desindexation, cap, notional, floor); migration; dependance |
+| `projection-engine.test.js` | ~158 | Unit — projection engine | Interest rate model; deficit stress; debt inertia; Okun Law; demographic drift; senior employment; energy/planning constants; pension reform (age, desindexation, cap, notional, floor); dependance |
 | `policy-impact.test.js` | ~87 | Unit — revenue, spending, growth | ETI-adjusted revenue; spending multipliers; ONDAM floor constraint; NFP/GL regression; COR presets |
-| `integration.test.js` | ~37 | End-to-end — preset scenarios | Maximum stimulus; structural reforms; political risk; demographic drift integration; ONDAM integration; COR scenarios; pension reform + demographic interaction; migration/dependance validation |
+| `integration.test.js` | ~37 | End-to-end — preset scenarios | Maximum stimulus; structural reforms; political risk; demographic drift integration; ONDAM integration; COR scenarios; pension reform + demographic interaction; dependance validation |
 
 ---
 

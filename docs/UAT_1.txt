@@ -58,7 +58,7 @@ that automated unit tests cannot validate.
 
 5. KEY METRICS (Hero Numbers)
 -----------------------------
-[ ] Four metric cards display under "Indicateurs clés (Année 1)":
+[ ] Four metric cards display under "Indicateurs clés (2025)":
     Déficit, Dette/PIB, Taux d'intérêt effectif, Charge d'intérêts
 [ ] Baseline values show reasonable numbers (deficit ~156 Md€, debt ~115.8%)
 [ ] Moving sliders toward austerity turns deltas green (metric-better)
