@@ -1,4 +1,6 @@
-export default function MetricCard({ label, value, unit, baseline, format, decimals = 1, invertSign = false }) {
+// Convention: for every metric shown (debt, deficit, interest, rates), lower than baseline is better.
+// Deficits are positive numbers (engine convention), so no sign inversion is needed.
+export default function MetricCard({ label, value, unit, baseline, format, decimals = 1 }) {
   const safeValue = value ?? 0
   const safeBaseline = baseline ?? 0
   const delta = safeValue - safeBaseline
@@ -6,8 +8,7 @@ export default function MetricCard({ label, value, unit, baseline, format, decim
 
   let deltaClass = ''
   if (format === 'billions' || format === 'percent') {
-    const effectiveDelta = invertSign ? -delta : delta
-    deltaClass = effectiveDelta < 0 ? 'metric-better' : (effectiveDelta > 0 ? 'metric-worse' : '')
+    deltaClass = delta < 0 ? 'metric-better' : (delta > 0 ? 'metric-worse' : '')
   }
 
   const isNegativeValue = safeValue < 0

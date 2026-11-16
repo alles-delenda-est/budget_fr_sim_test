@@ -277,7 +277,7 @@ export default function SimulateurRetraitesPage() {
         <div className="snapshot-row">
           {[yr5, yr10, yr20].filter((y, i, arr) => y <= projectionYears && arr.indexOf(y) === i).map(yr => (
             <div key={yr} className="snapshot-group">
-              <h3 className="snapshot-label">Année {yr} ({MACRO_BASELINE.year + yr})</h3>
+              <h3 className="snapshot-label">À {yr} ans ({MACRO_BASELINE.year + yr})</h3>
               <div className="sustainability-metrics">
                 <div className="sustainability-row">
                   <span>Économies pension :</span>

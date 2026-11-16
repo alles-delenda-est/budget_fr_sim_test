@@ -290,9 +290,9 @@ export default function SimulateurBudgetPage() {
       {/* KEY METRICS — YEAR 1 */}
       {projections.fullScenario && projections.fullScenario.length > 0 && (
         <section className="results-section">
-          <h2>Indicateurs clés (Année 1)</h2>
+          <h2>Indicateurs clés ({MACRO_BASELINE.year})</h2>
           <div className="metrics-grid">
-            <MetricCard label="Déficit année 1" value={projections.fullScenario[0].deficit} unit="Md€" baseline={BASELINE.integrated.deficit} format="billions" invertSign />
+            <MetricCard label={`Déficit ${MACRO_BASELINE.year}`} value={projections.fullScenario[0].deficit} unit="Md€" baseline={projections.baseline[0].deficit} format="billions" />
             <MetricCard label="Dette/PIB" value={projections.fullScenario[0].debtRatio} unit="%" baseline={projections.baseline[0].debtRatio} format="percent" />
             <MetricCard label="Taux d'intérêt effectif" value={projections.fullScenario[0].effectiveInterestRate} unit="%" baseline={projections.baseline[0].effectiveInterestRate} format="percent" decimals={2} />
             <MetricCard label="Charge d'intérêts" value={projections.fullScenario[0].interest} unit="Md€" baseline={projections.baseline[0].interest} format="billions" />
@@ -306,23 +306,23 @@ export default function SimulateurBudgetPage() {
           <h2>Instantanés à 5 ans et 10 ans</h2>
           <div className="snapshot-row">
             <div className="snapshot-group">
-              <h3 className="snapshot-label">Année 5 ({MACRO_BASELINE.year + 5})</h3>
+              <h3 className="snapshot-label">À 5 ans ({MACRO_BASELINE.year + 5})</h3>
               <div className="metrics-grid metrics-grid-3">
                 <MetricCard label="Dette" value={projections.fullScenario[5].debt} unit="Md€" baseline={projections.baseline[5].debt} format="billions" decimals={0} />
-                <MetricCard label="Déficit" value={projections.fullScenario[5].deficit} unit="Md€" baseline={projections.baseline[5].deficit} format="billions" decimals={0} invertSign />
+                <MetricCard label="Déficit" value={projections.fullScenario[5].deficit} unit="Md€" baseline={projections.baseline[5].deficit} format="billions" decimals={0} />
                 <MetricCard label="Intérêts" value={projections.fullScenario[5].interest} unit="Md€" baseline={projections.baseline[5].interest} format="billions" decimals={0} />
               </div>
             </div>
             <div className="snapshot-group">
-              <h3 className="snapshot-label">Année 10 ({MACRO_BASELINE.year + 10})</h3>
+              <h3 className="snapshot-label">À 10 ans ({MACRO_BASELINE.year + 10})</h3>
               <div className="metrics-grid metrics-grid-3">
                 <MetricCard label="Dette" value={projections.fullScenario[10].debt} unit="Md€" baseline={projections.baseline[10].debt} format="billions" decimals={0} />
-                <MetricCard label="Déficit" value={projections.fullScenario[10].deficit} unit="Md€" baseline={projections.baseline[10].deficit} format="billions" decimals={0} invertSign />
+                <MetricCard label="Déficit" value={projections.fullScenario[10].deficit} unit="Md€" baseline={projections.baseline[10].deficit} format="billions" decimals={0} />
                 <MetricCard label="Intérêts" value={projections.fullScenario[10].interest} unit="Md€" baseline={projections.baseline[10].interest} format="billions" decimals={0} />
               </div>
 
               <div className="sustainability-metrics">
-                <h4>Soutenabilité retraites (An 10)</h4>
+                <h4>Soutenabilité retraites (à 10 ans)</h4>
                 <div className="sustainability-row">
                   <span>Cotisants/retraité :</span>
                   <span className="sustainability-value">
@@ -458,7 +458,7 @@ export default function SimulateurBudgetPage() {
           <div className="combined-reforms-summary">
             <h4>Impact réforme retraites :</h4>
             <div className="combined-effect">
-              <strong>Économie pension (Année 10) :</strong> {projections.fullScenario[10].pensionReformSaving} Md€
+              <strong>Économie pension (à 10 ans) :</strong> {projections.fullScenario[10].pensionReformSaving} Md€
             </div>
           </div>
         )}
@@ -546,7 +546,7 @@ export default function SimulateurBudgetPage() {
       {/* BUDGET BREAKDOWN */}
       {projections.fullScenario && projections.fullScenario.length > 0 && (
         <section className="results-section">
-          <h2>Décomposition du déficit (Année 1)</h2>
+          <h2>Décomposition du déficit ({MACRO_BASELINE.year})</h2>
           <div className="budget-breakdown">
             <div className="breakdown-row">
               <span>État seul :</span>
