@@ -64,3 +64,59 @@ Ce que LVTShift fournit à la place :
 - une capitalisation **indicative** statique : variation de valeur foncière = −Δ / r, avec r de 3 % et 4 % réel, capitalisation de 100 % en central et 60 % en sensibilité.
 
 La section 4 de la présente note reprend les preuves.
+
+## 2. Recettes touchées par chaque scénario, par bloc
+
+### 2.1 Scénarios et blocs du simulateur
+
+| Scénario | Remplace | Blocs concernés |
+|---|---|---|
+| S1 | taxe foncière (TFPB, TFPNB non agricole) + taxe d'habitation sur résidences secondaires + DMTO | locales (APUL) pour l'essentiel ; centrales pour les frais de gestion et d'assiette que l'État ajoute à l'avis (≈ 1,8 Md€) |
+| S2 | S1 + IR/PS sur plus-values immobilières des particuliers, IFI en option | + centrales (IR, IFI, part État des PS) ; + sécurité sociale (part CSG/CRDS des PS) |
+| S3 | S2 + IR/PS/CSG sur revenus locatifs | + centrales ; + sécurité sociale (CSG, part des PS) |
+
+Point à trancher, absent de la spec 0005 : à qui revient le produit de la taxe nationale de S2 et S3 ? Si elle va au budget de l'État, la sécurité sociale perd la part CSG/CRDS des prélèvements sociaux (≈ 3 Md€ en S3, calcul ci-dessous) : il faut soit une affectation d'une fraction de la taxe à la sécurité sociale (effet nul par bloc), soit une recette de remplacement de l'État (effet −x en sécurité sociale, +x en centrales, nul au total). La spec D2 les inclut « sur une ligne séparée ». C'est précisément ce que le contrat de module (`a` par bloc) permet de porter.
+
+### 2.2 Rendements, bloc par bloc
+
+Légende : **relu** = lu dans la source officielle ce jour ; **LVTShift** = repris de `yields.py` / `yields.json` (sources et URL indiquées par LVTShift, non relues ici). Le PIB 2025 retenu pour les ratios est 2 991 Md€ (note de modèle §1.1).
+
+| Impôt | Bloc APU | Rendement | Source (URL) | Statut |
+|---|---|---|---|---|
+| TFPB, communes et EPCI | locales | **43,1 Md€ en 2025** (≈ 1,44 % du PIB) | DGCL, BIS n° 209, « La fiscalité directe locale en 2025 », cité par Maire-info le 12 mai 2026 : https://www.maire-info.com/finances-locales/apres-des-annees-de-hausse-le-produit-de-la-fiscalite-directe-locale-s'est-stabilise-en-2025-article-30783 (le BIS lui-même n'a pas été relu) | relu (secondaire) |
+| TFPB, même périmètre | locales | 42,8 Md€ en 2025 (40,2 communes et EPCI + 2,6 « montant réel » ; écart de 0,3 Md€ avec le BIS, non expliqué) | REI 2025 via OFGL : https://data.ofgl.fr/explore/dataset/rei/ | LVTShift |
+| TFPNB, non agricole | locales | 0,27 Md€ en 2025 (1,19 Md€ au total ; 0,92 agricole et naturel, hors réforme) ; le BIS 209 donne seulement une baisse de plus de 8 % en 2025 | REI 2025 via OFGL (même URL) | LVTShift (part non agricole reconstituée, statut « derived ») |
+| Syndicats, TSE, GEMAPI, TASA (sur l'avis de taxe foncière) | locales (établissements publics locaux) | ≈ 0,92 Md€ en 2025 | REI 2025 via OFGL | LVTShift |
+| Taxe d'habitation, résidences secondaires | locales | 2,97 Md€ en 2025 (3,69 en 2024 ; baisse de 19 % non expliquée) | REI via OFGL | LVTShift |
+| Total fiscalité directe locale | locales | 68,6 Md€ en 2025 ; 115,6 Md€ avec les fractions de TVA transférées (donc ≈ 47 Md€ de TVA affectée aux collectivités, calcul) | BIS 209, même URL Maire-info | relu (secondaire) |
+| DMTO, part départementale | locales (départements) | 13,0 Md€ en 2023 (BIS 190) ; rebond de 17 à 18 % en 2025 après deux années de baisse (Localtis, 3 sept. 2026) ; montant 2025 en Md€ : **non trouvé** en source officielle relue. LVTShift retient 13,5 Md€ pour 2025 (OFGL, hors part communale de Paris), 11,3 en 2024, 16,8 en 2022 | https://collectivites-locales.gouv.fr/files/Accueil/DESL/2024/BIS_190_DMTO.pdf ; https://www.banquedesterritoires.fr/budgets-des-clignotants-au-vert-pour-les-departements ; https://data.ofgl.fr/explore/dataset/ofgl-base-departements/ | 2023 relu ; 2025 LVTShift |
+| DMTO, part communale | locales (communes) | 3,1 Md€ en 2023 (taxe additionnelle + fonds départemental pour les communes de moins de 5 000 habitants) ; 3,2 Md€ en 2025 chez LVTShift | BIS 190 (URL ci-dessus) ; https://data.ofgl.fr/explore/dataset/grand-livre/ | 2023 relu ; 2025 LVTShift |
+| Frais de gestion et d'assiette sur TF, THRS et DMTO (taux de 3 %, 8 %, 9 % et 2,37 %) | centrales (État) | ≈ 1,8 Md€ | CGI art. 1641 et 1647 V : https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053546093 ; https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054373998 | LVTShift (calcul) |
+| IFI | centrales (État) | **2,3 Md€ en 2025** (≈ 0,08 % du PIB), 193 600 foyers ; ≈ 2,1 en 2024 (calcul : +8 %) | DGFiP, Statistiques n° 45, 14 avril 2026 : https://www.impots.gouv.fr/dgfip-statistiques-limpot-sur-la-fortune-immobiliere-en-2025 | relu |
+| IFI, recettes budgétaires | centrales | 2,74 Md€ en 2024, 2,77 en 2025 (restes à recouvrer et contrôle fiscal compris) | même page, selon LVTShift | LVTShift |
+| Plus-values immobilières des particuliers, IR et PS | IR : centrales ; PS : voir 2.3 | **2,8 Md€ en 2024**, 3,6 Md€ en 2023 (3,7 dans l'introduction de la page), moyenne de 3,5 Md€ sur 2017–2023. Décomposition 2024 (LVTShift) : IR 0,91 + PS 1,92 | Cour des comptes, 25 nov. 2025 : https://www.ccomptes.fr/fr/publications/limposition-des-plus-values-immobilieres-des-particuliers | total relu ; décomposition LVTShift |
+| Revenus locatifs des particuliers (logement) | IR : centrales ; CSG/PS : voir 2.3 | 2022 : IR 4,2 Md€, PS 2,4, CSG 1,1 (somme PS + CSG = 3,5, seule fiable). Compte du logement 2024 : 8,9 Md€ pour l'ensemble des impositions sur revenus immobiliers, y compris IS (0,5) et CRL (0,1), sans détail | CPO, déc. 2023 : https://www.vie-publique.fr/files/rapport/pdf/292676.pdf | LVTShift (non relu ; **donnée 2022, pas 2024**) |
+| IS sur plus-values et loyers des sociétés ; locations meublées (BIC) | centrales | non trouvé | | décisions D3 et D7 de LVTShift : exclus |
+
+### 2.3 Prélèvements sociaux : qui reçoit quoi
+
+Les prélèvements sociaux sur revenus du capital sont de 17,2 %. LVTShift note que 7,5 points (prélèvement de solidarité) sont versés à l'État ; le reste (9,7 points, soit CSG 9,2 et CRDS 0,5, calcul par différence, à confirmer sur le texte) va à la sécurité sociale (CNAF, CNAM, FSV, CNSA) et à la Cades. En appliquant cette clé de 7,5/17,2 (43,6 %) aux montants ci-dessus (calcul, ordre de grandeur) :
+
+| | Total PS (+ CSG) | État | Sécurité sociale (et Cades) |
+|---|---|---|---|
+| Plus-values, 2024 | 1,9 Md€ | ≈ 0,8 | ≈ 1,1 |
+| Revenus locatifs, 2022 | 3,5 Md€ | ≈ 1,5 | ≈ 2,0 |
+| Total S2 + S3 | 5,4 Md€ | ≈ 2,3 | ≈ 3,1 (≈ 0,10 % du PIB) |
+
+C'est l'ordre de grandeur du transfert à régler entre blocs si la taxe nationale est versée à l'État (voir 2.1). La clé suppose que les taux d'affectation sont les mêmes pour les revenus locatifs et pour les plus-values ; LVTShift avertit que le partage PS/CSG du compte du logement suit une convention comptable.
+
+### 2.4 Ce que ça donne en % du PIB
+
+| Variante | Total remplacé | % du PIB 2025 | dont locales | dont centrales | dont sécurité sociale |
+|---|---|---|---|---|---|
+| S1 | 67,2 Md€ | 2,25 % | 65,4 (hors frais) | ≈ 1,8 | 0 |
+| S2 sans IFI | 71,1 | 2,38 % | 65,4 | ≈ 3,6 à 4,7 | ≈ 1,1 |
+| S3 sans IFI | 79,4 | 2,66 % | 65,4 | ≈ 7,3 à 8,3 | ≈ 3,1 |
+| S3 avec IFI | 81,8 | 2,73 % | 65,4 | ≈ 9,6 à 10,6 | ≈ 3,1 |
+
+(Total LVTShift en euros 2025, moyennes quinquennales pour DMTO et plus-values ; ventilation par bloc : calcul de cette note à partir du tableau 2.2, fourchette due à l'incertitude sur la clé de partage ; les nombres du bloc local somment TFPB, TFPNB, annexes, THRS, DMTO communal et départemental de référence : 50,5 + 14,9.) Pour chaque scénario, la somme est **nulle par construction** : ce qui sort des recettes est remplacé par la taxe sur la valeur du sol.
