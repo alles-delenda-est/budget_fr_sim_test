@@ -178,6 +178,8 @@ Critère de passage : écart inférieur à 1 point de PIB sur la dette à trois 
 
 **Règle de prudence.** Les paramètres de référence sont fixés un par un d'après les preuves ; là où les prévisionnistes indépendants sont plus pessimistes que le Gouvernement, on retient les leurs. Il n'y a pas de biais pessimiste généralisé. Fait à garder en vue : en 2025, les taux d'activité et d'emploi des 15–64 ans étaient à leur plus haut niveau depuis 1975 (Insee Première n° 2096, mars 2026 [S21]), alors que le chômage est monté à 8,2 % au troisième trimestre 2026 (Insee, Informations rapides n° 270, 10 novembre 2026 [S22]).
 
+**Horizons (D10).** Trois horizons prédéfinis : 10 ans, 2040 et 30 ans. Au-delà de 10 ans, l'affichage de l'incertitude doit s'élargir (fourchettes bas / central / haut de la table 4, le modèle restant déterministe). L'horizon à 30 ans s'appuie sur la démographie des projections du COR (jusqu'en 2070 [S23]).
+
 Tests de référence du moteur : chaque levier restitue son étalon (3.1) à 0,1 Md€ près ; multiplicateur cumulé à dix ans inférieur à m pour chaque instrument ; à leviers nuls, scénario = référence ; un excédent ne déclenche aucune prime.
 
 ## 6. Retraites, réformes structurelles : ce qui reste
@@ -203,28 +205,49 @@ Un module est un paquet autonome que le moteur appelle et dont il additionne les
 - `id`, `titre`, `sources[]`, `statut` (validé / non validé) ;
 - `leviers[]` : identifiant, unité, bornes, valeur par défaut, texte d'aide ;
 - `calculer(leviers, contexte) →` pour chaque année : `a` par bloc (centrales, sécurité sociale, locales), `theta`, `m` ou catégorie d'instrument, et, en option, `yS` avec bas / central / haut ;
+- `flux[]` (optionnel, **affichage seulement**, n'entre pas dans le solde) : flux bruts par impôt et par bloc (libellé, bloc, montant en % du PIB), pour qu'un module à effet net nul ne paraisse pas inerte ;
 - `explications[]` : textes associés aux résultats.
 
 Règles : un module n'écrit jamais dans la dette ni dans les intérêts ; un module à effet dynamique passe la même validation que le cœur ; ses sorties s'affichent sur une ligne distincte.
 
-Taxe foncière sur la valeur du sol : à rendement égal, `a = 0` par construction ; tout l'effet budgétaire est `yS`, qui exige une source et une fourchette. Le module a besoin du bloc local.
+**Exigences pour le cœur** (revue LVT [S26]) : E2, E3 et E8 sont indexées par bloc (centrales, sécurité sociale, locales), le consolidé étant leur somme moins les transferts entre blocs ; le bloc local reçoit `a(local, t)` et `flux[]` des modules et les affiche sur une ligne distincte ; l'entrée `yS` (bas / central / haut) alimente E6, E7 et E12.
 
-**Non fait (limite d'usage) :** lecture des dépôts LVTShift, depense-publique-fonctions et shape_of_tax_system_2026_FR. Hypothèse à vérifier : depense-publique-fonctions servirait mieux de source de données (dépenses par fonction) que de module.
+**Taxe sur la valeur du sol (module LVT).** À rendement égal, `a` net est nul par construction, hors capitalisation (D12) ; le canal de PIB `yS` exige une source et une fourchette. Aucune estimation de l'effet sur le PIB français n'a été trouvée ; le seul repère chiffré, l'OCDE, donne de 0 à +1,1 % du PIB en borne haute (S3 avec IFI) et ne résiste pas aux tests de robustesse : `yS` central = 0 (D2).
+- *D11 : le produit d'une taxe nationale sur la valeur du sol va à l'État.* La sécurité sociale perd alors sa part de CSG et de prélèvements sociaux sur les plus-values et loyers remplacés : ≈ 3,1 Md€ en S3, soit ≈ 0,10 % du PIB (de 1,1 à 3,4 Md€ selon la variante ; clé 7,5/17,2 non vérifiée). Soit `a(sécurité sociale)` ≈ −0,10 % du PIB, `a(centrales)` ≈ +0,10 %, nul au consolidé.
+- *D12 : la capitalisation dans le prix du sol est comptée dès le Day 0.* Mécanisme : la nouvelle taxe se capitalise pour 60 à 100 % dans le prix du sol, l'assiette baisse et, au taux fixé, le produit aussi. Sensibilité : chaque point de baisse de la valeur foncière retire 0,7 à 0,8 Md€ de produit (0,02 à 0,03 % du PIB). Borne haute, partie nationale de S3 : 14 Md€ capitalisés à 3–4 % réel, soit 350 à 470 Md€ (6 à 8 % de l'assiette), donc un manque de 4,5 à 6 Md€ (0,15 à 0,2 % du PIB). Traitement : `a` négatif en S2 et S3, jusqu'à −0,2 % du PIB, capitalisation de 60 % (bas) à 100 % (haut) ; valeur centrale à fixer. Chiffres de la revue [S26] (calculs, non relus).
 
-## 8. Décisions attendues de Patrick
+**Revue LVT [S26] (LVTShift) :**
+- LVTShift est un modèle de répartition commune par commune, à rendement constant, sans bouclage macro ; rendements à remplacer de 67,2 Md€ (S1) à 81,8 Md€ (S3 avec IFI), soit 2,25 à 2,73 % du PIB, somme nulle par bloc.
+- Aucune estimation d'effet sur le PIB français ; l'OCDE n'offre qu'une borne haute fragile ; les preuves par canal (transactions, construction, loyers, capitalisation) ont des directions établies mais des tailles étrangères.
+- L'effet budgétaire le mieux défini est l'érosion de l'assiette par capitalisation, jusqu'à ≈ 0,2 % du PIB (D12).
+- Recommandation : module minimal au Day 0 (instantané daté de `yields.json`, `flux[]`, `yS` central 0 ; ≈ 9 jours-personne, fourchette 7 à 11), sous réserve d'un go/no-go le 30 novembre (moteur capable de calculer par bloc et d'accepter `yS`) ; sinon janvier 2027.
 
-| # | Décision | Défaut recommandé |
-|---|---|---|
-| D1 | Ancrage | Niveaux 2025 observés ; 2026 = prévision officielle ; leviers dès 2027 |
-| D2 | Effets d'offre | Zéro en central ; bloc optionnel « non validé » |
-| D3 | Multiplicateurs et persistance | Valeurs de la table, sous réserve de vérification des sources |
-| D4 | Taux d'ancrage i* | Moyenne du TEC 10 sur trois mois, avec curseur bas / central / haut |
-| D5 | Leviers du Day 0 | TVA (normal, tous taux), CSG, IR en % du produit, IS, cotisations, cinq à six fonctions de dépense, indexation des pensions, ONDAM |
-| D6 | Corrections comportementales θ | Valeurs de la table ; symétriques |
-| D7 | Dérive tendancielle des dépenses | Calée sur une projection officielle si elle est trouvée ; sinon ratio constant, annoncé comme tel |
-| D8 | Retraites | Droit en vigueur dans la référence ; le reste « non validé » |
-| D9 | Collectivités locales | Bloc affiché, sans levier |
-| D10 | Horizon | Dix ans |
+**Revue NDC [S25] (comptes notionnels) :**
+- Le simulateur du Parti libéral français compare six pensions pour une carrière et chiffre le coût du système jusqu'en 2070 en appliquant des rapports de masses de pensions à la trajectoire du COR ; c'est un outil de campagne.
+- Ses écarts (−53 % de dépense en 2070 au scénario 3, contre 6 % pour l'ancien levier) sont des marges, non des économies ; ses chiffres de tête ont été corrigés plusieurs fois en six semaines (85 passages de test rouges sur 485 selon la revue).
+- Code Apache-2.0 réutilisable ; textes CC BY-SA 4.0 ; données dérivées sans licence claire, à ne pas reprendre sans accord écrit.
+- Recommandation : préréglage maintenant (1 à 2 jours) ; module plus tard, construit par nous (20 à 30 jours), le site servant de contrôle croisé.
+
+**Non fait :** lecture des dépôts depense-publique-fonctions et shape_of_tax_system_2026_FR. Hypothèse à vérifier : depense-publique-fonctions servirait mieux de source de données (dépenses par fonction) que de module. LVTShift et le simulateur de comptes notionnels n'ont été lus que par les deux revues ci-dessus.
+
+## 8. Décisions
+
+| # | Décision | Statut | Formulation retenue |
+|---|---|---|---|
+| D1 | Ancrage | Tranchée | Niveaux 2025 observés ; 2026 = estimation, croissance de référence = médiane des prévisionnistes indépendants (Gouvernement en comparateur) ; leviers dès 2027 |
+| D2 | Effets d'offre | Tranchée sur le principe | σ = 0 par défaut ; non nul seulement au cas par cas après revue de preuves (en cours), sur une ligne distincte étiquetée avec fourchette |
+| D3 | Multiplicateurs et persistance | Tranchée | Valeurs de la table, sous réserve de vérification des sources |
+| D4 | Taux d'ancrage i* | Tranchée | Moyenne du TEC 10 sur trois mois, avec curseur bas / central / haut |
+| D5 | Leviers du Day 0 | Tranchée sur le principe | TVA (normal, tous taux), CSG, IR en % du produit, IS, cotisations, cinq à six fonctions de dépense, indexation des pensions, ONDAM ; plus leviers de réforme du logement et du marché du travail, « non validé — avis demandé », σ d'après la revue de preuves |
+| D6 | Corrections comportementales θ | Tranchée | Valeurs de la table ; symétriques en paramètres, évaluées au taux après réforme |
+| D7 | Dérive de référence | Tranchée sur le principe | Deux composantes : (a) vieillissement retraites et santé, calé sur le COR pour les paramètres choisis ; (b) autres dépenses : max(projection officielle ; tendance longue de la dépense primaire réelle), choix délibéré |
+| D8 | Retraites | Tranchée sur le principe | Droit en vigueur dans la référence ; préréglage « Comptes notionnels » ; le reste « non validé » |
+| D9 | Collectivités locales | Tranchée | Bloc local affiché, sans levier natif ; il reçoit les sorties des modules |
+| D10 | Horizon | Tranchée sur le principe | Trois horizons : 10 ans, 2040, 30 ans ; incertitude élargie au-delà de 10 ans ; 30 ans sur démographie du COR |
+| D11 | Produit d'une taxe nationale sur la valeur du sol | Tranchée | À l'État (bloc des administrations centrales) |
+| D12 | Capitalisation dans le prix du sol | Tranchée | Comptée dès le Day 0 dans le module LVT, mécanisme et fourchette de la revue LVT |
+
+**Reste ouvert :** (1) valeurs à collecter (section 10) ; (2) σ issus de la revue de preuves (D2, D5, et `yS` haut du module LVT) ; (3) valeur centrale de la capitalisation (D12) et go/no-go du module LVT le 30 novembre.
 
 ## 9. Sources
 
@@ -257,11 +280,13 @@ Taxe foncière sur la valeur du sol : à rendement égal, `a = 0` par constructi
 
 ## 10. Ce qui manque
 
-Non trouvé : recettes 2025 par impôt et par bloc ; dépenses par fonction ; niveaux 2026 en Md€ et loi de fin de gestion ; inflation 2026 ; rendement d'un point d'IS ; étalon officiel des cotisations ; tableau de passage détaillé ; projections Cour des comptes, Commission et COR ; dérive tendancielle des dépenses.
+Non trouvé : recettes 2025 par impôt et par bloc ; dépenses de vieillesse en COFOG et niveau 2025 des dépenses par fonction (décembre 2026) ; charge d'intérêts 2026 en Md€, soldes par bloc 2026, loi de fin de gestion ; rendement d'un point d'IS ; étalon officiel des cotisations ; tableau de passage détaillé ; Cour des comptes : intérêts 2027, 2028 et 2030, dette à l'horizon 2030 ; COR : dépenses 2040 et 2050, effet de la suspension en % du PIB ; trajectoire de dépense de santé liée au vieillissement.
 
-De mémoire, à vérifier : tous les multiplicateurs, λ, les θ, ε, β, κ, la composition du champ ASSO.
+À collecter : médianes des prévisionnistes indépendants (Banque de France, Commission, OCDE, FMI) pour la croissance 2026–2027, la croissance potentielle et l'inflation ; tendance longue de la dépense primaire réelle (à calculer, séries Insee) ; valeur de `comp.offset.prestations` (à documenter) ; références de la littérature suédoise des comptes notionnels ; valeur centrale de la capitalisation du sol (D12) ; σ de la revue de preuves.
 
-Non fait : lecture des trois dépôts candidats au statut de module.
+De mémoire, à vérifier : tous les multiplicateurs, λ, les θ, ε, β, κ, la composition du champ ASSO. Les chiffres de `docs/baseline-data.md` ont été lus par résumé d'outil, non à l'œil dans les PDF.
+
+Non fait : lecture de depense-publique-fonctions et shape_of_tax_system_2026_FR.
 
 ## 11. Développements ultérieurs
 
