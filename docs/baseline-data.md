@@ -82,3 +82,36 @@ Source : Insee Première n° 2093, « Usage de l'argent public : les dépenses p
 
 Sous-postes de la protection sociale publiés dans le texte : famille 67 Md€ ; chômage 49 Md€ (incl. formation des demandeurs d'emploi). **Vieillesse : niveau non trouvé** (le texte donne seulement la hausse de +23 Md€, soit +6,2 %). Exclusion sociale et survie : non publiés séparément dans le texte. Les détails par groupe de fonctions sont aux tableaux xlsx 3.30x de l'Insee, illisibles ici (robots interdits). La somme des lignes (1 671) concorde avec le total à l'arrondi près. Le total 2024 de 1 672 est le chiffre provisoire de février 2026, à ne pas confondre avec les dépenses 2025 de 1 714,2.
 
+## Item 6. Points de comparaison
+
+### 6a. Cour des comptes, juin 2026
+
+Source : Cour des comptes, « La situation et les perspectives des finances publiques », délibéré le 22 juin 2026 (https://www.vie-publique.fr/files/rapport/pdf/303867.pdf, copie du PDF sur Vie-publique). Lecture primaire, via résumé WebFetch (environ 280 000 caractères sur 339 579 ; numéros de page déduits des en-têtes, donc approximatifs). Définition : comptabilité nationale, toutes APU.
+
+| Grandeur | Valeur | Hypothèse | Page / tableau |
+|---|---|---|---|
+| Charge d'intérêts des APU 2024 / 2025 | 60,1 Md€ (2,0 %) / 65,7 Md€ (2,2 %) | observé | tableau 14, p. 67 |
+| Charge d'intérêts 2026 | 77,4 Md€ (2,5 % du PIB), +11,7 Md€ | prévision gouvernementale de printemps | tableau 14, p. 67 ; texte p. 69 |
+| Charge d'intérêts 2029 | « plus de 100 Md€ par an » (seuil, pas de série annuelle dans le texte lu) | idem | p. 69 |
+| Charge d'intérêts de l'État 2025 / 2026 | 52,5 / 61,9 Md€ | | tableau 16, p. 71 |
+| Dette 2026 | 118,5 % du PIB | prévisions du gouvernement de l'époque | p. 18-19 |
+| Déficit fin 2029 si plafonds de dépense nette respectés | 3,2 % du PIB ; dette 2029 : 120,1 % | plafonds DPN | tableau 19, p. 84 environ |
+| Déficit fin 2029 si cibles du plan à moyen terme respectées | 2,8 % ; dette 2029 : 118,8 % | cibles PSMT | tableau 19 ; tableau 21 (trajectoire de référence) |
+| Scénarios 2029 (solde ; dette) | « dérive » −5,4 ; 124,3 ; « choc macro » −3,3 ; 121,6 ; « hausse des taux » −3,3 ; 120,0 ; cumulé −6,2 ; 127,6 | | tableau 21, p. 91 |
+
+Non trouvé : charge d'intérêts annuelle 2027, 2028 et 2030 ; horizon 2030 pour la dette. Le rapport est antérieur au RESF d'octobre : son 2026 (dette 118,5 %, intérêts 77,4 Md€, déficit cible 5,0 %) diffère du RESF (119,3 %, ≈ 79 Md€, 5,4 %), l'écart étant une question de millésime de prévision et non de contradiction.
+
+### 6b. Commission européenne, Debt Sustainability Monitor
+
+Source : Commission européenne, DG ECFIN, « Debt Sustainability Monitor 2025 », Institutional Paper 332, publié début 2026 (la date exacte « février 2026 » vient du résumé de l'outil, non vérifiée) (https://economy-finance.ec.europa.eu/document/download/39b3b61d-42c1-46d7-8088-0aad82e8731e_en?filename=ip332_en.pdf). Lecture primaire (100 000 premiers caractères sur 1 048 904), via résumé WebFetch. Définition : dette brute Maastricht ; scénario de base « sans changement de politique budgétaire » (solde primaire structurel maintenu à son niveau de 2026 jusqu'en 2036, hors coût du vieillissement ; les ajustements promis dans les plans à moyen terme au-delà de 2026 ne sont pas pris en compte).
+
+| France | Valeur |
+|---|---|
+| Dette 2025 (point de départ du document) | 116,3 % du PIB |
+| Dette 2036, scénario de base | 144,0 % du PIB (sommet en 2036) |
+| Autres scénarios déterministes, 2036 | SPB historique 146,1 ; SPB bas 148,9 ; r−g défavorable 155,6 ; stress financier 146,7 (calcul de l'outil : base + écart, à confirmer) |
+| Risque à moyen terme | élevé ; long terme : moyen |
+| Référence | tableau 2.2, p. 27 ; carte de chaleur, tableau 2, p. 10 |
+
+Attention : la dette de départ 116,3 % (prévision de la Commission, automne 2025) diffère des 115,7 % de l'Insee ; ne pas additionner les deux sources sur la même courbe sans recalage.
+
