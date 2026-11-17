@@ -75,7 +75,8 @@ Indices : t = 0 pour 2026, t ≥ 1 à partir de 2027. Exposant b : trajectoire d
 
 **E2 — Leviers.** Chaque levier j est exprimé par son effet ex ante sur le solde, en % du PIB : `a(j,t)`, positif s'il améliore le solde. `a(j,t) = rendement(j) × x(j) × rampe(j,t) / Y(base)`. Il reste constant en part de PIB (indexation), ce qui corrige l'érosion des leviers en euros courants du modèle actuel.
 
-**E3 — Réponse comportementale (recettes).** Effet ex post = `(1 − θ(j)) × a(j,t)`. θ est le même à la hausse et à la baisse. θ = 0 pour les leviers de dépense. Voir 3.2.
+**E3 — Réponse comportementale (recettes).** Effet ex post = `(1 − θ(j)) × a(j,t)`. En paramètres, θ est le même à la hausse et à la baisse ; il est évalué au taux après réforme (voir 3.2). θ = 0 pour les leviers de dépense : une dépense n'a pas de base fiscale qui s'érode quand on la modifie. Les réactions comportementales à la dépense passent par E4 (demande) et E5 (offre), pas par θ.
+En option, un décalage spécifique `comp.offset.prestations` = o(j) peut s'appliquer à quelques lignes de dépense, les prestations d'abord : effet ex post = `(1 − o(j)) × a(j,t)`, o étant la part de l'économie annulée par des dépenses induites ou des recettes perdues. Valeur : à documenter ; o = 0 par défaut.
 
 **E4 — Effet de demande, en niveau, qui s'estompe.**
 `yD(t) = − Σj m(j) × Σk≤t Δa(j,k) × λ^(t−k)`
@@ -90,7 +91,7 @@ Vérification : multiplicateur cumulé sur T années = `m × (1 − λ^T) / ((1 
 
 **E8 — Solde primaire, en % du PIB de référence.**
 `sp(t) = spb(t) + Σj (1 − θ(j)) × a(j,t) + ε × (yD(t) + yS(t))`
-avec `spb(t) = spb(0) − d × t` si une dérive tendancielle d des dépenses est retenue (décision D7).
+avec `spb(t) = spb(0) − d(t)`, d(t) étant la dérive de référence (décision D7, ci-dessous).
 
 **E9 — Taux à l'émission.** `i_new(t) = i* + β × (dette/PIB(t−1) − dette/PIB(0))`, i* étant le taux de marché observé (ancre) et β la pente par point de dette.
 
@@ -100,7 +101,11 @@ avec `spb(t) = spb(0) − d × t` si une dérive tendancielle d des dépenses es
 
 **E12 — Chômage (Okun).** `u(t) = ub(t) − κ × 100 × (yD(t) + yS(t))`, u en points, l'écart de PIB en décimal. Un PIB inférieur de 1 % relève le chômage de κ point.
 
-Limites assumées : pas de modèle d'inflation ; pas de changement de régime des multiplicateurs ; élasticité unitaire des recettes au PIB dans la référence (le HCFP relève 0,8 pour 2027 [S7]) ; θ (base fiscale) et ε (cycle) sont deux canaux distincts, mais un recouvrement partiel est possible.
+**Dérive de référence d(t) (D7).** `d(t) = dA(t) + dB(t)`, en points de PIB, en deux composantes distinctes et affichées comme telles.
+(a) *Vieillissement des retraites et de la santé.* Dynamique, pilotée par les réglages retraites : dA(t) est l'écart, en points de PIB, entre la dépense de retraites projetée par le COR pour les paramètres choisis et son niveau de 2025, plus l'écart équivalent pour la santé. Calage sur les projections du COR : à droit en vigueur, 14,1 % du PIB en 2025 et en 2030, 14,2 % en 2045, 15,3 % en 2070 [S23]. Le COR ne publie pas 2040 ni 2050 en texte (figure 2.2 seulement : **non trouvé**). Trajectoire de dépense de santé : **non trouvée**, source à identifier.
+(b) *Autres dépenses.* On retient la plus haute de deux valeurs : la projection officielle, ou la tendance longue de la dépense primaire réelle. C'est un choix délibéré, annoncé comme tel dans l'interface : il écarte l'hypothèse implicite d'une dépense qui cesserait de croître. Valeur de la tendance : **à calculer (séries Insee)**.
+
+Limites assumées : élasticité unitaire des recettes au PIB dans la référence (le HCFP relève 0,8 pour 2027 [S7]) ; θ (base fiscale) et ε (cycle) sont deux canaux distincts, mais un recouvrement partiel est possible. Les limites « pas de modèle d'inflation » et « pas de changement de régime des multiplicateurs » du brouillon v0.2 sont déplacées en section 11.
 
 ## 3. Rendements statiques des leviers
 
@@ -123,7 +128,9 @@ Le levier IR devient une variation proportionnelle du barème, faute d'étalon o
 Pour un impôt de taux marginal τ sur une assiette B d'élasticité e au taux net (1 − τ) : `dB/B = −e × dτ / (1 − τ)`, d'où `dR = B × dτ × (1 − θ)` avec **θ = e × τ / (1 − τ)**.
 Pour l'IS, avec une semi-élasticité η de l'assiette au taux : **θ = η × τ**.
 
-Les coefficients hérités (0,9 ; 0,95 ; 0,7), qui se cumulaient avec les « efficacités », sont supprimés, ainsi que l'asymétrie hausse/baisse.
+Les coefficients hérités (0,9 ; 0,95 ; 0,7), qui se cumulaient avec les « efficacités », sont supprimés, ainsi que l'asymétrie hausse/baisse sur les paramètres.
+
+θ est donc symétrique en paramètres, mais θ = e × τ / (1 − τ) est évalué au taux **après réforme** τ. Conséquence voulue : une hausse à partir d'un taux déjà élevé fait perdre plus de recettes qu'une baisse de même ampleur n'en fait gagner. Illustration (calcul, e égal) : θ vaut 1,0 × e à τ = 50 % et 0,67 × e à τ = 40 % ; relever de 40 à 50 % est donc corrigé davantage que ramener de 50 à 40 % ne l'est. Patrick a accepté ce traitement ; D6 est tranchée.
 
 ## 4. Table des paramètres
 
@@ -145,13 +152,14 @@ Les coefficients hérités (0,9 ; 0,95 ; 0,7), qui se cumulaient avec les « eff
 | `comp.theta.tva` | 0,03 | 0 / 0,08 | — | De mémoire | Fraude et achats transfrontaliers. |
 | `comp.theta.is` | 0,25 | 0,20 / 0,38 | — | Formule 3.2 ; η = 0,8 à 1,5 de mémoire (Beer, de Mooij, Liu 2018) | Bénéfices déplacés vers d'autres pays. |
 | `offre.sigma.*` | 0 | à documenter | — | Décision D2 | Effet durable sur le niveau du PIB ; non retenu sans preuve. |
+| `comp.offset.prestations` | à documenter (0 par défaut) | — | — | Section 2, E3 | Part de l'économie sur une prestation qui revient par d'autres dépenses ou des recettes perdues. |
 | `fisc.eps` | 0,6 | 0,5 / 0,65 | — | De mémoire (Commission européenne, Mourre et al. 2019, France ≈ 0,63) ; **non relu** | Quand le PIB baisse de 1 %, le solde se dégrade d'environ 0,6 point. |
 | `dette.M` | 8,45 ans | 8 / 9 | — | AFT, fin juillet 2026 : 8 ans 163 jours [S12] | Durée moyenne avant qu'un emprunt soit renouvelé. |
 | `dette.i_star` | à fixer (D4) | 3,5 / 5,0 | — | TEC 10 : 4,08 % le 18 août 2026 [S12] ; ≈ 4,9 % mi-novembre (sources secondaires [S13]) | Taux auquel l'État emprunte aujourd'hui à dix ans. |
 | `dette.i_moy_2025` | 1,9 % | — | Cour des comptes : 65,7 Md€ en 2025, 2,2 % du PIB [S14] | Calcul : 64,7 / moyenne (3 306,1 ; 3 460,5) [S1][S4] | Taux moyen payé sur toute la dette. |
 | `dette.beta` | 3 pb/pt | 2 / 5 | — | De mémoire (Laubach 2009 ; Baldacci et Kumar 2010) | Hausse du taux quand la dette augmente d'un point de PIB. |
 | `emploi.kappa` | 0,4 | 0,3 / 0,5 | — | De mémoire (Ball, Leigh, Loungani 2017) | 1 % de PIB en moins : 0,4 point de chômage en plus. |
-| `ref.derive` | à fixer (D7) | — | — | **non trouvé** (COR 2026, Ageing Report) | Hausse spontanée des dépenses liée au vieillissement. |
+| `ref.derive` | (a) vieillissement retraites et santé : COR pour les paramètres choisis (droit en vigueur : 14,1 % du PIB en 2025 et 2030, 15,3 % en 2070) ; (b) autres dépenses : max(projection officielle ; tendance longue de la dépense primaire réelle), tendance à calculer (séries Insee) | retraites 2070 : 14,5 % si productivité 1,0 % ; 16,1 % si 0,4 % [S23] | — | COR, rapport annuel de juin 2026 [S23] ; santé : **non trouvé** ; tendance : à calculer | Hausse spontanée des dépenses : le vieillissement, puis les autres dépenses qui continuent de croître. |
 
 Toutes les lignes « de mémoire » doivent passer par la table des citations avant le 10 décembre. Aucune n'est à présenter comme vérifiée.
 
@@ -237,6 +245,7 @@ Taxe foncière sur la valeur du sol : à rendement égal, `a = 0` par constructi
 - [S20] Commission européenne, Debt Sustainability Monitor 2025, Institutional Paper 332 : https://economy-finance.ec.europa.eu/document/download/39b3b61d-42c1-46d7-8088-0aad82e8731e_en?filename=ip332_en.pdf
 - [S21] Insee Première n° 2096, mars 2026 (référence fournie par Patrick ; URL non relevée, non relue pour cette note)
 - [S22] Insee, Informations rapides n° 270, 10 novembre 2026 (référence fournie par Patrick ; URL non relevée, non relue pour cette note)
+- [S23] COR, rapport annuel de juin 2026 : synthèse https://www.cor-retraites.fr/sites/default/files/2026-06/Synth%C3%A8se_RA_2026.pdf ; partie 2, chapitre 1 https://www.cor-retraites.fr/sites/default/files/2026-06/RA_Part2_Chap1.pdf (lecture primaire, via résumé d'outil ; voir `docs/baseline-data.md`, item 7)
 
 ## 10. Ce qui manque
 
@@ -245,3 +254,9 @@ Non trouvé : recettes 2025 par impôt et par bloc ; dépenses par fonction ; ni
 De mémoire, à vérifier : tous les multiplicateurs, λ, les θ, ε, β, κ, la composition du champ ASSO.
 
 Non fait : lecture des trois dépôts candidats au statut de module.
+
+## 11. Développements ultérieurs
+
+Phases ultérieures, hors Day 0 ; ces points sont aujourd'hui des limites assumées.
+- **Modèle d'inflation.** L'inflation est exogène, égale à la médiane des prévisionnistes indépendants (1.2) ; aucune réponse endogène des prix.
+- **Changement de régime des multiplicateurs.** Les multiplicateurs (E4) sont ceux de l'expansion ; aucun basculement automatique en récession.
