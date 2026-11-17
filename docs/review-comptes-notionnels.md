@@ -191,7 +191,7 @@ pas :
    0,641 x 2 % = 78 Md€), mais suppose une capitalisation complète et immédiate,
    aucun abattement, aucun plafonnement (que le dépôt note lui-même exigé par la
    décision 2012-654 DC), et réutilise un taux de taxe foncière de 0,32 % rapporté
-   à tout l'immobilier pour un prix de terrain seul. Le recettes projetées gardent
+   à tout l'immobilier pour un prix de terrain seul. Les recettes projetées gardent
    une part de PIB constante alors que le prix des terrains a baissé de 11 % de
    2022 à 2024 (le dépôt le reconnaît).
 2. Part des reportés en emploi (`part des reportés en emploi`, 50 %) : le dépôt
@@ -240,3 +240,65 @@ pas :
   statique et le dépôt déclare ne rien certifier de ses projections.
 - Le PIB et l'emploi sont ceux du scénario de référence du COR : l'effet de la
   réforme sur le PIB est nul par construction.
+
+## 3. Qui publie, et sous quelle licence
+
+### 3.1 Éditeur et auteurs
+
+- Éditeur déclaré : le Parti libéral français (PLF). Le LICENSE porte
+  « Copyright 2025-2026 Parti Libéral Français » ; le README dit que
+  partiliberalfrancais.fr/retraite/ sert « la même page, copiée telle quelle »,
+  édite et héberge le site et porte les mentions légales. Le dépôt GitHub est
+  celui du compte `g-pliberal`.
+- Auteurs individuels : non nommés. Dans le clone en profondeur 1, l'unique
+  commit visible est signé `github-actions[bot]` (« Suite verte sur b6da0bb… ») ;
+  l'historique réel n'est pas visible et n'a pas été récupéré. Le README et la
+  documentation parlent de « le propriétaire » et de « la proposition »
+  sans nom.
+- Le dépôt contient une configuration d'agent de codage (`.claude/`, `CLAUDE.md`,
+  `docs/feuille_de_route*.md` en « actions » numérotées) : le développement est
+  manifestement assisté par IA, avec des arbitrages de programme consignés
+  par date. Un document du dépôt renvoie à un document privé d'un compte Claude.
+  Cela n'est pas un défaut en soi, mais l'auteur humain responsable de chaque
+  choix de modèle n'est pas identifiable depuis le dépôt.
+- Le site est un outil de campagne : son accueil est « la proposition du Parti
+  libéral français pour les retraites », ses pages parlent à « l'électeur ».
+
+### 3.2 Licence (texte du LICENSE et du README)
+
+| Objet | Licence | Réutilisation |
+|---|---|---|
+| Code (`src/`, portage `moteur/js/`, scripts, feuille de style, gabarits) | Apache 2.0 | Permise, y compris commerciale ; conserver la licence et les mentions, indiquer les modifications ; pas de copyleft |
+| Infographies, graphiques, tableaux, textes affichés, documentation (`README.md`, `docs/`) | CC BY-SA 4.0 | Permise, y compris commerciale, à trois conditions : citer « Parti Libéral Français » et l'adresse ; signaler les modifications ; publier toute version modifiée sous CC BY-SA 4.0 |
+| Nom et logo du PLF | aucune licence, droits réservés | Interdit de suggérer un soutien du parti ou de faire passer un contenu modifié pour original |
+| Données (`data/`) | aucune des licences ci-dessus | Informations publiques reprises de leurs producteurs (INSEE, DREES, DILA/Légifrance, SRE, caisses, INED, Eurostat, OCDE), réutilisables sous leurs propres conditions, citation obligatoire ; chaque valeur renvoie à `data/sources.yaml` |
+
+### 3.3 Ce que cela permet au simulateur budgétaire
+
+La réponse courte : la réutilisation du code est permise ; celle des textes est
+permise sous partage à l'identique ; celle des données est permise pour les
+données publiques sous la licence de leur producteur, et reste à clarifier pour
+les données calculées par le modèle.
+
+- Code Apache 2.0 : réutilisable librement. Rien d'obligatoire côté licence du
+  simulateur budgétaire. Mention de la licence et de l'origine à conserver. Le
+  code est en Python et en JavaScript sans bibliothèque ; le simulateur
+  budgétaire est en JavaScript (React, Vite), donc seul le portage `moteur/js/`
+  serait directement reprenable, et il est massif (voir § 4).
+- Textes et graphiques CC BY-SA 4.0 : si le simulateur budgétaire reprend ou
+  adapte des textes pédagogiques du site, ces textes (et toute adaptation)
+  doivent être publiés sous CC BY-SA 4.0 avec attribution. À décider en amont :
+  cela peut ne pas convenir à un site qui revendique la neutralité, et la mention
+  « Parti Libéral Français » devient obligatoire dans la page qui reprend le
+  texte. Écrire nos propres textes à partir des sources primaires évite
+  l'obligation.
+- Données : les séries primaires restent soumises à leurs licences (Etalab 2.0
+  pour la plupart ; une entrée CC BY-SA est signalée dans le manifeste). Les
+  fichiers dérivés par le modèle (`data/derive/equilibre.json`, `agregats.json`,
+  `docs/chiffrage_plf.csv`, `moteur/donnees.json`) ne sont couverts par aucune
+  licence nommée : la phrase « les DONNÉES du dépôt ne sont couvertes par aucune
+  de ces licences » les inclut littéralement. Ce sont pourtant des résultats
+  d'un modèle du parti, pas des informations publiques reprises. Sans
+  confirmation écrite de l'éditeur, ne pas les reprendre ; reprendre les sources
+  primaires.
+- Cette lecture n'est pas un avis juridique.
