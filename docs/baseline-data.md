@@ -36,3 +36,27 @@ Source : Direction générale du Trésor, « Rapport économique, social et fina
 
 Remarques : (a) inflation 2026 : 2,1 % trouvée, ce qui comble le « non trouvé » de la note 1.2 ; (b) dette 2026 : 119,3 % publié contre 119,2 % calculé dans la note ; (c) un article secondaire (LégiFiscal, citant le communiqué du gouvernement du 11/09/2026, n° 1018) donne un déficit de 4,9 % en 2026 et 2027, en contradiction avec 5,4 % et 5,0 % du RESF et du HCFP : traiter le RESF comme référence, la différence venant probablement d'une autre définition ou d'une version antérieure (non vérifié) ; (d) non trouvé : projet de loi de fin de gestion 2026 et soldes par bloc en 2026.
 
+## Item 2. Rendement statique d'un point de taux d'IS
+
+Résultat : **non trouvé** (aucun chiffre officiel par point de taux).
+
+| Élément cherché ou trouvé | Valeur | Source | Lecture |
+|---|---|---|---|
+| Rendement d'un point de taux d'IS | non trouvé | | |
+| IS net, prévision de recettes de l'État (budgétaire) | 2025 : 58,2 Md€ (révisé ; 53,0 en LFI 2025) ; 2026 : 59,0 Md€ | PLF 2026, Voies et moyens tome I « Évaluations des recettes », p. 6 et 20 (https://www.assemblee-nationale.fr/dyn/contenu/visualisation/1087930/file/PLF%202026%20-%20V%26M%20TI%20-%20Evaluations%20des%20recettes.pdf) | Primaire, 100 000 premiers caractères sur 228 050 seulement |
+| Taux normal d'IS | 25 % depuis 2022 ; taux réduit 15 % pour certaines PME | idem, p. 18 | Primaire |
+
+Tenté : texte vu du tome I du PLF 2026 (aucune sensibilité par point ; les 128 000 caractères restants n'ont pas été lus, ni le tome I du PLF 2027) ; fiche FIPECO « L'impôt sur les sociétés » (6 mars 2021, https://www.fipeco.fr/pdf/IS.pdf : pas de chiffre par point) ; note FIPECO sur la majoration d'IS (17 octobre 2024 : donne seulement le rendement attendu de la majoration pour les très grandes entreprises, 8 Md€ en 2025 et 4 Md€ en 2026, sans lien avec un point de taux) ; recherche web sur Conseil des prélèvements obligatoires et DG Trésor sans résultat chiffré. Un chapitre de l'Institut Avant-Garde (juin 2026, p. 18, secondaire) cite une estimation de L. Bach (IPP, octobre 2024) pour un passage de 25 % à 33,5 % (4,4 à 8 Md€), dont la base n'est pas établie : non utilisable comme étalon sans relire l'étude de l'IPP. Aucune valeur par point n'est proposée ici.
+
+## Item 3. Rendement d'un point de cotisations patronales
+
+Résultat : **non trouvé** dans les annexes du PLFSS 2026 lues ; la note garde donc ses sources secondaires (DSS 7 Md€, Ecalle environ 10 Md€).
+
+| Élément | Valeur | Source | Lecture |
+|---|---|---|---|
+| Coût combiné des baisses de 1,8 pt (famille) et de 6 pts (maladie) de cotisations | 38,2 Md€ en 2024 ; 36,2 Md€ estimé en 2025 | PLFSS 2026, annexe 4 « Présentation des mesures de réduction et d'exonération de cotisations et contributions ainsi que de leur compensation », p. 24, section 1.3.1 (https://www.assemblee-nationale.fr/dyn/contenu/visualisation/1088679/file/PLFSS2026-Annexe4-20251014-183718-59-11_avec%20couverture-2.pdf) | Primaire, première moitié du document seulement |
+| Total des exonérations (ROBSS) | 74,7 (2024) ; 71,8 (2025) ; 71,5 Md€ (2026) | idem, tableau 6, p. 23 | Primaire |
+| Valeur d'un point de cotisation employeur | non trouvé | | |
+
+Ces montants agrègent plusieurs dispositifs et ne se divisent pas en rendement par point. Tenté : annexe 4 (moitié), recherche web ciblée (comptes rendus parlementaires, rapports du Sénat non ouverts). Pistes non explorées : annexe 5 et annexe 9 du PLFSS, réponses de la DSS aux questionnaires parlementaires.
+
