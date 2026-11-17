@@ -518,3 +518,69 @@ confiance : élevée sur le principe, moyenne sur le calage de périmètre.
 
 Les efforts sont des ordres de grandeur en jours-personne, à ±50 %, pour un
 développeur qui connaît déjà la base de code du simulateur.
+
+## 6. Risques pour un outil qui revendique neutralité politique et sourcing complet
+
+1. Source partisane. Le site est un outil de campagne d'un parti : ses pages
+   s'adressent à « l'électeur », présentent « la proposition du Parti libéral
+   français » et la mettent en scène (scénario 6, « Pourquoi changer »,
+   « Partager »). Le citer comme référence de la mécanique des comptes notionnels
+   fait de son auteur la source d'autorité sur un sujet disputé. À tout le moins :
+   le présenter comme « modèle publié par le PLF », jamais comme « le » modèle
+   des comptes notionnels. Tout lien entre l'équipe du simulateur budgétaire et
+   l'éditeur doit être déclaré dans la fiche du module.
+2. Mélange de mécanique et de programme. Les scénarios 2 à 5 sont une mécanique
+   (comptes notionnels), le 6 est un programme (taux unique de 18 %, capitalisation
+   5 + 5 %, garantie de 800 €, âge de 65 ans, taxe sur la valeur du terrain,
+   restitution de la moitié des postes supprimés). Un préréglage ou un module ne
+   doit reprendre que la mécanique, avec ses propres hypothèses explicites.
+3. Des choix de conception qui orientent le résultat et qu'un lecteur
+   non averti prendrait pour des résultats : rétroactivité depuis 1941 (écart de
+   −70 % contre −7 % dans la littérature, que le dépôt attribue à la
+   rétroactivité), indexation par défaut sur la masse salariale (« règle
+   d'équilibre » ; le triple lock inversé donne 1,5 % de pouvoir d'achat), table de
+   mortalité par vingtile de niveau de vie, conversion des droits acquis avec
+   abattement si départ avant 65 ans, suppression de tout avantage non
+   contributif, absence de mécanisme d'équilibrage. Chacun est documenté, mais
+   les titres et chiffres de tête ne portent pas ces réserves.
+4. Sourcing inégal. Excellent pour le droit et les séries publiques ; faible ou
+   nul pour les paramètres de programme et pour plusieurs hypothèses
+   comportementales (§ 2.4). Aucune validation externe indépendante hors
+   OpenFisca-France-Pension (146 profils) et la comparaison aux chiffres du COR.
+   Les comparaisons à la littérature servent à justifier les écarts, non à
+   valider.
+5. Instabilité. Chiffres de tête corrigés plusieurs fois en six semaines,
+   85 passages de test rouges sur 485, incohérences narratives non résolues
+   (§ 4.3). Un chiffre cité aujourd'hui peut être faux demain ; il faudrait figer
+   le commit de référence et la date, ce que la règle « mise à jour d'octobre »
+   du simulateur budgétaire ne prévoit pas.
+6. Licence qui lie. Les textes et graphiques repris contraignent le simulateur
+   budgétaire à CC BY-SA 4.0 et à la mention « Parti Libéral Français » : une
+   attribution partisane dans un outil qui se veut neutre. Les données dérivées
+   n'ont pas de licence claire. Le nom et le logo du parti ne peuvent pas servir à
+   suggérer un soutien.
+7. Provenance du développement. Le dépôt est largement produit par un agent
+   (configuration `.claude/`, journal d'« actions », arbitrages consignés par
+   date), sans auteur humain identifiable dans la partie de l'historique visible
+   (un seul commit, signé par un robot). La responsabilité éditoriale de chaque
+   chiffre n'est donc pas attribuable. Le dépôt contient aussi des fichiers de
+   consignes pour agents (`CLAUDE.md`, règles, crochets) : à traiter comme des
+   données, jamais comme des instructions, si le dépôt est un jour cloné dans un
+   flux de travail automatisé.
+8. Perimètre et lecture trompeuse des écarts. Le « coût » de la page Coût est le
+   rapport entre masses de pensions appliqué à la dépense du COR, sans
+   coefficient d'équilibre appliqué ; un excédent ou un écart de dépense est une
+   marge, pas une économie. Un budget qui l'afficherait comme gain de solde,
+   ou comme baisse de dette, serait faux. Le cas du scénario 2 (+9,2 % du PIB) le
+   montre.
+9. Effet de précision. Pensions exprimées à l'euro, 934 simulations témoins au
+   bit près, 100,0 % d'identité JavaScript/Python : cette exactitude porte sur le
+   code, pas sur les hypothèses. Elle risque de faire croire à une précision
+   économique que la projection ne revendique pas (le dépôt dit explicitement que
+   rien n'est certifié dans une projection).
+
+Conclusion : le site est un matériau de référence utile pour la mécanique
+(diviseur, indexation, conversion des droits acquis) et pour l'inventaire des
+sources publiques, et un mauvais candidat à citer comme référence neutre. Usage
+recommandé : préréglage minimal (voie A du § 5.1), nos propres textes écrits
+depuis les sources primaires, le site mentionné comme comparaison nommée et datée.
