@@ -1,6 +1,6 @@
 // Paramètres du moteur v2 — note de modèle v0.3 (docs/model-note.md), §1, §4 et docs/baseline-data.md.
 // Chaque paramètre : { id, value (central), low, high, unit, source, status, explanation }.
-// status : "sourcé" | "sourcé (fourchette), centre choisi" | "de mémoire" | "à collecter" | "non validé".
+// status : "sourcé" | "sourcé (secondaire)" | "sourcé (fourchette), centre choisi" | "de mémoire" | "à collecter" | "non validé".
 // Convention d'unités : chaque `unit` dit comment lire `value` (ex. "%" = 2,1 pour 2,1 %). Le moteur convertit.
 // Un paramètre « à collecter » porte une VALEUR PROVISOIRE (placeholder) : ne jamais la présenter comme sourcée.
 
@@ -165,12 +165,12 @@ const table = [
     'Part des OAT de 2 à 8 ans (échéances intermédiaires) dans les émissions de renouvellement.'),
   p('dette.part_long', (1 - 220 / 2882) * 125.2 / (107.3 + 125.2), null, null, 'part', 'AFT, bulletin d\'août 2026, p. 2 : 10 ans 79,6 + 15–25 ans 33,4 + 30–50 ans 12,2 = 125,2 Md€ sur 232,5 ; calcul', 'sourcé',
     'Part des OAT de 10 ans et plus dans les émissions de renouvellement.'),
-  p('dette.y_btf', 2.5, 2.1, 2.8, '%', 'Moyenne 2025 du BTF 3 mois : 2,15 % (AFT, rapport annuel 2025, p. 29) ; adjudications de juillet 2026 : 2,34 à 2,75 % (AFT, opérations mensuelles 07/2026, lignes non étiquetées, non attribuées avec certitude)', 'à collecter',
-    PLACEHOLDER + '2,5 % pour le rendement des BTF, faute du taux du BTF 3 mois dans le dernier bulletin de l\'AFT.'),
-  p('dette.y_moyen', 3.35, 2.8, 4.0, '%', 'Aucun rendement à 5 ans trouvé (AFT, Banque de France). Valeur = moyenne du BTF provisoire (2,5) et du 10 ans (4,2)', 'à collecter',
-    PLACEHOLDER + '3,35 % pour le rendement des OAT de 2 à 8 ans, interpolé faute de relevé à 5 ans.'),
-  p('dette.y_long', 4.4, 4.0, 5.0, '%', '10 ans : 4,23 % à l\'adjudication du 3 septembre 2026, 20 ans 4,74 % (MoneyVox, secondaire) ; TEC 10 : 4,08 % le 18 août 2026 (AFT, bulletin d\'août 2026, p. 4) ; 30 ans non trouvé. Valeur = moyenne pondérée 10 ans 79,6 / 15–25 ans 33,4 / 30–50 ans 12,2 à 4,23 / 4,6 / 5,0 (4,6 et 5,0 supposés)', 'à collecter',
-    PLACEHOLDER + '4,4 % pour le rendement des OAT de 10 ans et plus ; le 30 ans (5,0 %) est supposé, et les rendements viennent d\'une presse secondaire.'),
+  p('dette.y_btf', 2.79, 2.5, 3.0, '%', 'AFT, « Dernières adjudications », BTF 3 mois adjugé le 26 octobre 2026 (échéance 3 février 2027) : taux moyen pondéré 2,787 % (https://www.aft.gouv.fr/en/dernieres-adjudications). Rendement d\'adjudication d\'un jour, non une moyenne mensuelle ; 6 mois 3,025–3,104 %, 12 mois 3,365 % au même jour', 'sourcé',
+    'Rendement des bons du Trésor à court terme (BTF 3 mois), dernier relevé de l\'AFT. Bas/haut : choix de l\'implémentation autour du point (la moyenne 2025 était de 2,15 %, les 6 et 12 mois sont plus hauts).'),
+  p('dette.y_moyen', 4.1, 4.0, 4.4, '%', 'AFT, « Dernières adjudications », OAT adjugées le 15 octobre 2026 : 25/02/2031 4,01 % ; 25/11/2031 4,10 % (≈ 5,1 ans, retenu comme proxy du 5 ans) ; 25/02/2032 4,16 % ; 25/11/2033 4,41 % (https://www.aft.gouv.fr/en/dernieres-adjudications). Aucun rendement à 5 ans exact ni moyenne mensuelle trouvés. Bas/haut = fourchette des lignes 2031–2033', 'sourcé',
+    'Rendement des OAT de 2 à 8 ans : taux d\'adjudication de la ligne novembre 2031 (≈ 5 ans), 15 octobre 2026. Ce n\'est pas un rendement à exactement 5 ans.'),
+  p('dette.y_long', 4.86, 4.4, 5.3, '%', 'Abcbourse, adjudication de long terme du 5 novembre 2026 (presse financière, secondaire ; https://www.abcbourse.com/marches/la-france-emet-pour-12-milliards-d-euros-d-oat-a-long-terme-avec-des-taux-globa_705679) : OAT 25/11/2036 4,74 % ; 25/10/2038 4,89 % ; 25/05/2045 5,08 % ; 25/05/2057 5,27 %. Moyenne pondérée par l\'émission brute AFT janv.–juil. 2026 (10 ans 79,6 ; 15–25 ans 33,4 ; 30–50 ans 12,2 Md€) avec 15–25 ans = moyenne 2038 et 2045 (4,985 %) et 30–50 ans = ligne 2057 : calcul. Moyenne mensuelle BCE/Banque de France du 10 ans, septembre 2026 : 4,44 % (relayée par eco3min.fr, secondaire). AFT : TEC 10 4,08 % le 18 août 2026 (bulletin d\'août 2026, p. 4). Non relu sur le site de l\'AFT', 'sourcé (secondaire)',
+    'Rendement des OAT de 10 ans et plus, d\'après l\'adjudication de long terme du 5 novembre 2026 (dont 30 ans : 5,27 %). Source secondaire (presse financière) : à reprendre sur la page de l\'AFT. Un jour d\'adjudication, non une moyenne mensuelle.'),
   cmp('cmp.aft.taux_emission.2025', 2.73, '%', 'AFT, rapport annuel 2025, p. 5, 24, 29 (ensemble des émissions de dette à moyen et long terme ; titres à taux fixe de plus d\'un an, hors indexés : 3,14 %)', 'Taux moyen à l\'émission 2025 publié par l\'AFT (contrôle croisé : le taux pondéré du modèle doit être cohérent avec ce niveau, plus élevé en 2026 car les rendements ont monté).'),
   p('cmp.aft.taux_emission.2026', 3.5, null, null, '%', 'Non publié à la date de collecte (le rapport annuel 2025 ne donne pas de chiffre 2026 ; le bulletin d\'août 2026 non plus)', 'à collecter',
     PLACEHOLDER + 'taux moyen à l\'émission 2026 de l\'AFT, non trouvé ; 3,5 % est un ordre de grandeur sans source (ne sert qu\'à l\'affichage, jamais dans le calcul).'),
@@ -216,7 +216,7 @@ export const PARAMS = [...baseMacro, ...baseBlocs, ...partsBlocs, ...COFOG, ...t
 export const PARAM_BY_ID = Object.fromEntries(PARAMS.map((q) => [q.id, q]))
 if (Object.keys(PARAM_BY_ID).length !== PARAMS.length) throw new Error('params: identifiants dupliqués')
 
-export const STATUSES = ['sourcé', 'sourcé (fourchette), centre choisi', 'de mémoire', 'à collecter', 'non validé']
+export const STATUSES = ['sourcé', 'sourcé (secondaire)', 'sourcé (fourchette), centre choisi', 'de mémoire', 'à collecter', 'non validé']
 
 /** Valeurs centrales, avec remplacements éventuels { id: valeur }. Rejette les ids inconnus et les valeurs non finies. */
 export function resolveParams(overrides = {}) {
