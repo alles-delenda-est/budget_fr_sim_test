@@ -1,6 +1,6 @@
 // Paramètres du moteur v2 — note de modèle v0.3 (docs/model-note.md), §1, §4 et docs/baseline-data.md.
 // Chaque paramètre : { id, value (central), low, high, unit, source, status, explanation }.
-// status : "sourcé" | "de mémoire" | "à collecter" | "non validé".
+// status : "sourcé" | "sourcé (fourchette), centre choisi" | "de mémoire" | "à collecter" | "non validé".
 // Convention d'unités : chaque `unit` dit comment lire `value` (ex. "%" = 2,1 pour 2,1 %). Le moteur convertit.
 // Un paramètre « à collecter » porte une VALEUR PROVISOIRE (placeholder) : ne jamais la présenter comme sourcée.
 
@@ -108,7 +108,7 @@ const table = [
     'Croissance 2026 de référence : médiane des prévisionnistes indépendants. Reposant sur 4 valeurs seulement, dont une secondaire, de millésimes anciens (CE printemps 2026, OCDE juin 2026).'),
   p('macro.g.2027', 0.85, 0.7, 1.1, '% (volume)', 'Médiane de 4 prévisionnistes : FMI 0,7 (secondaire) ; OCDE 0,8 ; BdF 0,9 ; CE 1,1 (baseline-data, collecte du 17 nov.). Bas/haut = min/max', 'non validé',
     'Croissance 2027 de référence : médiane des prévisionnistes indépendants. Reposant sur 4 valeurs seulement, dont une secondaire, de millésimes anciens.'),
-  p('macro.g.potentielle', 1.0, 0.9, 1.2, '% (volume)', 'Banque de France, Eco Notepad n° 455, 8 juillet 2026, p. 3 : la plupart des institutions attendent 0,9 % à 1,2 % en 2026-2028 (fourchette ; valeurs par institution non lisibles). Central 1,0 % = choix de l\'implémentation, non publié', 'sourcé',
+  p('macro.g.potentielle', 1.0, 0.9, 1.2, '% (volume)', 'Banque de France, Eco Notepad n° 455, 8 juillet 2026, p. 3 : la plupart des institutions attendent 0,9 % à 1,2 % en 2026-2028 (fourchette ; valeurs par institution non lisibles). Central 1,0 % = choix de l\'implémentation, non publié', 'sourcé (fourchette), centre choisi',
     'Rythme auquel l\'économie croît sans surchauffe (sourcé : fourchette ; le central est un choix, pas un chiffre publié). Valeur appliquée dès 2028.'),
   p('macro.pi.2026', 2.4, 2.3, 2.5, '%', 'Médiane de 3 sources : BdF (IPCH) 2,3 ; CE 2,4 ; FMI (IPC, secondaire) 2,4 (baseline-data, collecte du 17 nov.). Bas/haut : min et arrondi supérieur (OCDE manquant)', 'non validé',
     'Hausse annuelle des prix en 2026 : médiane de 3 sources seulement, mélange IPCH et IPC.'),
@@ -150,8 +150,26 @@ const table = [
     'Quand le PIB baisse de 1 %, le solde se dégrade d\'environ 0,6 point.'),
   p('dette.M', 8.45, 8, 9, 'années', 'AFT, bulletin mensuel d\'août 2026 : 8 ans 163 jours [S12]', 'sourcé',
     'Durée moyenne avant qu\'un emprunt soit renouvelé.'),
-  p('dette.i_star', 4.5, 3.5, 5.0, '%', 'D4 : moyenne du TEC 10 sur trois mois. TEC 10 : 4,08 % le 18 août 2026 [S12] ; ≈ 4,9 % mi-novembre (secondaire [S13])', 'à collecter',
-    PLACEHOLDER + '4,5 % = milieu des deux relevés connus (4,08 % en août ; ≈ 4,9 % en novembre), faute de la moyenne sur trois mois (D4). Taux auquel l\'État emprunte aujourd\'hui à dix ans.'),
+  // Taux à l'émission : moyenne pondérée de trois classes (remplace l'ancien i* unique = TEC 10 ans, qui surestimait le coût des BTF).
+  // Parts : encours de dette négociable fin juillet 2026 pour les BTF (220 / 2 882 Md€ = 7,6 %, AFT bulletin d'août 2026 p. 3) ;
+  // le reste réparti selon l'émission brute d'OAT de janvier à juillet 2026 (AFT, bulletin d'août 2026, p. 2) : 2–8 ans 107,3 Md€, 10 ans et plus 125,2 Md€
+  // (la ligne non étiquetée de 12,1 Md€, probablement indexée, est répartie au prorata). Choix : part du STOCK pour les BTF, car E10 renouvelle une fraction
+  // du stock ; le flux brut de BTF (renouvelés plusieurs fois par an) donnerait un poids trompeur.
+  p('dette.part_btf', 220 / 2882, null, null, 'part', 'AFT, bulletin mensuel d\'août 2026, p. 3 : BTF 220 Md€ sur 2 882 Md€ de dette négociable (31 juillet 2026) ; calcul. Part du stock, non du flux brut d\'émission', 'sourcé',
+    'Part des bons du Trésor à court terme (BTF) dans les émissions servant à renouveler la dette.'),
+  p('dette.part_moyen', (1 - 220 / 2882) * 107.3 / (107.3 + 125.2), null, null, 'part', 'AFT, bulletin d\'août 2026, p. 2 : émission brute d\'OAT janv.–juil. 2026, maturités 2 à 8 ans = 3,7 + 38,9 + 46,1 + 18,6 = 107,3 Md€ sur 232,5 ; calcul', 'sourcé',
+    'Part des OAT de 2 à 8 ans (échéances intermédiaires) dans les émissions de renouvellement.'),
+  p('dette.part_long', (1 - 220 / 2882) * 125.2 / (107.3 + 125.2), null, null, 'part', 'AFT, bulletin d\'août 2026, p. 2 : 10 ans 79,6 + 15–25 ans 33,4 + 30–50 ans 12,2 = 125,2 Md€ sur 232,5 ; calcul', 'sourcé',
+    'Part des OAT de 10 ans et plus dans les émissions de renouvellement.'),
+  p('dette.y_btf', 2.5, 2.1, 2.8, '%', 'Moyenne 2025 du BTF 3 mois : 2,15 % (AFT, rapport annuel 2025, p. 29) ; adjudications de juillet 2026 : 2,34 à 2,75 % (AFT, opérations mensuelles 07/2026, lignes non étiquetées, non attribuées avec certitude)', 'à collecter',
+    PLACEHOLDER + '2,5 % pour le rendement des BTF, faute du taux du BTF 3 mois dans le dernier bulletin de l\'AFT.'),
+  p('dette.y_moyen', 3.35, 2.8, 4.0, '%', 'Aucun rendement à 5 ans trouvé (AFT, Banque de France). Valeur = moyenne du BTF provisoire (2,5) et du 10 ans (4,2)', 'à collecter',
+    PLACEHOLDER + '3,35 % pour le rendement des OAT de 2 à 8 ans, interpolé faute de relevé à 5 ans.'),
+  p('dette.y_long', 4.4, 4.0, 5.0, '%', '10 ans : 4,23 % à l\'adjudication du 3 septembre 2026, 20 ans 4,74 % (MoneyVox, secondaire) ; TEC 10 : 4,08 % le 18 août 2026 (AFT, bulletin d\'août 2026, p. 4) ; 30 ans non trouvé. Valeur = moyenne pondérée 10 ans 79,6 / 15–25 ans 33,4 / 30–50 ans 12,2 à 4,23 / 4,6 / 5,0 (4,6 et 5,0 supposés)', 'à collecter',
+    PLACEHOLDER + '4,4 % pour le rendement des OAT de 10 ans et plus ; le 30 ans (5,0 %) est supposé, et les rendements viennent d\'une presse secondaire.'),
+  cmp('cmp.aft.taux_emission.2025', 2.73, '%', 'AFT, rapport annuel 2025, p. 5, 24, 29 (ensemble des émissions de dette à moyen et long terme ; titres à taux fixe de plus d\'un an, hors indexés : 3,14 %)', 'Taux moyen à l\'émission 2025 publié par l\'AFT (contrôle croisé : le taux pondéré du modèle doit être cohérent avec ce niveau, plus élevé en 2026 car les rendements ont monté).'),
+  p('cmp.aft.taux_emission.2026', 3.5, null, null, '%', 'Non publié à la date de collecte (le rapport annuel 2025 ne donne pas de chiffre 2026 ; le bulletin d\'août 2026 non plus)', 'à collecter',
+    PLACEHOLDER + 'taux moyen à l\'émission 2026 de l\'AFT, non trouvé ; 3,5 % est un ordre de grandeur sans source (ne sert qu\'à l\'affichage, jamais dans le calcul).'),
   p('dette.i_moy_2025', 1.9, null, null, '%', 'Cour des comptes : 65,7 Md€ en 2025, 2,2 % du PIB [S14] ; calcul : 64,7 / moyenne (3 306,1 ; 3 460,5)', 'sourcé',
     'Taux moyen payé sur toute la dette.'),
   p('dette.beta', 3, 2, 5, 'pb par point de PIB de dette', 'Laubach 2009 ; Baldacci et Kumar 2010 (de mémoire)', 'de mémoire',
@@ -194,7 +212,7 @@ export const PARAMS = [...baseMacro, ...baseBlocs, ...partsBlocs, ...COFOG, ...t
 export const PARAM_BY_ID = Object.fromEntries(PARAMS.map((q) => [q.id, q]))
 if (Object.keys(PARAM_BY_ID).length !== PARAMS.length) throw new Error('params: identifiants dupliqués')
 
-export const STATUSES = ['sourcé', 'de mémoire', 'à collecter', 'non validé']
+export const STATUSES = ['sourcé', 'sourcé (fourchette), centre choisi', 'de mémoire', 'à collecter', 'non validé']
 
 /** Valeurs centrales, avec remplacements éventuels { id: valeur }. Rejette les ids inconnus et les valeurs non finies. */
 export function resolveParams(overrides = {}) {

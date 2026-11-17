@@ -17,6 +17,21 @@ export const HORIZONS = {
 const SECU = { centrales: 'centrales', securiteSociale: 'secu', locales: 'locales' } // clé de bloc -> suffixe de paramètre
 const RATE_MAX = 0.25
 
+/** Gèle récursivement un objet (tableaux et objets imbriqués compris). */
+export function deepFreeze(o) {
+  if (o && typeof o === 'object' && !Object.isFrozen(o)) {
+    Object.freeze(o)
+    Object.values(o).forEach(deepFreeze)
+  }
+  return o
+}
+
+/** Taux à l'émission de référence i* (fraction) : moyenne pondérée BTF / OAT 2–8 ans / OAT 10 ans et plus. */
+export function issuanceRate(P) {
+  const w = P['dette.part_btf'] + P['dette.part_moyen'] + P['dette.part_long']
+  return (P['dette.part_btf'] * P['dette.y_btf'] + P['dette.part_moyen'] * P['dette.y_moyen'] + P['dette.part_long'] * P['dette.y_long']) / w / 100
+}
+
 /**
  * @param {object} [options]
  * @param {object} [options.levers]     { idLevier: x } valeurs signées (voir levers.js)
@@ -38,7 +53,8 @@ export function projectScenario(options = {}) {
 
   // ---- Instruments : leviers natifs + modules ----
   const years = Array.from({ length: N + 1 }, (_, t) => START_YEAR + t)
-  const context = { startYear: START_YEAR, endYear: horizon.endYear, nYears: N, years, gdpBase2025: P['base.pib.2025'], params: P }
+  // Contrat de module (note §7) : le module reçoit une copie profondément gelée, jamais l'objet vivant des paramètres.
+  const context = deepFreeze(structuredClone({ startYear: START_YEAR, endYear: horizon.endYear, nYears: N, years, gdpBase2025: P['base.pib.2025'], params: P }))
   const instruments = leversToInstruments(options.levers, P, N, options.ramp)
   const moduleRuns = []
   for (const { module, levers } of options.modules ?? []) {
@@ -54,16 +70,21 @@ export function projectScenario(options = {}) {
   const eps = P['fisc.eps']
   const kappa = P['emploi.kappa']
   const M = P['dette.M']
-  const iStar = P['dette.i_star'] / 100
-  const beta = (P['dette.beta'] / 10000) / 100 // pb par point de PIB -> par unité de ratio décimal
+  const iStar = issuanceRate(P)
+  const beta = P['dette.beta'] / 10000 // pb par point de PIB de dette -> fraction de taux par point (3 pb = 0,0003)
   const spb0 = P['ref.spb_2026'] / 100
   const ub = P['base.chomage_ref']
   const corAt = (y) => interpolateSeries(P['ref.derive.a_retraites'], y)
   const share = (kind, b) => P[`bloc.part_${kind}.${SECU[b]}`]
-  // INTERPRÉTATION : dérive d(t) relative à 2026 (d(0) = 0) ; (a) retraites (écart COR) + santé -> sécurité sociale ;
+  // Dérive d(t) = dA + dB mesurée depuis l'année de base 2025 (note, D7) ; (a) retraites (écart COR à 2025) + santé -> sécurité sociale ;
   // (b) autres dépenses -> au prorata des dépenses des blocs ; les trajectoires santé et (b) sont des placeholders à 0.
-  const driftA = (t) => (corAt(START_YEAR + t) - corAt(START_YEAR)) / 100 + P['ref.derive.a_sante'] / 100 * t
-  const driftB = (t) => (P['ref.derive.b_autres'] / 100) * t
+  // INTERPRÉTATION : le solde primaire de référence est ancré en 2026 (ref.spb_2026), qui contient déjà la dérive 2025 -> 2026 ;
+  // on ne retranche donc que l'écart d(t) − d(0) pour ne pas la compter deux fois. d(t) lui-même est publié depuis 2025.
+  const BASE_YEAR = START_YEAR - 1
+  const driftA = (t) => (corAt(START_YEAR + t) - corAt(BASE_YEAR)) / 100 + P['ref.derive.a_sante'] / 100 * (t + 1)
+  const driftB = (t) => (P['ref.derive.b_autres'] / 100) * (t + 1)
+  const dA0 = driftA(0)
+  const dB0 = driftB(0)
 
   const g = (t) => (t === 0 ? P['macro.g.2026'] : t === 1 ? P['macro.g.2027'] : P['macro.g.potentielle']) / 100
   const pi = (t) => (t === 0 ? P['macro.pi.2026'] : t === 1 ? P['macro.pi.2027'] : P['macro.pi.long']) / 100
@@ -109,8 +130,9 @@ export function projectScenario(options = {}) {
 
     // E9 : taux à l'émission. INTERPRÉTATION : en 2026 la référence de dette est celle de 2025 (pas de prime en t = 0) ;
     // dette/PIB(0) devient la référence dès 2027.
-    const premium = beta * ((ratioPrev - (ratioRef ?? ratioPrev)) * 100) * 100
-    const iNew = Math.min(RATE_MAX, Math.max(0, iStar + premium / 100))
+    // premium : fraction de taux (0,0003 = 3 pb = 0,03 point de pourcentage) par point de ratio dette/PIB.
+    const premium = beta * (ratioPrev - (ratioRef ?? ratioPrev)) * 100
+    const iNew = Math.min(RATE_MAX, Math.max(0, iStar + premium))
     // E10 : taux moyen du stock
     const phi = Math.min(1, 1 / M + Math.max(0, Dprev - Dprev2) / Math.max(Dprev, 1))
     const iAvg = (1 - phi) * iAvgPrev + phi * iNew
@@ -127,7 +149,7 @@ export function projectScenario(options = {}) {
     let stabTot = 0
     const perInstrument = {}
     for (const b of BLOCKS) {
-      const ref = (spb0 * share('primaire', b) - (b === 'securiteSociale' ? dA : 0) - dB * share('depenses', b)) * Yb
+      const ref = (spb0 * share('primaire', b) - (b === 'securiteSociale' ? dA - dA0 : 0) - (dB - dB0) * share('depenses', b)) * Yb
       let exAnte = 0
       let behav = 0
       instruments.forEach((inst) => {
@@ -159,13 +181,16 @@ export function projectScenario(options = {}) {
         year: START_YEAR + t, primaryBalance: blk[b].primary, interest: blk[b].interest, balance: blk[b].balance,
         balanceRatio: blk[b].balance / Y, referencePrimary: blk[b].ref, leversExAnte: blk[b].exAnte,
         behavioural: blk[b].behav, stabilisers: blk[b].stab,
+        // Affichage seulement : flux bruts des modules (% du PIB et Md€), jamais ajoutés au solde. Appliqués dès 2027 (leviers dès 2027, D1).
+        moduleFlux: t === 0 ? [] : moduleRuns.flatMap((inst) => inst.flux.filter((f) => f.bloc === b)
+          .map((f) => ({ moduleId: inst.id, libelle: f.libelle, montantPibPct: f.montant, montant: f.montant * Y }))),
       })
     }
     total.push({
       year: START_YEAR + t, t, gdp: Y, gdpBase: Yb, gdpEffect: gap, yD, yS,
       balance, balanceRatio: balance / Y, primaryBalance: primary, primaryBalanceRatio: primary / Y,
-      interest: INT, interestRatio: INT / Y, avgRate: iAvg, newRate: iNew, riskPremium: premium / 100,
-      debt: D, debtRatio: ratio, unemployment: u, byInstrument: perInstrument,
+      interest: INT, interestRatio: INT / Y, avgRate: iAvg, newRate: iNew, riskPremium: premium,
+      debt: D, debtRatio: ratio, unemployment: u, byInstrument: perInstrument, driftA: dA, driftB: dB, issuanceRate: iStar,
     })
 
     // Décomposition de la variation du solde (Md€) : exacte par construction.

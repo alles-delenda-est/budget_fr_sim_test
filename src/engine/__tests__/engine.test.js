@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { PARAMS, STATUSES, resolveParams } from '../params.js'
 import { LEVERS, LEVER_BY_ID, staticYield, thetaElasticity, leverTheta, BLOCKS } from '../levers.js'
-import { projectScenario, HORIZONS } from '../project.js'
+import { projectScenario, HORIZONS, issuanceRate, deepFreeze } from '../project.js'
 import { TEST_MODULE, validateModuleDefinition } from '../modules.js'
 
 const P = resolveParams()
@@ -67,6 +67,23 @@ describe('référence', () => {
   })
 })
 
+describe('dérive de référence mesurée depuis 2025', () => {
+  it('dA et dB partent de 2025 : les trajectoires santé et « autres dépenses » comptent t + 1 années', () => {
+    const r = projectScenario({ overrides: { 'ref.derive.a_sante': 0.1, 'ref.derive.b_autres': 0.05 } })
+    expect(r.total[0].driftA).toBeCloseTo(0.001, 10) // (14,1 − 14,1) + 0,1 pt × 1 an depuis 2025
+    expect(r.total[0].driftB).toBeCloseTo(0.0005, 10)
+    expect(r.total[4].driftA).toBeCloseTo(0.005, 10)
+    expect(r.total[4].driftB).toBeCloseTo(0.0025, 10)
+  })
+  it('le solde de 2026 reste ancré (pas de double compte), et se dégrade ensuite de d(t) − d(0)', () => {
+    const base = projectScenario({})
+    const r = projectScenario({ overrides: { 'ref.derive.a_sante': 0.1 } })
+    expect(r.blocks.securiteSociale[0].referencePrimary).toBeCloseTo(base.blocks.securiteSociale[0].referencePrimary, 8)
+    const Yb = base.total[3].gdpBase
+    expect(r.blocks.securiteSociale[3].referencePrimary - base.blocks.securiteSociale[3].referencePrimary).toBeCloseTo(-0.003 * Yb, 6)
+  })
+})
+
 describe('multiplicateurs (E4)', () => {
   for (const l of LEVERS) {
     it(`${l.id} : multiplicateur cumulé sur 10 ans < m, égal à m(1−λ^T)/((1−λ)T)`, () => {
@@ -100,12 +117,66 @@ describe('taux et prime', () => {
     for (let t = 1; t < r.total.length; t++) {
       if (r.total[t - 1].debtRatio <= ref) {
         expect(r.total[t].riskPremium).toBeLessThanOrEqual(1e-12)
-        expect(r.total[t].newRate).toBeLessThanOrEqual(P['dette.i_star'] / 100 + 1e-12)
+        expect(r.total[t].newRate).toBeLessThanOrEqual(issuanceRate(P) + 1e-12)
       }
     }
     const last = r.total[r.total.length - 1]
     expect(last.riskPremium).toBeLessThan(0)
     expect(r.total[0].riskPremium).toBe(0)
+  })
+})
+
+describe('E9 : pente de la dette et taux à l\'émission pondéré', () => {
+  const yRows = (extra) => projectScenario({ horizon: 'trenteAns', ...extra }).total
+  it('β = 3 pb par point de dette : +10 points de ratio => +0,30 point de pourcentage sur le taux à l\'émission', () => {
+    const r = projectScenario({})
+    const ref = r.total[0].debtRatio
+    for (let t = 1; t < r.total.length; t++) {
+      const points = (r.total[t - 1].debtRatio - ref) * 100
+      const rate = r.total[t].newRate - issuanceRate(P)
+      expect(rate).toBeCloseTo(points * 0.0003, 10)
+    }
+    // Magnitude : le ratio de la veille dépasse celui de 2026 de plus de 10 points à un moment, et l'écart de taux vaut alors 0,03 pp par point.
+    const row = r.total.find((x, t) => t > 0 && (r.total[t - 1].debtRatio - ref) * 100 >= 10)
+    expect(row).toBeDefined()
+    const pts = (r.total[row.t - 1].debtRatio - ref) * 100
+    expect((row.newRate - issuanceRate(P)) * 100).toBeCloseTo(0.03 * pts, 8) // en points de pourcentage
+    // Surcharge de β : 6 pb double la prime
+    const d = projectScenario({ overrides: { 'dette.beta': 6 } })
+    // (en t = 2 : la prime dépend du ratio de 2027, lui-même indépendant de β car la prime de 2027 est nulle)
+    expect(d.total[2].riskPremium).toBeCloseTo(2 * r.total[2].riskPremium, 10)
+    expect(r.total[2].riskPremium).not.toBe(0)
+  })
+  it('+10 points exactement => +0,30 pp (cas contrôlé par yS externe sur le PIB)', () => {
+    // Un PIB plus bas de ~8,3 % relève le ratio ; on vérifie la proportionnalité plutôt qu'un niveau exact.
+    const lo = projectScenario({ yS: Array(11).fill(-0.05) }).total
+    const ref = lo[0].debtRatio
+    const t = 3
+    const points = (lo[t - 1].debtRatio - ref) * 100
+    expect(points).toBeGreaterThan(0)
+    expect((lo[t].newRate - issuanceRate(P)) * 100).toBeCloseTo(0.03 * points, 8)
+  })
+  it('un excédent (ratio en baisse) abaisse le taux sans prime de stress du déficit', () => {
+    const rows = yRows({ levers: { tva_tous_taux: 5, csg: 3, ir: 30, is: 10, cotis_patronales: 5, dep_enseignement: -30, dep_affaires_eco: -30 } })
+    const ref = rows[0].debtRatio
+    const t = rows.findIndex((x, i) => i > 0 && rows[i - 1].debtRatio < ref - 0.05 && x.balance > 0)
+    expect(t).toBeGreaterThan(0)
+    const points = (rows[t - 1].debtRatio - ref) * 100
+    expect(points).toBeLessThan(-5)
+    expect(rows[t].newRate).toBeLessThan(issuanceRate(P))
+    expect(rows[t].newRate - issuanceRate(P)).toBeCloseTo(points * 0.0003, 10)
+  })
+  it('le taux à l\'émission est la moyenne pondérée BTF / OAT moyens / OAT longs', () => {
+    expect(P['dette.part_btf'] + P['dette.part_moyen'] + P['dette.part_long']).toBeCloseTo(1, 10)
+    const w = P['dette.part_btf'] * P['dette.y_btf'] + P['dette.part_moyen'] * P['dette.y_moyen'] + P['dette.part_long'] * P['dette.y_long']
+    expect(issuanceRate(P) * 100).toBeCloseTo(w, 10)
+    expect(issuanceRate(P) * 100).toBeLessThan(P['dette.y_long'])
+    expect(issuanceRate(P) * 100).toBeGreaterThan(P['dette.y_btf'])
+    expect(projectScenario({}).total[0].newRate).toBeCloseTo(issuanceRate(P), 12) // pas de prime en 2026
+  })
+  it('la part des BTF et les rendements sont modifiables par surcharge', () => {
+    const a = issuanceRate(resolveParams({ 'dette.y_btf': 0.5 }))
+    expect(a).toBeLessThan(issuanceRate(P))
   })
 })
 
@@ -219,6 +290,40 @@ describe('modules', () => {
     expect(() => projectScenario({ modules: [{ module: bad, levers: {} }] })).toThrow(/dette/)
     const bad2 = { ...TEST_MODULE, calculer: (v, c) => { const o = TEST_MODULE.calculer(v, c); o.annees[1].interets = 5; return o } }
     expect(() => projectScenario({ modules: [{ module: bad2, levers: {} }] })).toThrow(/interets/)
+  })
+  it('le contexte transmis est gelé : un module ne peut pas modifier les paramètres', () => {
+    const base = projectScenario({})
+    let threw = false
+    const evil = { ...TEST_MODULE, calculer: (v, c) => {
+      expect(Object.isFrozen(c.params)).toBe(true)
+      try { c.params['dette.y_long'] = 0.1 } catch { threw = true }
+      try { c.years.push(9999) } catch { threw = threw && true }
+      return TEST_MODULE.calculer(v, c)
+    } }
+    const r = projectScenario({ modules: [{ module: evil, levers: {} }] })
+    expect(threw).toBe(true)
+    expect(r.total).toEqual(base.total.map((row, i) => ({ ...row, byInstrument: r.total[i].byInstrument })))
+    expect(resolveParams()['dette.y_long']).toBe(P['dette.y_long'])
+    expect(r.years).toEqual(base.years)
+  })
+  it('deepFreeze gèle les objets imbriqués', () => {
+    const o = deepFreeze({ a: { b: [1, { c: 2 }] } })
+    expect(Object.isFrozen(o.a.b[1])).toBe(true)
+  })
+  it('flux[] est exposé par bloc en affichage seulement', () => {
+    const base = projectScenario({})
+    const r = projectScenario({ modules: [{ module: TEST_MODULE, levers: { taille: 0.4 } }] })
+    expect(r.blocks.locales[0].moduleFlux).toEqual([])
+    const f = r.blocks.locales[2].moduleFlux
+    expect(f).toHaveLength(1)
+    expect(f[0].moduleId).toBe('module_test')
+    expect(f[0].montantPibPct).toBeCloseTo(0.004, 10)
+    expect(f[0].montant).toBeCloseTo(0.004 * r.total[2].gdp, 6)
+    expect(r.blocks.centrales[2].moduleFlux).toEqual([])
+    expect(base.blocks.locales[2].moduleFlux).toEqual([])
+    // Le flux n'entre pas dans le solde local
+    const noFlux = projectScenario({ modules: [{ module: { ...TEST_MODULE, calculer: (v, c) => ({ ...TEST_MODULE.calculer(v, c), flux: [] }) }, levers: { taille: 0.4 } }] })
+    expect(r.blocks.locales[2].balance).toBeCloseTo(noFlux.blocks.locales[2].balance, 8)
   })
   it('σ du cœur : nul par défaut, appliqué quand il est fourni', () => {
     const base = projectScenario({ levers: { is: -2 } })
