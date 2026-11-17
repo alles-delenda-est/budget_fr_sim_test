@@ -132,3 +132,76 @@ Sources : Conseil d'orientation des retraites, « Rapport annuel, juin 2026 » :
 | Âge moyen de départ | 63,1 ans en 2025, 64,6 en 2070 (suspension incluse) ; pas de contrefactuel sans suspension | synthèse p. 5 |
 
 Précisions : jusqu'en 2045 les effets démographiques favorables compensent le coût de la suspension, selon la synthèse (p. 11-12). L'effet sur les âges de départ des générations 1964 à 1968 s'éteint en 2033 (chap. 1, p. 76, note 72). Le chiffre de 1,8 Md€ vient d'un résumé automatique de la synthèse ; à relire sur le PDF avant usage dans le moteur.
+
+## Collecte du 17 novembre
+
+Règle suivie : aucune valeur n'est complétée par estimation ; « non trouvé » signale ce qui a été essayé. Les outils web ne rendent que des résumés de pages : « lecture primaire » signifie que le document de l'éditeur a été ouvert via WebFetch (résumé automatique, pas relecture manuelle du PDF) ; « secondaire » signifie un agrégateur ou la presse.
+
+### Point 1. Prévisions indépendantes pour la France
+
+Millésimes réellement obtenus (le plus récent trouvé pour chaque institution) : Banque de France, projections intermédiaires de septembre 2026 ; Commission européenne, prévisions de printemps 2026 (les prévisions d'automne 2026 n'ont pas été trouvées : la page pays de la Commission affichait encore le printemps et la recherche web n'a renvoyé aucune publication d'automne 2026) ; OCDE, Perspectives économiques n° 119 de juin 2026 (celui de décembre 2026 n'est pas paru) ; FMI, WEO d'octobre 2026 lu uniquement via un agrégateur.
+
+| Institution | Source (éditeur, date) | PIB réel 2026 / 2027 | Inflation 2026 / 2027 | Déficit APU 2026 / 2027 | Dette APU 2026 / 2027 | Lecture |
+|---|---|---|---|---|---|---|
+| Banque de France | « Projections macroéconomiques intermédiaires, septembre 2026 », 15 sept. 2026, p. 1 et p. 2-4 (https://www.banque-france.fr/system/files/2026-09/Projections_macroeconomiques_Septembre_2026.pdf) | 0,4 % / 0,9 % (2028 : 1,2 %) | IPCH : 2,3 % / 1,9 % (2028 : 1,6 %) | non publié dans ce document | non publié dans ce document | primaire ; tableaux de l'annexe (p. 7) non lisibles dans l'extraction |
+| Commission européenne | Page pays France, « Spring 2026 Economic Forecast », 21 mai 2026 (https://economy-finance.ec.europa.eu/economic-surveillance-eu-member-states/country-pages-including-country-reports/france/economic-forecast-france_en) | 0,8 % / 1,1 % | « headline » 2,4 % / 1,8 % ; le document de synthèse de printemps utilise l'IPCH, la page pays ne le dit pas | −5,1 % / −5,7 % du PIB | 118,1 % / 120,2 % du PIB | primaire (page pays) ; numéros de page sans objet |
+| OCDE | « OECD Economic Outlook, Volume 2026 Issue 1 », chapitre France, juin 2026 (https://www.oecd.org/en/publications/oecd-economic-outlook-volume-2026-issue-1_2d1956f0-en/full-report/france_ad7164c1.html) | 0,7 % / 0,8 % | non trouvé (seule l'inflation d'avril 2026, 2,5 %, est citée) | −5,0 % / −4,6 % | « 121 % », année non précisée dans le texte lu | primaire ; définition des soldes (Maastricht ou SCN) non précisée |
+| FMI | WEO octobre 2026, données reprises par statisticsoftheworld.com (https://statisticsoftheworld.com/country/france/forecast) | 0,4 % / 0,7 % | IPC moyen : 2,4 % (2026) ; 2027 non trouvé | non trouvé | 118,5 % (2026) ; 2027 non trouvé | secondaire ; le millésime n'est pas explicitement rattaché à la page. La page WEO du FMI consultée était un aperçu « bientôt » sans chiffres France ; les consultations Article IV (mai-juillet 2026) n'ont pas été lues |
+
+Désaccord à signaler : un article de presse (cbnews.fr, mai 2026) donne 0,9 % pour la croissance 2027 de la Commission, contre 1,1 % sur la page de la Commission. J'ai retenu la page de la Commission. La médiane 2027 est la même dans les deux cas (voir ci-dessous).
+
+Médianes (valeurs triées, médiane = moyenne des deux valeurs centrales quand n est pair) :
+
+| Variable | Valeurs disponibles | Calcul | Médiane | Remarque |
+|---|---|---|---|---|
+| PIB 2026 | 0,4 (BdF) ; 0,4 (FMI) ; 0,7 (OCDE) ; 0,8 (CE) | (0,4 + 0,7) / 2 | 0,55 % | n = 4, dont un secondaire |
+| PIB 2027 | 0,7 (FMI) ; 0,8 (OCDE) ; 0,9 (BdF) ; 1,1 (CE) | (0,8 + 0,9) / 2 | 0,85 % | avec 0,9 pour la CE : 0,7 ; 0,8 ; 0,9 ; 0,9, soit 0,85 aussi |
+| Inflation 2026 | 2,3 (BdF, IPCH) ; 2,4 (CE) ; 2,4 (FMI, IPC) | valeur centrale | 2,4 % | n = 3 ; mélange IPCH et IPC ; OCDE manquant |
+| Inflation 2027 | 1,8 (CE) ; 1,9 (BdF, IPCH) | (1,8 + 1,9) / 2 | 1,85 % | n = 2 seulement : ce n'est pas une médiane de quatre sources |
+| Déficit 2026 | −5,1 (CE) ; −5,0 (OCDE) | (5,0 + 5,1) / 2 | −5,05 % du PIB | n = 2 |
+| Déficit 2027 | −5,7 (CE) ; −4,6 (OCDE) | (4,6 + 5,7) / 2 | −5,15 % du PIB | n = 2 ; écart de 1,1 pt entre les deux sources, la moyenne n'a guère de sens |
+| Dette 2026 | 118,1 (CE) ; 118,5 (FMI, secondaire) | (118,1 + 118,5) / 2 | 118,3 % du PIB | n = 2 ; la valeur OCDE (121 %) est exclue faute d'année |
+| Dette 2027 | 120,2 (CE) seul | n/a | non calculable | |
+
+Réserves : les millésimes diffèrent (mai à octobre 2026) et la Commission comme l'OCDE précèdent le choc énergétique plus récent pris en compte par la Banque de France ; à rafraîchir quand les prévisions d'automne de la Commission paraîtront.
+
+### Point 2. Croissance potentielle de la France
+
+| Source | Valeur | Années | Lecture |
+|---|---|---|---|
+| Banque de France, Eco Notepad n° 455, « France's potential growth following the Covid crisis », A. Devulder, 8 juillet 2026, p. 3 (https://www.banque-france.fr/system/files/2026-07/Billet_455_VE.pdf) | la plupart des institutions attendent 0,9 % à 1,2 % par an | 2026-2028 | primaire pour le billet, mais secondaire pour les institutions citées ; les valeurs par institution figurent seulement dans le graphique 2 (non lisible en texte) |
+| Commission européenne (AMECO, mai 2026, cité dans le graphique 2 du billet) | valeur propre non trouvée | n/a | la page pays et la synthèse de printemps ne donnent ni écart de production ni croissance potentielle ; AMECO n'a pas été consulté directement (pas d'URL vue) |
+| OCDE (Economic Outlook de décembre 2025, cité dans le même graphique) | valeur propre non trouvée | n/a | le chapitre France de juin 2026 lu en partie ne donne pas de croissance potentielle ni d'écart de production |
+
+### Point 3. Rendement statique d'un point de taux d'IS
+
+Aucun chiffre officiel par point n'a été trouvé. Données disponibles :
+
+| Élément | Valeur | Source |
+|---|---|---|
+| Taux normal de l'IS | 25 % depuis 2022 ; taux réduit 15 % pour les PME (chiffre d'affaires ≤ 10 M€, dans la limite de 42 500 € de bénéfice) | Voies et moyens tome I, PLF 2026, « Évaluations des recettes », p. 18 (https://www.assemblee-nationale.fr/dyn/contenu/visualisation/1087930/file/PLF%202026%20-%20V%26M%20TI%20-%20Evaluations%20des%20recettes.pdf) |
+| IS net 2025 (révisé) | 58,2 Md€ (LFI 2025 : 53,0 Md€) | idem, p. 6 et 20 |
+| IS net 2026 (prévision PLF) | 59,0 Md€ | idem, p. 6 et 20 |
+
+Essais : recherche web sur « rendement d'un point de taux d'IS » ; lecture des 100 000 premiers caractères sur 228 050 du Voies et moyens PLF 2026 (aucune sensibilité par point). Non consultés : PLF 2027, DG Trésor, CPO, Cour des comptes, FIPECO. Ne pas diviser 59,0 Md€ par 25 pour obtenir un « point » : l'assiette est hétérogène (taux réduit, contribution exceptionnelle, crédits d'impôt), ce calcul ne serait pas une donnée officielle.
+
+### Point 4. Rendement d'un point de cotisations sociales employeur
+
+Aucun chiffre officiel récent n'a été trouvé (PLFSS, DSS, HCFiPS). Seule une donnée ancienne et secondaire :
+
+| Champ | Valeur (2012) | Source |
+|---|---|---|
+| Un point de cotisation, régime général : AT et vieillesse déplafonnée 5,27 Md€ ; vieillesse plafonnée 4,43 ; maladie 6,54 ; famille 7,44 | année 2012 | CFDT retraités, page publiée le 20/12/2013 (https://www.xn--cfdt-retraits-mhb.fr/Valeur-d-un-point-de-cotisation-deplafonnee-entre-5-3-et-7-4-milliards), qui cite le rapport de la Commission des comptes de la sécurité sociale de septembre 2013 ; secondaire |
+
+Réserves : la page ne précise pas si le champ est patronal seul ou patronal et salarié, ni qui a fait le calcul ; ces valeurs sont périmées (masse salariale 2012) et ne doivent pas entrer dans le simulateur. Essais : recherches web sur les annexes du PLFSS 2026 et sur les publications HCFiPS, Cour des comptes et FIPECO ; aucun document n'a été ouvert (pistes repérées : annexe 1 du PLFSS 2026, HCFiPS « état des lieux du financement » 2023).
+
+### Point 5. Système suédois de comptes notionnels (NDC)
+
+| Paramètre | Valeur | Source et lecture |
+|---|---|---|
+| Taux de cotisation vers le compte notionnel (pension de revenu) | 16 points sur 18,5 % de la base ; les 2,5 points restants vont à la pension par capitalisation (premium pension) | Pensionsmyndigheten, Orange Report 2020, chap. 4 (https://www.pensionsmyndigheten.se/statistik/publikationer/orange-report-2020/4-how-the-national-pension-system-works.html) ; Ministère suédois des Finances, « The Swedish pension system in brief », 27 nov. 2025, p. 1 (https://government.se/contentassets/c40b1026b5f64cba929445d37d0b3f12/the-swedish-pension-system-in-brief.pdf) |
+| Règle d'indexation | soldes des comptes indexés sur l'indice de revenu (croissance du revenu moyen) ; rendement moyen depuis 1995 : 3,1 % | Orange Report 2020, chap. 4 |
+| Base du diviseur de rente | espérance de vie restante à l'âge de liquidation (hommes et femmes confondus) et taux d'intérêt anticipé de 1,6 % ; exemple : 65 ans, diviseur 17,07. Après liquidation, la pension est réindexée chaque année selon l'écart entre l'indice de revenu et 1,6 % | Orange Report 2020, chap. 4 |
+| Mécanisme d'équilibrage automatique | ratio d'équilibre = actifs / engagements ; s'il est inférieur à 1,0000, l'indexation passe à un « indice d'équilibre » (ratio lissé) plus faible ; retour à l'indice de revenu après rattrapage. Ratio fin 2020 : 1,0824 | Orange Report 2020, chap. 4 ; le document du ministère ne traite pas le mécanisme |
+
+Références complémentaires non lues : Holzmann, Palmer et Robalino (dir.), « Nonfinancial Defined Contribution Pension Schemes in a Changing Pension World », vol. 1, Banque mondiale, 2013, notice du catalogue (https://openknowledge.worldbank.org/entities/publication/0a7f6b2c-7cfc-5989-a3dc-2c6d7e657c63) ; Orange Report 2025 (https://www.pensionsmyndigheten.se/statistik/publikationer/orange-rapport-2025/orange-rapport-2025.pdf), à consulter pour les paramètres à jour. Le chapitre cité est du millésime 2020 : taux, diviseur et ratio d'équilibre sont à revérifier sur le rapport le plus récent, et les valeurs OCDE (Pensions at a Glance) n'ont pas été consultées.
