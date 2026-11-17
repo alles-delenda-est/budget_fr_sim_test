@@ -2,7 +2,7 @@
 
 Brouillon en cours, 17 novembre 2026. Chaque item : valeur, année, définition, source, page/tableau, nature de la lecture. « non trouvé » indique ce qui a été tenté. Aucune valeur n'est complétée de mémoire. Limite d'outil : les fichiers xlsx de l'Insee sont interdits aux robots (robots_disallowed) et le shell n'a pas d'accès web ; la lecture passe par WebFetch, qui résume les PDF (les chiffres cités ont été rendus par cet outil, pas relus à l'œil dans le PDF).
 
-Avancement : item 1 partiel, item 5 trouvé (autres items en cours).
+Avancement : items 5, 6 et 7 trouvés ; items 1 et 4 partiels ; items 2 et 3 non trouvés.
 
 ## Item 1. Recettes 2025 par impôt (comptabilité nationale)
 
@@ -115,3 +115,20 @@ Source : Commission européenne, DG ECFIN, « Debt Sustainability Monitor 2025 �
 
 Attention : la dette de départ 116,3 % (prévision de la Commission, automne 2025) diffère des 115,7 % de l'Insee ; ne pas additionner les deux sources sur la même courbe sans recalage.
 
+## Item 7. COR, rapport annuel de juin 2026
+
+Sources : Conseil d'orientation des retraites, « Rapport annuel, juin 2026 » : synthèse (https://www.cor-retraites.fr/sites/default/files/2026-06/Synth%C3%A8se_RA_2026.pdf) et partie 2, chapitre 1 (https://www.cor-retraites.fr/sites/default/files/2026-06/RA_Part2_Chap1.pdf). Lecture primaire, via résumé WebFetch ; les deux documents concordent. Définition : dépenses du système de retraites en % du PIB, scénario de référence du COR.
+
+| Grandeur | Valeur | Page / figure |
+|---|---|---|
+| Dépenses de retraite, 2025 | 14,1 % du PIB | synthèse p. 1-3 ; chap. 1 p. 65 et 69 (figure 2.2) |
+| 2030 | 14,1 % | synthèse p. 3 ; chap. 1 p. 69 |
+| 2045 | 14,2 % | synthèse p. 3 ; chap. 1 p. 69 |
+| 2070 | 15,3 % (soit +1,2 pt sur la période) | synthèse p. 1-3 ; partie 2 chap. 3 p. 93 pour le +1,2 pt |
+| 2040 et 2050 | non trouvé en texte (lisibles uniquement sur le graphique, figure 2.2) | |
+| Solde du système, scénario de référence | 2025 : −0,2 % du PIB ; 2030 : −0,2 pt (≈ 6,8 Md€) ; 2045 : −0,9 pt ; 2070 : −2,4 pts | partie 2 chap. 3, p. 91 et 94 |
+| Sensibilités 2070 | productivité 1,0 % : 14,5 % ; 0,4 % : 16,1 % (publiés) ; autres écarts de la synthèse p. 17-18 : fécondité ±1 pt, espérance de vie −1 pt, chômage −0,3/+0,4 pt | synthèse p. 17 |
+| Effet de la suspension de la réforme de 2023 | environ 1,8 Md€ par an en moyenne, en régime annuel, jusqu'en 2032 ; pas d'effet séparé chiffré sur la part du PIB ni sur le solde | synthèse p. 1-2 et 11-12 |
+| Âge moyen de départ | 63,1 ans en 2025, 64,6 en 2070 (suspension incluse) ; pas de contrefactuel sans suspension | synthèse p. 5 |
+
+Précisions : jusqu'en 2045 les effets démographiques favorables compensent le coût de la suspension, selon la synthèse (p. 11-12). L'effet sur les âges de départ des générations 1964 à 1968 s'éteint en 2033 (chap. 1, p. 76, note 72). Le chiffre de 1,8 Md€ vient d'un résumé automatique de la synthèse ; à relire sur le PDF avant usage dans le moteur.
