@@ -1,8 +1,10 @@
 # Note de modèle — Simulateur Budget France
 
-**Statut : brouillon v0.2, en attente de validation par Patrick. Aucun code moteur ne doit être écrit avant cette validation.**
+**Statut : v0.3, décisions de Patrick intégrées le 17 novembre 2026 ; reste à valider la rédaction. Aucun code moteur ne doit être écrit avant cette validation.**
 
-16 novembre 2026. Rédaction interrompue par une limite d'usage : plusieurs sources primaires n'ont pas pu être relues. Elles sont signalées « non trouvé » ou « de mémoire » et récapitulées en section 10.
+**v0.3 — 17 novembre 2026 :** décisions D1 à D12 intégrées (section 8) ; croissance de référence = médiane des prévisionnistes indépendants, prévisions du Gouvernement en comparateur ; chiffres officiels de `docs/baseline-data.md` repris (dépenses 1 714,2 ; dette 2026 119,3 % ; inflation 2026 2,1 % ; PIB 2025–2027 ; intérêts de la Cour des comptes ; DSM 144,0 % en 2036 ; COR) ; règle de prudence (section 5) ; E3 : θ = 0 pour la dépense, décalage optionnel ; dérive de référence en deux composantes ; σ = 0 par défaut, revue de preuves ouverte ; comptes notionnels en préréglage ; taxe sur la valeur du sol : D11 et D12 ; contrat de module : `flux[]` ; trois horizons ; limites « inflation » et « régimes de multiplicateurs » déplacées en section 11.
+
+16 novembre 2026 (v0.2). Rédaction interrompue par une limite d'usage : plusieurs sources primaires n'ont pas pu être relues. Elles sont signalées « non trouvé » ou « de mémoire » et récapitulées en section 10.
 
 Conventions : montants en Md€ courants ; ratios en % du PIB ; taux en décimal dans les équations, en % à l'affichage. « non trouvé » : valeur cherchée sans succès, avec ce qui a été tenté. « de mémoire » : non relue dans la source le jour de la rédaction, à vérifier dans la table des citations. « calcul » : dérivée des chiffres sourcés de la même ligne.
 
@@ -16,39 +18,46 @@ Comptes 2025 (Insee, provisoires) :
 
 | Md€, 2025 | Centrales (dont État) | Locales | Sécurité sociale | Total APU consolidé |
 |---|---|---|---|---|
-| Dépenses | 681,1 (607,7) | 335,5 | 803,2 | 1 714,1 |
+| Dépenses | 681,1 (607,7) | 335,5 | 803,2 | 1 714,2 |
 | Consommations intermédiaires | 61,6 (36,1) | 61,1 | 40,8 | 163,5 |
 | Rémunérations | 184,9 (153,8) | 97,0 | 88,2 | 370,0 |
 | Intérêts | 53,3 (52,4) | 6,0 | 5,6 | 64,7 |
 | Prestations sociales | 132,4 (130,6) | 31,4 | 607,2 | 771,0 |
 | Investissement (FBCF) | 50,7 (16,7) | 70,7 | 10,8 | 132,2 |
-| Autres, y c. transferts versés (calcul) | 198,2 | 69,3 | 50,6 | 212,7 |
+| Autres, y c. transferts versés (calcul) | 198,2 | 69,3 | 50,6 | 212,8 |
 | Solde | −130,3 (−128,1) | −15,6 | −6,7 | −152,5 |
-| Recettes (calcul : dépenses + solde) | 550,8 | 319,9 | 796,5 | 1 561,6 |
+| Recettes (calcul : dépenses + solde) | 550,8 | 319,9 | 796,5 | 1 561,7 |
 
-Sources : dépenses, Insee, « Dépenses par administration publique en 2025 » [S1] ; soldes, Insee Première n° 2106 [S2]. La somme des trois blocs (1 819,8) dépasse le total consolidé de 105,7 Md€ : ce sont les transferts entre blocs (calcul).
+Sources : dépenses, Insee, « Dépenses par administration publique en 2025 » [S1] ; soldes, Insee Première n° 2106 [S2]. La somme des trois blocs (1 819,8) dépasse le total consolidé de 105,6 Md€ : ce sont les transferts entre blocs (calcul). Le tableau 4 d'Insee Première n° 2106 donne aussi 164,6 Md€ de consommations intermédiaires (centrales : 61,8) et 803,3 de dépenses de sécurité sociale, contre 163,5 / 61,6 / 803,2 ci-dessus : arrondi ou révision (mise à jour d'août 2026 ?), non tranché ; les lignes ci-dessus sont conservées jusqu'à vérification (`baseline-data.md`, item 1).
 
-Agrégats : PIB 2025 ≈ 2 991 Md€ (source secondaire [S3], cohérent avec 1 714,1 / 57,3 %) ; dépenses 57,3 % du PIB [S2] ; dette 3 460,5 Md€, soit 115,6 % (115,7 % après révision) [S4][S2].
+Agrégats : PIB 2025 = 2 991 Md€ (RESF 2027, tableau 1, p. 188 [S17] ; cohérent avec 1 714,2 / 57,3 %) ; dépenses 57,3 % du PIB [S2] ; dette 3 460,5 Md€, soit 115,6 % (115,7 % après révision, et dans le RESF [S17]) [S4][S2].
 
 Ce que ce tableau corrige : le modèle actuel additionne le budget de l'État (445 Md€) et les régimes de base (687 Md€), soit 66 % de la dépense publique, et les rapproche d'une dette toutes APU.
 
-**Non trouvé :** recettes 2025 par impôt et par bloc (TVA, IR, IS, CSG, cotisations, fiscalité locale) ; dépenses par fonction (éducation, défense, santé, retraites). Tenté : Insee Première n° 2106 (erreur serveur), tableau Insee des impôts (page arrêtée à 2017). Où les prendre : tableaux Insee 3.2xx des comptes des APU 2025 [S5] et dépenses par fonction (COFOG) [S6].
+**Trouvé en partie.** Impôts et cotisations sociales 2025, y c. imputées : 1 374,1 Md€ pour les APU (centrales 458,0 ; locales 181,6 ; sécurité sociale 740,6) [S2, tableau 4] ; prélèvements obligatoires 43,6 % du PIB (+0,9 pt) et recettes totales 52,2 % du PIB [S18]. Dépenses par fonction (COFOG), 2024 provisoire : protection sociale 693 Md€ (41 %), santé 261 (16 %), services généraux 181 (11 %, dont charge de la dette 60), affaires économiques 166 (10 %), enseignement 149 (9 %), défense 54 ; total 1 672 Md€ (57,0 % du PIB) [S19, figure 2]. Le niveau 2025 paraîtra en décembre 2026 (tableaux 3.301 à 3.307).
 
-### 1.2 Année de base
+**Non trouvé :** recettes 2025 par impôt (TVA, IR, IS, CSG, cotisations, fiscalité locale) ; dépenses de vieillesse en COFOG (seule la hausse, +23 Md€, est publiée). Tenté : Insee Première n° 2106 (variations seulement), tableau Insee des impôts (page arrêtée à 2017), tableaux 3.216, 3.217, 3.202, 3.205 et 3.212 (fichiers xlsx interdits aux robots : à ouvrir à la main) [S5].
 
-Proposition (décision D1) : ancrer les niveaux sur 2025, seule année observée en comptabilité nationale ; afficher 2026 comme « année en cours, prévision officielle » ; faire agir les leviers à partir de 2027.
+### 1.2 Année de base et ancre de croissance
 
-Prévisions officielles retenues pour 2026–2027 (Gouvernement, PLF 2027, examinées par le HCFP, avis n° 2026-5 [S7]) :
+Année de base (décision D1, tranchée) : niveaux ancrés sur 2025, seule année observée en comptabilité nationale ; 2026 affiché comme « année en cours, estimation » ; leviers agissant à partir de 2027.
 
-| | 2026 | 2027 |
+**Règle d'ancrage (décision de Patrick).** Les prévisions de croissance du Gouvernement ne servent jamais de référence. La référence de croissance est la médiane des prévisionnistes indépendants (Banque de France, Commission européenne, OCDE, FMI) ; la croissance potentielle vient des estimations de la Commission et de l'OCDE. Les prévisions du Gouvernement ne figurent que comme comparateur (colonne de droite ci-dessous et table 4) et comme préréglage « Prévisions du Gouvernement ».
+
+| Grandeur | Référence du modèle | Comparateur : Gouvernement (RESF 2027 [S17] ; HCFP, avis n° 2026-5 [S7]) |
 |---|---|---|
-| Croissance en volume | 0,5 % | 1,0 % (jugée optimiste par le HCFP) |
-| Inflation | non trouvé | 1,8 % |
-| Déficit public | 5,4 % | 5,0 % |
-| Dette | hausse de plus de 3,5 pts, soit ≈ 119,2 % (calcul) | ≈ 121,7–122 % |
-| Croissance potentielle | 1,2 % | 1,2 % |
+| Croissance en volume 2026 | médiane des prévisionnistes indépendants — valeurs à collecter | 0,5 % [S7] |
+| Croissance en volume 2027 | médiane des prévisionnistes indépendants — valeurs à collecter | 1,0 % (jugée optimiste par le HCFP) [S7] |
+| Croissance potentielle | médiane Commission et OCDE — valeurs à collecter | 1,2 % en 2026 et 2027 [S7] |
+| Inflation, prix à la consommation (moyenne annuelle) 2025 / 2026 / 2027 | médiane des prévisionnistes indépendants — valeurs à collecter (2025 : observé, 0,9 % [S17]) | 0,9 % (observé) / 2,1 % / 1,8 % [S17, tableaux 2 et 10] |
+| PIB en valeur 2025 / 2026 / 2027 (Md€) | 2025 : 2 991 (observé) ; 2026–2027 : calculé par le modèle à partir des lignes ci-dessus | 2 991 / 3 051 / 3 135 [S17, p. 188, tableau 1] |
+| Solde public (% du PIB) 2025 / 2026 / 2027 | sortie du modèle | −5,1 / −5,4 / −5,0 [S17, tableau 13] |
+| Dette brute (% du PIB) 2025 / 2026 / 2027 | sortie du modèle | 115,7 / 119,3 / 121,7 [S17, tableau 14] |
+| Charge d'intérêts (% du PIB) 2025 / 2026 / 2027 | sortie du modèle | 2,2 / 2,6 / 2,9 [S17, tableaux 13 et 17] |
 
-**Non trouvé :** niveaux 2026 en Md€ (PIB, charge d'intérêts, soldes par bloc) ; chiffres du projet de loi de fin de gestion 2026 (déposé le 4 novembre 2026). À lire dans le rapport économique, social et financier du PLF 2027.
+Équivalents en Md€ (calcul : % × PIB, non publiés tels quels) : solde ≈ −165 en 2026 ; dette ≈ 3 640 ; intérêts ≈ 79 (≈ 91 en 2027). L'indice de prix (IPC ou IPCH) n'est pas précisé dans la lecture. Un article secondaire donne un déficit de 4,9 % en 2026 et 2027 : écarté, le RESF et le HCFP font foi.
+
+**Non trouvé :** médianes des prévisionnistes indépendants (croissance 2026–2027, croissance potentielle, inflation) : à collecter dans les publications de la Banque de France, de la Commission, de l'OCDE et du FMI ; charge d'intérêts 2026 en Md€ (à lire au tableau 17 du RESF) ; soldes par bloc 2026 ; chiffres du projet de loi de fin de gestion 2026 (déposé le 4 novembre 2026).
 
 ### 1.3 Passage PLF/PLFSS → comptabilité nationale
 
@@ -62,7 +71,7 @@ Le détail ligne à ligne est **non trouvé** ; il figure dans le tableau Insee 
 
 Indices : t = 0 pour 2026, t ≥ 1 à partir de 2027. Exposant b : trajectoire de référence (sans mesure nouvelle).
 
-**E1 — PIB de référence.** `Yb(t) = Yb(t−1) × (1 + g + π)`, avec g la croissance potentielle et π l'inflation.
+**E1 — PIB de référence.** `Yb(t) = Yb(t−1) × (1 + g + π)`, avec g la croissance de référence (médiane des prévisionnistes indépendants en 2026–2027, puis croissance potentielle selon la Commission et l'OCDE) et π l'inflation (médiane des prévisionnistes indépendants), voir 1.2.
 
 **E2 — Leviers.** Chaque levier j est exprimé par son effet ex ante sur le solde, en % du PIB : `a(j,t)`, positif s'il améliore le solde. `a(j,t) = rendement(j) × x(j) × rampe(j,t) / Y(base)`. Il reste constant en part de PIB (indexation), ce qui corrige l'érosion des leviers en euros courants du modèle actuel.
 
@@ -118,45 +127,48 @@ Les coefficients hérités (0,9 ; 0,95 ; 0,7), qui se cumulaient avec les « eff
 
 ## 4. Table des paramètres
 
-| Id | Central | Bas / haut | Source | Explication (réutilisable dans l'interface) |
-|---|---|---|---|---|
-| `macro.g` | 1,2 % | 0,8 / 1,5 | HCFP [S7] ; fourchette : hypothèse | Rythme auquel l'économie croît sans surchauffe. |
-| `macro.pi` | 1,8 % | 1,5 / 2,2 | Prévision 2027 [S7] ; fourchette : hypothèse | Hausse annuelle des prix. |
-| `dem.lambda` | 0,7 | 0,5 / 0,85 | Hypothèse de calibration, sans source directe | Part de l'effet sur l'activité qui subsiste l'année suivante. |
-| `dem.m.achats_invest` | 0,9 | 0,5 / 1,3 | De mémoire (Coenen et al. 2012 ; Ramey 2019) | 1 € de commande publique en moins retire environ 0,9 € d'activité la première année. |
-| `dem.m.remunerations` | 0,8 | 0,5 / 1,2 | De mémoire | Idem pour la masse salariale publique. |
-| `dem.m.prestations` | 0,5 | 0,2 / 0,8 | De mémoire | Les ménages épargnent une partie des prestations. |
-| `dem.m.tva` | 0,4 | 0,2 / 0,6 | De mémoire | Effet d'une hausse de TVA sur la consommation. |
-| `dem.m.ir_csg` | 0,4 | 0,2 / 0,6 | De mémoire | Effet d'un impôt sur le revenu des ménages. |
-| `dem.m.cotisations` | 0,4 | 0,2 / 0,7 | De mémoire | Effet du coût du travail à court terme. |
-| `dem.m.is` | 0,2 | 0,1 / 0,4 | De mémoire | Effet de court terme de l'impôt sur les bénéfices. |
-| `comp.theta.ir` | 0,15 | 0,05 / 0,30 | Formule 3.2 ; e de mémoire (0,1–0,4) | Part du rendement perdue parce que les contribuables s'adaptent. |
-| `comp.theta.csg` | 0,10 | 0 / 0,20 | Formule 3.2 ; de mémoire | Idem, assiette large. |
-| `comp.theta.cotis` | 0,15 | 0,05 / 0,30 | De mémoire | Idem, via l'emploi et les salaires. |
-| `comp.theta.tva` | 0,03 | 0 / 0,08 | De mémoire | Fraude et achats transfrontaliers. |
-| `comp.theta.is` | 0,25 | 0,20 / 0,38 | Formule 3.2 ; η = 0,8 à 1,5 de mémoire (Beer, de Mooij, Liu 2018) | Bénéfices déplacés vers d'autres pays. |
-| `offre.sigma.*` | 0 | à documenter | Décision D2 | Effet durable sur le niveau du PIB ; non retenu sans preuve. |
-| `fisc.eps` | 0,6 | 0,5 / 0,65 | De mémoire (Commission européenne, Mourre et al. 2019, France ≈ 0,63) ; **non relu** | Quand le PIB baisse de 1 %, le solde se dégrade d'environ 0,6 point. |
-| `dette.M` | 8,45 ans | 8 / 9 | AFT, fin juillet 2026 : 8 ans 163 jours [S12] | Durée moyenne avant qu'un emprunt soit renouvelé. |
-| `dette.i_star` | à fixer (D4) | 3,5 / 5,0 | TEC 10 : 4,08 % le 18 août 2026 [S12] ; ≈ 4,9 % mi-novembre (sources secondaires [S13]) | Taux auquel l'État emprunte aujourd'hui à dix ans. |
-| `dette.i_moy_2025` | 1,9 % | — | Calcul : 64,7 / moyenne (3 306,1 ; 3 460,5) [S1][S4] | Taux moyen payé sur toute la dette. |
-| `dette.beta` | 3 pb/pt | 2 / 5 | De mémoire (Laubach 2009 ; Baldacci et Kumar 2010) | Hausse du taux quand la dette augmente d'un point de PIB. |
-| `emploi.kappa` | 0,4 | 0,3 / 0,5 | De mémoire (Ball, Leigh, Loungani 2017) | 1 % de PIB en moins : 0,4 point de chômage en plus. |
-| `ref.derive` | à fixer (D7) | — | **non trouvé** (COR 2026, Ageing Report) | Hausse spontanée des dépenses liée au vieillissement. |
+| Id | Central | Bas / haut | Comparateur (Gouvernement) | Source | Explication (réutilisable dans l'interface) |
+|---|---|---|---|---|---|
+| `macro.g` | médiane des prévisionnistes indépendants — valeurs à collecter (potentielle : médiane Commission et OCDE) | à fixer d'après la dispersion des prévisionnistes | 1,2 % [S7] | Règle d'ancrage 1.2 | Rythme auquel l'économie croît sans surchauffe. |
+| `macro.pi` | médiane des prévisionnistes indépendants — valeurs à collecter | à fixer d'après la dispersion des prévisionnistes | 2,1 % (2026), 1,8 % (2027) [S17] | Règle d'ancrage 1.2 | Hausse annuelle des prix. |
+| `dem.lambda` | 0,7 | 0,5 / 0,85 | — | Hypothèse de calibration, sans source directe | Part de l'effet sur l'activité qui subsiste l'année suivante. |
+| `dem.m.achats_invest` | 0,9 | 0,5 / 1,3 | — | De mémoire (Coenen et al. 2012 ; Ramey 2019) | 1 € de commande publique en moins retire environ 0,9 € d'activité la première année. |
+| `dem.m.remunerations` | 0,8 | 0,5 / 1,2 | — | De mémoire | Idem pour la masse salariale publique. |
+| `dem.m.prestations` | 0,5 | 0,2 / 0,8 | — | De mémoire | Les ménages épargnent une partie des prestations. |
+| `dem.m.tva` | 0,4 | 0,2 / 0,6 | — | De mémoire | Effet d'une hausse de TVA sur la consommation. |
+| `dem.m.ir_csg` | 0,4 | 0,2 / 0,6 | — | De mémoire | Effet d'un impôt sur le revenu des ménages. |
+| `dem.m.cotisations` | 0,4 | 0,2 / 0,7 | — | De mémoire | Effet du coût du travail à court terme. |
+| `dem.m.is` | 0,2 | 0,1 / 0,4 | — | De mémoire | Effet de court terme de l'impôt sur les bénéfices. |
+| `comp.theta.ir` | 0,15 | 0,05 / 0,30 | — | Formule 3.2 ; e de mémoire (0,1–0,4) | Part du rendement perdue parce que les contribuables s'adaptent. |
+| `comp.theta.csg` | 0,10 | 0 / 0,20 | — | Formule 3.2 ; de mémoire | Idem, assiette large. |
+| `comp.theta.cotis` | 0,15 | 0,05 / 0,30 | — | De mémoire | Idem, via l'emploi et les salaires. |
+| `comp.theta.tva` | 0,03 | 0 / 0,08 | — | De mémoire | Fraude et achats transfrontaliers. |
+| `comp.theta.is` | 0,25 | 0,20 / 0,38 | — | Formule 3.2 ; η = 0,8 à 1,5 de mémoire (Beer, de Mooij, Liu 2018) | Bénéfices déplacés vers d'autres pays. |
+| `offre.sigma.*` | 0 | à documenter | — | Décision D2 | Effet durable sur le niveau du PIB ; non retenu sans preuve. |
+| `fisc.eps` | 0,6 | 0,5 / 0,65 | — | De mémoire (Commission européenne, Mourre et al. 2019, France ≈ 0,63) ; **non relu** | Quand le PIB baisse de 1 %, le solde se dégrade d'environ 0,6 point. |
+| `dette.M` | 8,45 ans | 8 / 9 | — | AFT, fin juillet 2026 : 8 ans 163 jours [S12] | Durée moyenne avant qu'un emprunt soit renouvelé. |
+| `dette.i_star` | à fixer (D4) | 3,5 / 5,0 | — | TEC 10 : 4,08 % le 18 août 2026 [S12] ; ≈ 4,9 % mi-novembre (sources secondaires [S13]) | Taux auquel l'État emprunte aujourd'hui à dix ans. |
+| `dette.i_moy_2025` | 1,9 % | — | Cour des comptes : 65,7 Md€ en 2025, 2,2 % du PIB [S14] | Calcul : 64,7 / moyenne (3 306,1 ; 3 460,5) [S1][S4] | Taux moyen payé sur toute la dette. |
+| `dette.beta` | 3 pb/pt | 2 / 5 | — | De mémoire (Laubach 2009 ; Baldacci et Kumar 2010) | Hausse du taux quand la dette augmente d'un point de PIB. |
+| `emploi.kappa` | 0,4 | 0,3 / 0,5 | — | De mémoire (Ball, Leigh, Loungani 2017) | 1 % de PIB en moins : 0,4 point de chômage en plus. |
+| `ref.derive` | à fixer (D7) | — | — | **non trouvé** (COR 2026, Ageing Report) | Hausse spontanée des dépenses liée au vieillissement. |
 
 Toutes les lignes « de mémoire » doivent passer par la table des citations avant le 10 décembre. Aucune n'est à présenter comme vérifiée.
 
 ## 5. Trajectoire de référence et points de comparaison
 
-Référence : 2025 observé, 2026–2027 selon les prévisions officielles (1.2), puis E1–E11 sans levier. Elle sera comparée, année par année, à trois repères :
+Référence : 2025 observé, 2026–2027 selon la médiane des prévisionnistes indépendants (1.2), puis E1–E11 sans levier. Elle sera comparée, année par année, à des repères officiels. Ce sont des comparateurs, non des cibles : un écart avec le Gouvernement est attendu et s'explique d'abord par l'ancre de croissance.
 
 | Repère | Ce qu'on en attend | État |
 |---|---|---|
 | HCFP, avis n° 2026-5 [S7] | Déficit 5,4 % puis 5,0 % ; dette ≈ 122 % fin 2027 ; intérêts +12 Md€ en 2027 | Lu |
-| Cour des comptes, rapport de juin 2026 [S14] | Charge d'intérêts et dette à l'horizon 2029–2030 | **non trouvé** (erreur serveur) |
-| Commission européenne, Debt Sustainability Monitor | Dette à dix ans à politique inchangée | **non trouvé** |
+| RESF 2027 [S17] | Solde −5,4 % / −5,0 % ; dette 119,3 % / 121,7 % ; intérêts 2,6 % / 2,9 % du PIB (2026 / 2027) | Lu (primaire, via résumé d'outil) |
+| Cour des comptes, rapport de juin 2026 [S14] | Intérêts : 65,7 Md€ en 2025 (2,2 %), 77,4 en 2026 (2,5 %), « plus de 100 Md€ par an » en 2029 ; dette 118,5 % en 2026 ; 2029 : déficit 3,2 % et dette 120,1 % si les plafonds de dépense nette sont tenus, −5,4 % et 124,3 % en scénario « dérive » (tableaux 14 et 21) | Lu en partie ; **non trouvé** : intérêts 2027, 2028 et 2030 ; dette à l'horizon 2030. Millésime de printemps, antérieur au RESF |
+| Commission européenne, Debt Sustainability Monitor 2025 [S20] | Dette 116,3 % du PIB en 2025, puis 144,0 % en 2036 (sommet) en scénario de base, solde primaire structurel maintenu à son niveau de 2026 jusqu'en 2036, hors coût du vieillissement ; risque à moyen terme élevé (tableau 2.2, p. 27) | Lu en partie (100 000 premiers caractères sur 1 048 904). Départ différent de l'Insee (115,7 %) : recaler avant de superposer |
 
-Critère de passage : écart inférieur à 1 point de PIB sur la dette à trois ans, et tout écart au-delà expliqué par une hypothèse nommée.
+Critère de passage : écart inférieur à 1 point de PIB sur la dette à trois ans, et tout écart au-delà expliqué par une hypothèse nommée. La part de l'écart due à l'ancre de croissance est isolée en faisant tourner le même modèle avec la croissance du Gouvernement (préréglage).
+
+**Règle de prudence.** Les paramètres de référence sont fixés un par un d'après les preuves ; là où les prévisionnistes indépendants sont plus pessimistes que le Gouvernement, on retient les leurs. Il n'y a pas de biais pessimiste généralisé. Fait à garder en vue : en 2025, les taux d'activité et d'emploi des 15–64 ans étaient à leur plus haut niveau depuis 1975 (Insee Première n° 2096, mars 2026 [S21]), alors que le chômage est monté à 8,2 % au troisième trimestre 2026 (Insee, Informations rapides n° 270, 10 novembre 2026 [S22]).
 
 Tests de référence du moteur : chaque levier restitue son étalon (3.1) à 0,1 Md€ près ; multiplicateur cumulé à dix ans inférieur à m pour chaque instrument ; à leviers nuls, scénario = référence ; un excédent ne déclenche aucune prime.
 
@@ -219,6 +231,12 @@ Taxe foncière sur la valeur du sol : à rendement égal, `a = 0` par constructi
 - [S14] Cour des comptes, juin 2026 : https://www.vie-publique.fr/rapport/303867-la-situation-et-les-perspectives-des-finances-publiques-2026
 - [S15] Vie-publique, LFSS 2026 : https://www.vie-publique.fr/loi/300445-loi-de-financement-de-la-securite-sociale-2026-retraites-lfss
 - [S16] OFCE, 30 janvier 2026 : https://www.ofce.sciences-po.fr/blog2024/fr/2026/20260129_MD/
+- [S17] Direction générale du Trésor, Rapport économique, social et financier annexé au PLF 2027, 6 octobre 2026 (tableaux 1, 2, 10, 13, 14, 17 ; p. 188-194) : https://www.tresor.economie.gouv.fr/Articles/03454e04-445d-4ce6-832b-cff601a11485/files/56839f98-37fc-48d8-b502-81cac5a48cad (lecture primaire, via résumé d'outil ; voir `docs/baseline-data.md`, item 5)
+- [S18] Insee Résultats, Finances publiques en 2025, 29 mai 2026 : https://www.insee.fr/fr/statistiques/8988841
+- [S19] Insee Première n° 2093, dépenses publiques par fonction en 2024, février 2026 : https://www.insee.fr/fr/statistiques/fichier/8735252/IP2093.pdf
+- [S20] Commission européenne, Debt Sustainability Monitor 2025, Institutional Paper 332 : https://economy-finance.ec.europa.eu/document/download/39b3b61d-42c1-46d7-8088-0aad82e8731e_en?filename=ip332_en.pdf
+- [S21] Insee Première n° 2096, mars 2026 (référence fournie par Patrick ; URL non relevée, non relue pour cette note)
+- [S22] Insee, Informations rapides n° 270, 10 novembre 2026 (référence fournie par Patrick ; URL non relevée, non relue pour cette note)
 
 ## 10. Ce qui manque
 
