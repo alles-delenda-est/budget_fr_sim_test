@@ -197,17 +197,17 @@ const rend = [
   p('rend.tva_tous_taux', 11.4, null, null, 'Md€ par point', 'DG Trésor 2025 [S9]', 'sourcé', 'Un point sur tous les taux de TVA rapporte environ 11,4 Md€ nets.'),
   p('rend.csg', 17, null, null, 'Md€ par point', 'FIPECO, 29 mai 2025 [S10] (2024)', 'sourcé', 'Un point de CSG, toutes assiettes, rapporte environ 17 Md€.'),
   p('rend.ir', 1.0, null, null, 'Md€ par % du produit', 'FIPECO [S10] (produit 2024 : 100 Md€ avant crédits, 91 après)', 'sourcé', 'Une variation de 1 % du produit de l\'impôt sur le revenu vaut environ 1 Md€.'),
-  p('rend.cotis', 8.5, 7, 10, 'Md€ par point', 'DSS 7 Md€ à Ecalle ≈ 10 Md€, sources secondaires [S11] ; aucun chiffre officiel récent trouvé (baseline-data, collecte du 17 nov.)', 'à collecter',
+  p('rend.cotis', 8.5, 7, 10, 'Md€ par point', 'DSS 7 Md€ à Ecalle ≈ 10 Md€, sources secondaires [S11] ; aucun chiffre officiel récent trouvé (baseline-data, collecte du 17 nov. ; recherche complétée : audition de la commission des affaires sociales sur les cotisations du 29 janv. 2026, aucun chiffre par point). Agrégats : exonérations ROBSS 71,5 Md€ en 2026 (PLFSS 2026, annexe 4, tableau 6, p. 23)', 'à collecter',
     PLACEHOLDER + '8,5 Md€ par point = milieu de la fourchette secondaire 7–10 Md€ (choix de l\'implémentation) ; aucun chiffre officiel.'),
-  p('rend.is', 2.3, 2.0, 3.0, 'Md€ par point', 'Non trouvé (rendement officiel). Proxy : IS net de l\'État 58,2 Md€ / taux 25 % [baseline-data, item 2]', 'à collecter',
+  p('rend.is', 2.3, 2.0, 3.0, 'Md€ par point', 'Non trouvé (rendement officiel par point). Agrégats : IS net de l\'État 58,2 Md€ en 2025 / 59,0 Md€ en 2026, taux 25 % (PLF 2026, Voies et moyens, tome I, p. 6, 18, 20) ; FIPECO (6 mars 2021) : pas de chiffre par point, IS net 2019 52,5 Md€ hors CICE ; Assemblée nationale, amendement LFI du 22 oct. 2025 (non officiel) : 25 % → 33,3 % = +19 Md€ à bénéfices inchangés, soit ≈ 2,3 Md€ par point (calcul sur un amendement) ; audition DG Trésor, 2026 : modèles existent, chiffres non publiés. Proxy retenu : 58,2 / 25', 'à collecter',
     PLACEHOLDER + '2,3 Md€ par point = 58,2 / 25 (proportionnel, IS de l\'État seul) ; plage 2,0–3,0 arbitraire. Aucun étalon officiel n\'a été trouvé ; ce proxy surestime sans doute, car il ignore le taux réduit des PME.'),
   // Taux avant réforme, pour évaluer θ au taux après réforme (3.2). Non fournis par la note : placeholders.
   p('comp.tau0.tva', 20, null, null, '%', 'Taux normal de TVA (de mémoire)', 'de mémoire', 'Taux de TVA avant réforme, pour évaluer θ au taux après réforme.'),
-  p('comp.tau0.ir', 30, 11, 45, '%', 'Non fourni par la note', 'à collecter',
+  p('comp.tau0.ir', 30, 11, 45, '%', 'Non trouvé en impôt sur le revenu seul. OCDE, Taxing Wages 2026, tableau 3.7 (https://www.oecd.org/en/publications/taxing-wages-2026_3a5169ef-en/full-report/effective-tax-rates-on-labour-income-in-2025_b7bb1854) : taux marginal de l\'impôt sur le revenu + cotisations salariales (CSG comprise), célibataire sans enfant au salaire moyen, 2025 = 43,0 % ; taux moyen d\'impôt sur le revenu 16,7 % (tableau 3.4). Le 43,0 % mélange IR et cotisations salariales : non substituable à un taux d\'IR seul. 30 % = tranche du barème (non relue)', 'à collecter',
     PLACEHOLDER + 'taux marginal moyen de l\'impôt sur le revenu avant réforme = 30 % (tranche médiane du barème, arbitraire).'),
   p('comp.tau0.csg', 9.2, null, null, '%', 'Taux de CSG sur les revenus d\'activité (de mémoire)', 'de mémoire', 'Taux de CSG avant réforme, pour évaluer θ au taux après réforme.'),
-  p('comp.tau0.cotis', 30, 20, 45, '%', 'Non fourni par la note', 'à collecter',
-    PLACEHOLDER + 'taux moyen de cotisations patronales = 30 % (arbitraire).'),
+  p('comp.tau0.cotis', 36.4, 20, 45, '%', 'OCDE, Taxing Wages 2026 (lien du tableau 3.7), célibataire sans enfant au salaire moyen, 2025 : coin fiscal marginal 58,2 % du coût du travail (tableau 3.6) ; taux marginal IR + cotisations salariales 43,0 % du salaire brut (tableau 3.7). Calcul : e = (0,582 − 0,430) / (1 − 0,582) = 36,4 % du salaire brut. Taux marginal au salaire moyen (après allègements), non un taux moyen sur l\'ensemble des salaires ; aucun taux patronal publié séparément dans le texte lu', 'sourcé',
+    'Taux de cotisations patronales marginal au salaire moyen, déduit de deux tableaux de l\'OCDE ; il varie fortement selon le niveau de salaire à cause des allègements.'),
   p('comp.tau0.is', 25, null, null, '%', 'PLF 2026, Voies et moyens, tome I, p. 18', 'sourcé', 'Taux normal de l\'impôt sur les sociétés avant réforme.'),
 ]
 
