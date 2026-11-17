@@ -115,8 +115,8 @@ C'est l'ordre de grandeur du transfert à régler entre blocs si la taxe nationa
 | Variante | Total remplacé | % du PIB 2025 | dont locales | dont centrales | dont sécurité sociale |
 |---|---|---|---|---|---|
 | S1 | 67,2 Md€ | 2,25 % | 65,4 (hors frais) | ≈ 1,8 | 0 |
-| S2 sans IFI | 71,1 | 2,38 % | 65,4 | ≈ 3,6 à 4,7 | ≈ 1,1 |
-| S3 sans IFI | 79,4 | 2,66 % | 65,4 | ≈ 7,3 à 8,3 | ≈ 3,1 |
-| S3 avec IFI | 81,8 | 2,73 % | 65,4 | ≈ 9,6 à 10,6 | ≈ 3,1 |
+| S2 sans IFI | 71,1 | 2,38 % | 65,4 | ≈ 4,4 à 4,7 | ≈ 1,1 à 1,4 |
+| S3 sans IFI | 79,4 | 2,66 % | 65,4 | ≈ 10,7 à 11,0 | ≈ 3,1 à 3,4 |
+| S3 avec IFI | 81,8 | 2,73 % | 65,4 | ≈ 13,0 à 13,3 | ≈ 3,1 à 3,4 |
 
-(Total LVTShift en euros 2025, moyennes quinquennales pour DMTO et plus-values ; ventilation par bloc : calcul de cette note à partir du tableau 2.2, fourchette due à l'incertitude sur la clé de partage ; les nombres du bloc local somment TFPB, TFPNB, annexes, THRS, DMTO communal et départemental de référence : 50,5 + 14,9.) Pour chaque scénario, la somme est **nulle par construction** : ce qui sort des recettes est remplacé par la taxe sur la valeur du sol.
+(Totaux LVTShift en euros 2025, moyennes quinquennales pour DMTO et plus-values. Bloc local : niveaux local 50,5 + départemental 14,9 de `yields.json`. Bloc sécurité sociale : calcul de cette note par la clé 2.3, appliquée aux moyennes quinquennales ; bloc centrales : total national de LVTShift moins la part sécurité sociale. La fourchette tient à la clé de partage, dont l'hypothèse n'est pas vérifiée.) Pour chaque scénario, la somme est **nulle par construction** : ce qui sort des recettes est remplacé par la taxe sur la valeur du sol.
