@@ -151,3 +151,48 @@ Limite à documenter pour le Day 0 : la part du produit de la taxe foncière pay
 - **Année et prix** : le cœur ancre sur 2025 en euros courants ; LVTShift exprime tout en euros 2025 et prend la moyenne de cinq ans pour DMTO et plus-values. Le module doit exposer ses flux en % du PIB 2025, constants (comme E2 le fait pour les leviers), et non en euros.
 - **Périmètre comptable** : LVTShift lit des montants de gestion (REI, comptes de gestion OFGL, avis d'imposition DGFiP) ; le cœur raisonne en comptabilité nationale (droits constatés, Insee). Les écarts seront petits pour l'impôt local, plus incertains pour les plus-values et l'IFI (budget contre avis, 2,3 contre 2,8 Md€ pour l'IFI en 2025).
 - **Statut « non validé »** : le contrat impose au module à effet dynamique la même validation que le cœur (§7). Les rendements LVTShift ont fait l'objet d'une revue interne (« Gemini », 27 octobre) et d'une vérification par le propriétaire, pas d'une validation par le cœur ; la plupart des chiffres de revenus locatifs sont de 2022.
+
+## 4. L'effet dynamique : ce que la littérature permet de chiffrer
+
+À rendement égal, l'effet budgétaire statique est nul. Tout effet budgétaire passe donc soit par le niveau du PIB (`yS`), soit par l'assiette. Sources : la note `dynamic-effects.md` de LVTShift (26 octobre 2026), dont la plupart des références primaires sont données comme lues dans le résumé ou la page de l'éditeur ; seules les références notées « relu » ont été vérifiées ici (existence de l'étude de Bérard et Trannoy sur le site de l'Insee : https://www.insee.fr/fr/statistiques/3621930 ; DGCL BIS 190 relu pour les DMTO).
+
+### 4.1 Verdict en une phrase
+
+**Il n'existe aucune estimation d'un effet sur le PIB français d'un remplacement de la taxe foncière, des DMTO ou des impôts sur plus-values et loyers par une taxe sur la valeur du sol.** Il existe des preuves partielles sur les canaux (transactions, construction, capitalisation), qui donnent des directions établies et des ordres de grandeur étrangers, non transposables tels quels.
+
+### 4.2 Preuves par canal
+
+| Canal | Direction | Ordre de grandeur disponible | Crédibilité |
+|---|---|---|---|
+| Transactions et mobilité, retrait des DMTO | hausse | À l'étranger : environ +6 % (Allemagne, Fritzsche et Vandrei 2019) à +14 % (Toronto, Dachis, Duranton et Turner 2012 : −15 % de ventes pour 1,1 point) de ventes par point de taxe retiré. Le taux français sur l'ancien est de 5,8 à 6,3 points : aucune extrapolation linéaire crédible. **France : la hausse de 2014 (3,8 → 4,5 %) n'a eu qu'un effet de calendrier (+26 % le mois précédent, −6 % par mois sur le trimestre) et aucun effet à moyen terme** (Bérard et Trannoy 2018, Économie et Statistique 500-502) | direction forte ; taille étrangère modérée ; France faible |
+| Coût de bien-être des DMTO | gain | Toronto : 1 € pour 8 € de recettes ; modèle d'Helsinki (Määttänen et Terviö 2022) : 12 à 15 % des recettes à un taux de 2 %, croissant avec le taux. Appliqué aux ≈ 16 Md€ de DMTO : ≈ 2 Md€ par an, soit ≈ 0,07 % du PIB (calcul de LVTShift ; c'est du bien-être, pas du PIB ; borne basse proche de zéro d'après 2014) | faible pour la France |
+| Construction et intensité d'usage du sol | hausse modeste | Finlande (Lyytikäinen 2009) : environ +12 % de mises en chantier de maisons avec une surtaxe sur terrains non bâtis ; Pennsylvanie : +2 à +10 points de croissance de logements par décennie selon le modèle (Banzhaf et Lavery 2010) ; Nouvelle-Zélande (Gemmell et al. 2019) : peu d'effet. Élasticité de l'offre de logement en France : 0,25 à 0,5 (Chapelle, Eyméoud et Wolf 2023), contre 1,75 aux États-Unis : réponse française probablement plus faible | direction modérée ; taille faible |
+| Loyers | ≈ 0 à court terme ; légère baisse possible à long terme | Report de la fiscalité foncière sur les loyers à l'étranger : 14 % (New York) à 100 % (Allemagne, où la taxe est légalement récupérable, ce qui ne vaut pas pour la TFPB). Aucune estimation française pour des impôts sur le revenu des bailleurs. Fourchette retenue par LVTShift pour les impôts supprimés sur loyers : 0,1 (0 à 0,2) les années 1 à 3, 0,5 (0,25 à 0,75) à long terme | théorie forte ; taille faible |
+| Capitalisation dans les prix | transfert entre propriétaires | 60 à 100 % de la valeur actuelle de la variation de taxe récurrente (Palmon et Smith 1998 : 62 % ; Høj et al. 2018 : capitalisation complète au Danemark). France : réforme de la taxe d'habitation, +50 €/m² par point de TH sur revenu (IPP 2023), capitalisation partielle | forte (taxe récurrente) ; modérée (France) |
+| PIB de long terme | hausse petite | Seul repère chiffré : OCDE (Arnold et al. 2011, Economic Journal 121), cité par O'Connor et al. 2016 : transférer 1 % des recettes fiscales des impôts sur le revenu vers la consommation et le patrimoine immobilier augmente le PIB par habitant de 0,25 à 1 % à long terme. **Ne s'applique pas à S1** (échange entre impôts fonciers) et **ne résiste pas aux tests de robustesse** (Xing 2012 ; Baiardi et al. 2019) | faible |
+
+### 4.3 Application illustrative du seul repère chiffré (calcul de cette note, non validé)
+
+Appliquer 0,25 à 1 % de PIB par habitant par point de recettes déplacé aux seules parties « revenu et patrimoine » des scénarios S2 et S3 (hors frais de gestion de l'État), avec des prélèvements obligatoires de ≈ 43 % du PIB, soit ≈ 1 290 Md€ (ordre de grandeur de LVTShift) :
+
+| Variante | Part revenu et patrimoine | % des prélèvements | Effet de niveau du PIB, « bas » à « haut » |
+|---|---|---|---|
+| S1 | 0 | 0 | 0 (échange foncier contre foncier) |
+| S2 sans IFI | ≈ 4,0 Md€ | 0,31 % | +0,08 % à +0,31 % |
+| S3 avec IFI | ≈ 14,6 Md€ | 1,13 % | +0,28 % à +1,1 % |
+
+C'est une **borne haute à manier avec prudence** : la fourchette OCDE concerne les impôts sur le revenu en général, surtout sur le travail, regroupe consommation et patrimoine, et ne résiste pas aux contrôles. LVTShift lui-même conclut : « direction positive mais petite, non chiffrée ». Avec la valeur par défaut D2 de la note de modèle (σ = 0 en central), le module livrerait `yS = 0` en central, et une fourchette haute au plus égale à la ligne ci-dessus, étiquetée « non validé ».
+
+### 4.4 Un canal d'assiette que la littérature n'aborde pas, et qui joue contre le rendement égal
+
+Le rendement égal est calculé sur l'assiette foncière d'aujourd'hui (6 122 Md€ en 2025). Si la nouvelle taxe est capitalisée dans les prix du sol (60 à 100 %), l'assiette baisse et, au taux fixé, le produit baisse aussi.
+
+- Ordre de grandeur de la sensibilité, calcul : chaque baisse de 1 % de la valeur foncière réduit le produit de la nouvelle taxe d'environ 0,7 à 0,8 Md€ (1 % de 67 à 82 Md€), soit 0,02 à 0,03 % du PIB.
+- Borne haute pour la seule partie nationale de S3 : 14 Md€ de taxe supplémentaire sur le sol, capitalisés à 3-4 % réel, représentent 350 à 470 Md€, soit 6 à 8 % de l'assiette, soit un manque de produit de 4,5 à 6 Md€ (0,15 à 0,2 % du PIB) avant contrepartie. Les impôts supprimés se capitalisent en sens inverse sur les biens loués ou vendus (ce que LVTShift appelle compensation partielle), mais l'assiette de la nouvelle taxe est le sol seul : la compensation n'est qu'en partie dans l'assiette.
+- LVTShift reconnaît la capitalisation comme « borne statique supérieure » et la modélise sans en tirer de conséquence sur le produit. Ce n'est pas dans sa note de recherche.
+
+Ce canal est l'**effet budgétaire le mieux défini** du module, plus que le gain de PIB. Il ne peut être traité qu'en ajustant le taux (ce que ferait l'État pour tenir « rendement égal » ex post) ; sinon il faut l'inscrire comme `a` négatif en S2 et S3, avec une capitalisation de 60 % en bas et 100 % en haut. Cela demande une décision, voir 5.4.
+
+### 4.5 Ce qui peut figurer en explication sans validation
+
+Direction et mécanisme des cinq effets, avec la phrase « aucune estimation française n'existe » ; le contenu de la section 8 de `dynamic-effects.md` (texte proposé en français) est réutilisable, après relecture par le cœur.
