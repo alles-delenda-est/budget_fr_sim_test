@@ -312,23 +312,7 @@ saving = 303.4 × annualReduction × t × ramp
 
 **Source:** francetdb.com rtRunModel(), COR 2024.
 
-### 2.9 Migration fiscal impact
-
-Net migration creates a fiscal impact through the labor force channel. France experiences a "brain drain" — emigrants are more productive than immigrants on average.
-
-```
-immigrantWorkers = 270k × 0.57 × 0.75 = 115,425 effective workers/year
-emigrantWorkers  = 200k × 0.88 × 1.10 = 193,600 effective workers/year
-netWorkerChange  = −78,175 effective workers/year
-
-migrationFiscalImpact(t) = t × −78,175 × 14,350 EUR / 1e9 = t × −1.12 Md€/year
-```
-
-Year 10: −11.2 Md€ fiscal impact. Year 25: −28.0 Md€. Enabled by default (`enableMigrationImpact = true`).
-
-**Source:** francetdb.com RT_DEFAULT_HYP, INSEE immigration/emigration data 2023.
-
-### 2.10 Dependance (autonomie) spending growth
+### 2.9 Dependance (autonomie) spending growth
 
 Autonomie/dépendance spending (43.5 Md€ baseline) grows at 5.5%/year, significantly faster than GDP (2.5% nominal). This is separate from the demographic pension/health drift already modeled.
 
@@ -340,7 +324,7 @@ Year 10: ~18.6 Md€ additional spending. Year 25: ~84.8 Md€. Enabled by defau
 
 **Source:** francetdb.com, DREES projections dépendance, PLFSS 2025.
 
-### 2.11 Political risk premium (21 bps baseline)
+### 2.10 Political risk premium (21 bps baseline)
 
 The 2024 political crisis widened OAT-Bund 10Y spread by ~21 bps. This is now explicit in the interest rate decomposition:
 
@@ -352,7 +336,7 @@ The user's political risk slider adds **additional** premium beyond the already-
 
 **Source:** Bloomberg OAT-Bund 10Y spread Q4 2024; ECB Financial Stability Review Nov 2024.
 
-### 2.12 Year-by-year projection loop (`projectFiscalPath`)
+### 2.11 Year-by-year projection loop (`projectFiscalPath`)
 
 For each year `t = 0, …, N`:
 
@@ -366,16 +350,15 @@ For each year `t = 0, …, N`:
 8. **Demographic pressure:** `t × 1.795 Md/yr` (pension + health aging pressure)
 9. **Senior employment revenue:** If labor reform active past lag: `additionalWorkers × avgCotisations`
 10. **Pension reform savings:** Retirement age + desindexation + cap + notional accounts (dynamic, ramped)
-11. **Migration fiscal impact:** `t × −1.12 Md/yr` (brain drain)
-12. **Dependance pressure:** `43.5 × ((1.055)^t − (1.025)^t)` (autonomie excess growth)
-13. **Adjusted deficit:** `totalDeficit − growthFeedback + demographicPressure − seniorRevenue − pensionReformSaving − migrationImpact + dependancePressure`
-14. **Unemployment:** Okun (see above)
-15. **Store output:** {gdp, debt, deficit, debtRatio, deficitRatio, effectiveInterestRate, unemploymentRate, nominalGrowthRate, riskPremiumBps, demographicPressure, seniorRevenue, pensionReformSaving, migrationImpact, dependancePressure}
-16. **Evolve state:** `prevDeficitRatio = |adjustedDeficit/gdp|`; `gdp × (1 + nominalGrowth)`; `debt + adjustedDeficit`
+11. **Dependance pressure:** `43.5 × ((1.055)^t − (1.025)^t)` (autonomie excess growth)
+12. **Adjusted deficit:** `totalDeficit − growthFeedback + demographicPressure − seniorRevenue − pensionReformSaving + dependancePressure`
+13. **Unemployment:** Okun (see above)
+14. **Store output:** {gdp, debt, deficit, debtRatio, deficitRatio, effectiveInterestRate, unemploymentRate, nominalGrowthRate, riskPremiumBps, demographicPressure, seniorRevenue, pensionReformSaving, dependancePressure}
+15. **Evolve state:** `prevDeficitRatio = |adjustedDeficit/gdp|`; `gdp × (1 + nominalGrowth)`; `debt + adjustedDeficit`
 
 **Output fields:** The `effectiveInterestRate` reported to the UI is `avgPortfolioRate × 100` (the actual average cost of the debt stock, not the marginal rate). The `riskPremiumBps` field shows the marginal risk premium for transparency (now includes 21 bps political component).
 
-### 2.13 Doom-loop assessment (`assessDoomLoop`)
+### 2.12 Doom-loop assessment (`assessDoomLoop`)
 
 The `assessDoomLoop()` utility identifies whether the interest-rate feedback loop is active:
 
@@ -415,7 +398,7 @@ The primary debt/GDP chart is full-width; the four smaller charts sit in a grid 
 
 ### 3.3 Metric snapshots
 
-Three time horizons are displayed: Year 1 (immediate), Year 5 (medium term), Year 10 (long term). For each horizon, three metrics are shown: debt level (Md€), deficit (Md€), and interest charge (Md€). Colour coding reflects direction vs baseline (green = improvement, red = deterioration).
+Three time horizons are displayed: the base year (2025), 5 years ahead and 10 years ahead. For each horizon, three metrics are shown: debt level (Md€), deficit (Md€), and interest charge (Md€). Colour coding reflects direction vs baseline (green = improvement, red = deterioration).
 
 ### 3.4 Political presets
 
@@ -442,9 +425,9 @@ The UI includes a dedicated Assumptions tab listing all model parameters with ac
 
 | File | Tests | Scope | Key assertions |
 |---|---|---|---|
-| `projection-engine.test.js` | ~158 | Unit — projection engine | Interest rate model; deficit stress; debt inertia; Okun Law; demographic drift; senior employment; energy/planning constants; pension reform (age, desindexation, cap, notional, floor); migration; dependance |
+| `projection-engine.test.js` | ~158 | Unit — projection engine | Interest rate model; deficit stress; debt inertia; Okun Law; demographic drift; senior employment; energy/planning constants; pension reform (age, desindexation, cap, notional, floor); dependance |
 | `policy-impact.test.js` | ~87 | Unit — revenue, spending, growth | ETI-adjusted revenue; spending multipliers; ONDAM floor constraint; NFP/GL regression; COR presets |
-| `integration.test.js` | ~37 | End-to-end — preset scenarios | Maximum stimulus; structural reforms; political risk; demographic drift integration; ONDAM integration; COR scenarios; pension reform + demographic interaction; migration/dependance validation |
+| `integration.test.js` | ~37 | End-to-end — preset scenarios | Maximum stimulus; structural reforms; political risk; demographic drift integration; ONDAM integration; COR scenarios; pension reform + demographic interaction; dependance validation |
 
 ---
 
@@ -517,12 +500,5 @@ The UI includes a dedicated Assumptions tab listing all model parameters with ac
 | Notional accounts reduction | −6% pension mass | francetdb.com, NDC model |
 | Notional accounts ramp-up | 15 years from 2027 | francetdb.com |
 | Pension floor | 65% of baseline | Political constraint |
-| Immigration flow | 270k/yr | INSEE 2023 |
-| Immigration employment rate | 57% | INSEE 2023 |
-| Immigration productivity factor | 0.75 | francetdb.com |
-| Emigration flow | 200k/yr | INSEE 2023 |
-| Emigration employment rate | 88% | INSEE 2023 |
-| Emigration productivity factor | 1.10 | francetdb.com |
-| Net migration fiscal impact | −1.12 Md€/yr | Computed |
 | Dependance baseline | 43.5 Md€ | PLFSS 2025 branche autonomie |
 | Dependance annual growth | 5.5%/yr | francetdb.com, DREES |

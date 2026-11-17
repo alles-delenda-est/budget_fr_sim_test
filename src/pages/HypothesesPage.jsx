@@ -65,7 +65,7 @@ export default function HypothesesPage() {
           <div className="baseline-column">
             <h3>État (PLF 2025)</h3>
             <table className="baseline-table">
-              <thead><tr><th>Recettes</th><th className="amount">Md\u20ac</th></tr></thead>
+              <thead><tr><th>Recettes</th><th className="amount">Md€</th></tr></thead>
               <tbody>
                 <tr><td>Impôt sur le revenu</td><td className="amount">{BASELINE.etat.incomeTax}</td></tr>
                 <tr><td>TVA</td><td className="amount">{BASELINE.etat.vat}</td></tr>
@@ -75,7 +75,7 @@ export default function HypothesesPage() {
               </tbody>
             </table>
             <table className="baseline-table">
-              <thead><tr><th>Dépenses</th><th className="amount">Md\u20ac</th></tr></thead>
+              <thead><tr><th>Dépenses</th><th className="amount">Md€</th></tr></thead>
               <tbody>
                 <tr><td>Éducation nationale</td><td className="amount">{BASELINE.etat.education}</td></tr>
                 <tr><td>Défense</td><td className="amount">{BASELINE.etat.defense}</td></tr>
@@ -87,7 +87,7 @@ export default function HypothesesPage() {
             </table>
             <div className="deficit-box etat">
               <span>Déficit État</span>
-              <span className="deficit-value">{BASELINE.etat.deficit} Md\u20ac</span>
+              <span className="deficit-value">{BASELINE.etat.deficit} Md€</span>
             </div>
           </div>
 
@@ -95,7 +95,7 @@ export default function HypothesesPage() {
           <div className="baseline-column">
             <h3>Sécurité Sociale (PLFSS 2026)</h3>
             <table className="baseline-table">
-              <thead><tr><th>Recettes</th><th className="amount">Md\u20ac</th></tr></thead>
+              <thead><tr><th>Recettes</th><th className="amount">Md€</th></tr></thead>
               <tbody>
                 <tr><td>Cotisations sociales</td><td className="amount">{BASELINE.securiteSociale.cotisations}</td></tr>
                 <tr><td>CSG (toutes sources)</td><td className="amount">{BASELINE.securiteSociale.csg}</td></tr>
@@ -107,7 +107,7 @@ export default function HypothesesPage() {
               </tbody>
             </table>
             <table className="baseline-table">
-              <thead><tr><th>Dépenses</th><th className="amount">Md\u20ac</th></tr></thead>
+              <thead><tr><th>Dépenses</th><th className="amount">Md€</th></tr></thead>
               <tbody>
                 <tr><td>Vieillesse (retraites)</td><td className="amount">{BASELINE.securiteSociale.vieillesse}</td></tr>
                 <tr><td>Maladie</td><td className="amount">{BASELINE.securiteSociale.maladie}</td></tr>
@@ -119,7 +119,7 @@ export default function HypothesesPage() {
             </table>
             <div className="deficit-box ss">
               <span>Déficit Sécurité Sociale</span>
-              <span className="deficit-value">{BASELINE.securiteSociale.deficit} Md\u20ac</span>
+              <span className="deficit-value">{BASELINE.securiteSociale.deficit} Md€</span>
             </div>
           </div>
         </div>
@@ -127,9 +127,9 @@ export default function HypothesesPage() {
         {/* CONSOLIDATED */}
         <div className="consolidated-box">
           <h3>APU Consolidées (État + Sécurité Sociale)</h3>
-          <div className="consolidated-row"><span>Total recettes</span><span className="amount">{BASELINE.integrated.revenuTotal} Md\u20ac</span></div>
-          <div className="consolidated-row"><span>Total dépenses</span><span className="amount">{BASELINE.integrated.spendingTotal} Md\u20ac</span></div>
-          <div className="consolidated-row deficit"><span>Déficit total</span><span className="amount">{BASELINE.integrated.deficit} Md\u20ac</span></div>
+          <div className="consolidated-row"><span>Total recettes</span><span className="amount">{BASELINE.integrated.revenuTotal} Md€</span></div>
+          <div className="consolidated-row"><span>Total dépenses</span><span className="amount">{BASELINE.integrated.spendingTotal} Md€</span></div>
+          <div className="consolidated-row deficit"><span>Déficit total</span><span className="amount">{BASELINE.integrated.deficit} Md€</span></div>
           <p className="consolidated-note">Soit environ {Math.abs(BASELINE.integrated.deficit / MACRO_BASELINE.gdp * 100).toFixed(1)}% du PIB</p>
         </div>
 
@@ -194,7 +194,7 @@ export default function HypothesesPage() {
         <AssumptionTable title="Paramètres démographiques et structurels (francetdb.com)" items={ASSUMPTIONS.demographic}
           note="Intégrations de données réelles : dérive démographique, prime politique OAT, plancher ONDAM, emploi seniors." />
         <AssumptionTable title="Réforme des retraites et soutenabilité (francetdb.com/#retraites)" items={ASSUMPTIONS.pensionReform}
-          note="Paramètres du modèle de réforme des retraites, migration, et dépendance. Source : francetdb.com, COR 2024, INSEE, DREES." />
+          note="Paramètres du modèle de réforme des retraites et de dépendance. Source : francetdb.com, COR 2024, INSEE, DREES." />
         <AssumptionTable title="Boost croissance des baisses d'impôts" items={ASSUMPTIONS.taxCutBoosts}
           note="Effet symétrique (mais asymétrique en magnitude) des baisses d'impôts sur la croissance." />
         <AssumptionTable title="Réformes structurelles" items={ASSUMPTIONS.reforms} />

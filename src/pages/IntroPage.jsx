@@ -13,8 +13,8 @@ export default function IntroPage({ navigateTo }) {
       <section className="intro-section">
         <h2>Pourquoi ce simulateur ?</h2>
         <p>
-          La France fait face à un défi budgétaire structurel. Avec une dette publique de <strong>{yr0.debt} Md\u20ac</strong> ({yr0.debtRatio}% du PIB)
-          et un déficit de <strong>{Math.abs(yr0.deficit).toFixed(0)} Md\u20ac</strong>, le débat public est dominé par des affirmations simplistes :
+          La France fait face à un défi budgétaire structurel. Avec une dette publique de <strong>{yr0.debt} Md€</strong> ({yr0.debtRatio}% du PIB)
+          et un déficit de <strong>{Math.abs(yr0.deficit).toFixed(0)} Md€</strong>, le débat public est dominé par des affirmations simplistes :
           &laquo; il suffit de couper les dépenses &raquo; ou &laquo; il suffit d'augmenter les impôts &raquo;.
         </p>
         <p>
@@ -50,7 +50,7 @@ export default function IntroPage({ navigateTo }) {
           <div className="mechanism-card">
             <h3>Dérive démographique</h3>
             <p>
-              Le vieillissement de la population ajoute automatiquement <strong>+{(10 * DEMOGRAPHIC_PRESSURE_PER_YEAR).toFixed(0)} Md\u20ac</strong> de
+              Le vieillissement de la population ajoute automatiquement <strong>+{(10 * DEMOGRAPHIC_PRESSURE_PER_YEAR).toFixed(0)} Md€</strong> de
               dépenses supplémentaires sur 10 ans, indépendamment de toute décision politique.
               C'est le vent contraire que tout scénario doit surmonter avant de pouvoir améliorer les comptes.
             </p>
@@ -79,16 +79,16 @@ export default function IntroPage({ navigateTo }) {
           </div>
           <div className="baseline-metric">
             <span className="baseline-label">Déficit à 10 ans</span>
-            <span className="baseline-value warning">{yr10.deficit} Md\u20ac</span>
+            <span className="baseline-value warning">{yr10.deficit} Md€</span>
           </div>
           <div className="baseline-metric">
             <span className="baseline-label">Charge d'intérêts</span>
-            <span className="baseline-value">{yr10.interest} Md\u20ac</span>
-            <span className="baseline-delta">+{(yr10.interest - yr0.interest).toFixed(0)} Md\u20ac vs aujourd'hui</span>
+            <span className="baseline-value">{yr10.interest} Md€</span>
+            <span className="baseline-delta">+{(yr10.interest - yr0.interest).toFixed(0)} Md€ vs aujourd'hui</span>
           </div>
           <div className="baseline-metric">
             <span className="baseline-label">Pression démographique cumulée</span>
-            <span className="baseline-value warning">+{yr10.demographicPressure} Md\u20ac</span>
+            <span className="baseline-value warning">+{yr10.demographicPressure} Md€</span>
           </div>
         </div>
         <p>
@@ -116,7 +116,7 @@ export default function IntroPage({ navigateTo }) {
             <p>
               Vue focalisée sur le système de retraites : âge de départ, désindexation,
               plafonnement, comptes notionnels, scénarios COR, emploi seniors.
-              Contextualisé par la démographie, la migration, et la dépendance.
+              Contextualisé par la démographie et la dépendance.
             </p>
           </div>
         </div>

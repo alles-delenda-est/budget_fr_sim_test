@@ -226,6 +226,8 @@ describe('Demographic drift integration', () => {
     const result = validateProjection(proj20)
     // With demographic drift, 20-year baseline debt ratio exceeds 200% — expected
     expect(proj20[20].debtRatio).toBeGreaterThan(180)
+    expect(result.valid).toBe(false)
+    expect(result.warnings.length).toBeGreaterThan(0)
   })
 
   it('reform + demographic drift: reform partially offsets demographic pressure', () => {
@@ -262,7 +264,7 @@ describe('ONDAM floor integration with projection', () => {
 
 describe('COR scenario integration', () => {
   it('each COR preset produces a valid projection', () => {
-    for (const [key, preset] of Object.entries(PENSION_REFORM_PRESETS)) {
+    for (const preset of Object.values(PENSION_REFORM_PRESETS)) {
       const result = projectFiscalPath({}, {
         years: 10,
         pensionReform: preset.pensionReform,
@@ -312,7 +314,7 @@ describe('Pension reform + demographic drift interaction', () => {
     const reformPlusDrift = projectFiscalPath({}, {
       years: 10,
       enableDemographicDrift: true,
-      pensionReform: { retirementAge: 67, desindexation: 1.0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+      pensionReform: { retirementAge: 67, desindexation: 1.0, pensionCap: 0, notionnel: false },
     })
     // Reform should reduce deficit vs drift-only
     expect(reformPlusDrift[10].deficit).toBeLessThan(driftOnly[10].deficit)
@@ -322,23 +324,22 @@ describe('Pension reform + demographic drift interaction', () => {
     const reformNoDrift = projectFiscalPath({}, {
       years: 10,
       enableDemographicDrift: false,
-      pensionReform: { retirementAge: 67, desindexation: 1.0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+      pensionReform: { retirementAge: 67, desindexation: 1.0, pensionCap: 0, notionnel: false },
     })
     const reformPlusDrift = projectFiscalPath({}, {
       years: 10,
       enableDemographicDrift: true,
-      pensionReform: { retirementAge: 67, desindexation: 1.0, pensionCap: 0, notionnel: false, capitalisation: 0 },
+      pensionReform: { retirementAge: 67, desindexation: 1.0, pensionCap: 0, notionnel: false },
     })
     expect(reformPlusDrift[10].deficit).toBeGreaterThan(reformNoDrift[10].deficit)
   })
 })
 
-describe('Migration and dependance integration', () => {
+describe('Demographic and dependance integration', () => {
   it('all channels enabled produces valid 20-year projection', () => {
     const result = projectFiscalPath({}, {
       years: 20,
       enableDemographicDrift: true,
-      enableMigrationImpact: true,
       enableDependanceDrift: true,
     })
     expect(result).toHaveLength(21)
@@ -350,7 +351,7 @@ describe('Migration and dependance integration', () => {
   })
 
   it('existing presets still produce valid projections with new channels', () => {
-    for (const [key, preset] of Object.entries(PRESETS)) {
+    for (const preset of Object.values(PRESETS)) {
       const impact = calculatePolicyImpact(preset.levers)
       const result = projectFiscalPath(impact, { years: 10 })
       expect(result).toHaveLength(11)

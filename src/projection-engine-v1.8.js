@@ -210,27 +210,6 @@ export const STRUCTURAL_REFORMS = {
 }
 
 // =============================================================================
-// SOCIAL HOUSING LIQUIDATION PARAMETERS
-// =============================================================================
-// Source: ANCOLS 2025 (5.4M units), MeilleursAgents IdF prix, USH HLM en chiffres 2024
-// UK Right to Buy (1980) as operational precedent
-//
-// Valuation: 5.4M units, avg 65m², segmented by region:
-//   IdF: 1.4M × 65m² × 6200€/m² × 0.70 décote ≈ 395 Md€
-//   Province attractive: 1.5M × 65m² × 3000€/m² × 0.65 ≈ 190 Md€
-//   Province moins attractive: 2.5M × 65m² × 1800€/m² × 0.50 ≈ 146 Md€
-//   Sous-total brut net ≈ 730 Md€, décote vente programmée → central estimate 750 Md€
-
-export const SOCIAL_HOUSING_LIQUIDATION = {
-  totalAssetValue: 750,      // Md€ (range 550-900)
-  saleDurationYears: 10,     // Sold over 10 years
-  annualProceeds: 75,        // Md€/year (750/10)
-  growthEffect: 0.0002,      // +0.02 pp/year (modest, ambiguous direction)
-  source: "ANCOLS 2025, USH bilan HLM, MeilleursAgents prix m², UK Right to Buy (1980)",
-  confidence: "low",
-}
-
-// =============================================================================
 // DEMOGRAPHIC DRIFT PARAMETERS
 // =============================================================================
 // Source: INSEE 2024 Projections de population, COR 2024 annual report
@@ -274,7 +253,7 @@ export const SENIOR_EMPLOYMENT = {
 // =============================================================================
 // Source: francetdb.com/#retraites, COR 2024 annual report
 // Models structural pension reforms: retirement age, desindexation, pension cap,
-// capitalisation, and Swedish notional accounts.
+// and Swedish notional accounts.
 
 export const PENSION_REFORM = {
   // Baseline pension mass (303.4 Md€ Sécu vieillesse — same as DEMOGRAPHIC_PARAMS.pensionBaseline)
@@ -300,13 +279,6 @@ export const PENSION_REFORM = {
     rampYears: 3,                        // 3-year phase-in
   },
 
-  // TODO: capitalisation reform is defined but not yet implemented in the projection loop
-  // Capitalisation (redirection of cotisations to private funds)
-  capitalisation: {
-    transitionYears: 20,
-    cotisationsShareOfRecettes: 0.28,
-  },
-
   // Swedish notional accounts
   notionnel: {
     pensionMassReduction: 0.06,          // -6% of pension mass at full implementation
@@ -323,36 +295,6 @@ export const PENSION_REFORM = {
   // Hard floor: pension mass cannot go below 65% of unreformed level
   pensionFloor: 0.65,
 }
-
-// =============================================================================
-// MIGRATION FISCAL IMPACT PARAMETERS
-// =============================================================================
-// Source: francetdb.com RT_DEFAULT_HYP, INSEE immigration/emigration data 2023
-// Models net migration's effect on the labor force and fiscal balance.
-// France has a net "brain drain" — emigrants are more productive than immigrants.
-
-export const MIGRATION_PARAMS = {
-  immigration: {
-    annualFlow: 270000,
-    employmentRate: 0.57,
-    productivityFactor: 0.75,
-  },
-  emigration: {
-    annualFlow: 200000,
-    employmentRate: 0.88,
-    productivityFactor: 1.10,
-  },
-  avgCotisationsPerWorker: 14350,   // EUR/year (same as SENIOR_EMPLOYMENT)
-  avgGdpPerWorker: 82000,           // EUR/year (PIB 2850 Md / ~34.7M employed)
-}
-
-// Pre-computed net effective worker change per year
-// immigrantWorkers = 270k × 0.57 × 0.75 = 115,425
-// emigrantWorkers = 200k × 0.88 × 1.10 = 193,600
-// net = 115,425 - 193,600 = -78,175
-export const MIGRATION_NET_WORKERS_PER_YEAR =
-  MIGRATION_PARAMS.immigration.annualFlow * MIGRATION_PARAMS.immigration.employmentRate * MIGRATION_PARAMS.immigration.productivityFactor -
-  MIGRATION_PARAMS.emigration.annualFlow * MIGRATION_PARAMS.emigration.employmentRate * MIGRATION_PARAMS.emigration.productivityFactor
 
 // =============================================================================
 // DEPENDANCE (AUTONOMIE) SPENDING PARAMETERS
@@ -493,10 +435,8 @@ export function projectFiscalPath(policyChanges, options = {}) {
     structuralReform = null,  // From STRUCTURAL_REFORMS
     enableDemographicDrift = true,
     structuralReformKeys = null,  // Array of reform keys for senior employment calc
-    pensionReform = null,         // { retirementAge, desindexation, pensionCap, capitalisation, notionnel }
-    enableMigrationImpact = true,
+    pensionReform = null,         // { retirementAge, desindexation, pensionCap, notionnel }
     enableDependanceDrift = true,
-    enableSocialHousingLiquidation = false,
     realGrowthOverride = null,   // Override real growth rate (for COR scenarios)
   } = options
 
@@ -630,14 +570,7 @@ export function projectFiscalPath(policyChanges, options = {}) {
       pensionReformSaving = Math.min(pensionReformSaving, maxSaving)
     }
 
-    // 5e. Migration fiscal impact
-    let migrationImpact = 0
-    if (enableMigrationImpact) {
-      // Cumulative net worker change × avg cotisations
-      migrationImpact = t * MIGRATION_NET_WORKERS_PER_YEAR * MIGRATION_PARAMS.avgCotisationsPerWorker / 1e9
-    }
-
-    // 5f. Dependance spending growth (excess over GDP growth)
+    // 5e. Dependance spending growth (excess over GDP growth)
     let dependancePressure = 0
     if (enableDependanceDrift) {
       dependancePressure = DEPENDANCE_PARAMS.baseline *
@@ -645,15 +578,8 @@ export function projectFiscalPath(policyChanges, options = {}) {
          Math.pow(1 + DEPENDANCE_PARAMS.gdpGrowthBaseline, t))
     }
 
-    // 5g. Social housing liquidation windfall (one-time asset sale, years 1-10)
-    let socialHousingWindfall = 0
-    if (enableSocialHousingLiquidation && t >= 1 && t <= SOCIAL_HOUSING_LIQUIDATION.saleDurationYears) {
-      socialHousingWindfall = SOCIAL_HOUSING_LIQUIDATION.annualProceeds  // 75 Md€/yr for 10 years
-    }
-
     const adjustedDeficit = totalDeficit - growthFeedback + demographicPressure
-      - seniorRevenue - pensionReformSaving - migrationImpact + dependancePressure
-      - socialHousingWindfall
+      - seniorRevenue - pensionReformSaving + dependancePressure
 
     // 6. Unemployment via Okun's Law
     // Δunemployment = -okunCoefficient × (realGrowth - potentialRealGrowth)
@@ -697,9 +623,7 @@ export function projectFiscalPath(policyChanges, options = {}) {
       demographicPressure: Math.round(demographicPressure * 10) / 10,
       seniorRevenue: Math.round(seniorRevenue * 10) / 10,
       pensionReformSaving: Math.round(pensionReformSaving * 10) / 10,
-      migrationImpact: Math.round(migrationImpact * 10) / 10,
       dependancePressure: Math.round(dependancePressure * 10) / 10,
-      socialHousingWindfall: Math.round(socialHousingWindfall * 10) / 10,
     })
 
     // 8. Evolve to next year
@@ -834,13 +758,10 @@ export default {
   DEFICIT_STRESS_THRESHOLD,
   DEFICIT_STRESS_SENSITIVITY,
   STRUCTURAL_REFORMS,
-  SOCIAL_HOUSING_LIQUIDATION,
   DEMOGRAPHIC_PARAMS,
   DEMOGRAPHIC_PRESSURE_PER_YEAR,
   SENIOR_EMPLOYMENT,
   PENSION_REFORM,
-  MIGRATION_PARAMS,
-  MIGRATION_NET_WORKERS_PER_YEAR,
   DEPENDANCE_PARAMS,
   calculateInterestRate,
   calculateReformGrowthBoost,
