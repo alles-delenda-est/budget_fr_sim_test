@@ -80,7 +80,7 @@ describe('dérive de référence mesurée depuis 2025', () => {
     const r = projectScenario({ overrides: { 'ref.derive.a_sante': 0.1 } })
     expect(r.blocks.securiteSociale[0].referencePrimary).toBeCloseTo(base.blocks.securiteSociale[0].referencePrimary, 8)
     const Yb = base.total[3].gdpBase
-    expect(r.blocks.securiteSociale[3].referencePrimary - base.blocks.securiteSociale[3].referencePrimary).toBeCloseTo(-0.003 * Yb, 6)
+    expect(r.blocks.securiteSociale[3].referencePrimary - base.blocks.securiteSociale[3].referencePrimary).toBeCloseTo(-((0.1 - P['ref.derive.a_sante']) / 100) * 3 * Yb, 6) // l'écart de dérive est mesuré par rapport à la valeur centrale (non plus 0)
   })
 })
 
