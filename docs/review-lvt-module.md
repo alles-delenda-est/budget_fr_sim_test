@@ -1,5 +1,8 @@
 # Intégrer LVTShift au simulateur budgétaire : module « taxe sur la valeur du sol »
 
+**En bref.** Day 0 sous condition (portillon au 30 novembre), en forme minimale : module non validé, `a` = 0 dans chaque bloc, `yS` central = 0, flux bruts affichés ; sinon janvier 2027. Le bloc local n'a pas besoin de leviers mais doit recevoir des sorties de module (D9 à reformuler). Aucune estimation d'effet sur le PIB français n'a été trouvée ; seul repère chiffré, l'OCDE, donne 0 à +1,1 % de PIB en borne haute (S3 avec IFI) et ne résiste pas aux tests de robustesse. Effort : ≈ 9 jours-personne, dont ≈ 4,5 propres au module.
+
+
 Note d'évaluation, 17 novembre 2026. Rédigée pour Patrick. Aucun code n'est écrit ; la note recommande une voie et chiffre l'effort.
 
 Conventions : montants en Md€ courants sauf mention ; « non trouvé » : valeur cherchée sans succès ; « LVTShift » : dépôt `alles-delenda-est/LVTShift`, état du 12 novembre 2026 (fusion de la PR #69), lu en clone local sans exécuter son code. Les notes de recherche de LVTShift (`dynamic-effects.md`, `yields-2026.md`) sont citées comme telles : leurs références primaires n'ont pas toutes été relues ici ; ce qui l'a été est signalé « relu ».
@@ -189,10 +192,69 @@ Le rendement égal est calculé sur l'assiette foncière d'aujourd'hui (6 122 Md
 
 - Ordre de grandeur de la sensibilité, calcul : chaque baisse de 1 % de la valeur foncière réduit le produit de la nouvelle taxe d'environ 0,7 à 0,8 Md€ (1 % de 67 à 82 Md€), soit 0,02 à 0,03 % du PIB.
 - Borne haute pour la seule partie nationale de S3 : 14 Md€ de taxe supplémentaire sur le sol, capitalisés à 3-4 % réel, représentent 350 à 470 Md€, soit 6 à 8 % de l'assiette, soit un manque de produit de 4,5 à 6 Md€ (0,15 à 0,2 % du PIB) avant contrepartie. Les impôts supprimés se capitalisent en sens inverse sur les biens loués ou vendus (ce que LVTShift appelle compensation partielle), mais l'assiette de la nouvelle taxe est le sol seul : la compensation n'est qu'en partie dans l'assiette.
-- LVTShift reconnaît la capitalisation comme « borne statique supérieure » et la modélise sans en tirer de conséquence sur le produit. Ce n'est pas dans sa note de recherche.
+- LVTShift présente la capitalisation comme une « borne statique supérieure » sur les valeurs ; à la lecture de la spec 0005 et de la note de recherche, je n'y ai pas trouvé de conséquence tirée pour le produit de la taxe (lecture partielle, non exhaustive du dépôt).
 
 Ce canal est l'**effet budgétaire le mieux défini** du module, plus que le gain de PIB. Il ne peut être traité qu'en ajustant le taux (ce que ferait l'État pour tenir « rendement égal » ex post) ; sinon il faut l'inscrire comme `a` négatif en S2 et S3, avec une capitalisation de 60 % en bas et 100 % en haut. Cela demande une décision, voir 5.4.
 
 ### 4.5 Ce qui peut figurer en explication sans validation
 
 Direction et mécanisme des cinq effets, avec la phrase « aucune estimation française n'existe » ; le contenu de la section 8 de `dynamic-effects.md` (texte proposé en français) est réutilisable, après relecture par le cœur.
+
+
+## 5. Recommandation
+
+### 5.1 Day 0 ou plus tard
+
+**Day 0 (10 décembre), sous condition, dans la forme minimale ci-dessous ; sinon version suivante (janvier 2027).**
+
+Raisons de viser le Day 0 :
+- le module est un bon test réel du contrat (`a` par bloc, `yS`, bloc local récepteur) : le moteur n'a pas encore de code, le contrat peut encore être corrigé à bas coût ;
+- il n'altère aucun chiffre de tête (`a` = 0 dans chaque bloc, `yS` central = 0 sous D2) : son risque pour la version de revue est faible ;
+- LVTShift fournit déjà un tableau de rendements sourcé, par niveau et par scénario ; aucun calcul parcellaire n'est nécessaire.
+
+Raisons de prévoir un portillon : la note de modèle est en brouillon v0.2, aucun code moteur n'est écrit ; il reste 23 jours. **Portillon au 30 novembre** : le moteur doit alors calculer les équations par bloc et accepter une entrée `yS`. Sinon le module sort du Day 0 sans perte, la version de revue étant celle du cœur.
+
+### 5.2 Module minimal viable
+
+1. **Données** : un instantané daté de `yields.json` (commit 322190e, 12 novembre 2026) converti en % du PIB 2025, par bloc, pour S1, S2, S2 avec IFI, S3, S3 avec IFI. Aucun couplage à l'exécution avec LVTShift. Chaque ligne garde son statut et son URL (section 2).
+2. **Leviers** : scénario (S1, S2, S3) et option IFI ; rien d'autre.
+3. **Sorties** : `a` = 0 dans chacun des trois blocs (règle d'affectation par défaut : fraction de la taxe nationale versée à la sécurité sociale égale à sa perte de CSG/PS, voir 2.3) ; `theta` = 0 ; pas de catégorie de multiplicateur (aucun effet de demande puisque `a` = 0) ; `yS` : bas = 0, central = 0, haut = borne du tableau 4.3 pour S2 et S3, 0 pour S1, étiqueté « non validé » et désactivé par défaut conformément à D2 ; `flux[]` : impôts supprimés et taxe créée par bloc.
+4. **Explications** : cinq textes (transactions, construction, loyers, capitalisation, PIB), la mise en garde sur l'assiette (4.4), le statut « non validé », et un lien vers le site LVTShift pour la répartition par commune, qui n'est pas reproduite.
+5. **Tests** : somme des `a` nulle par bloc ; somme des flux égale au total du scénario ; `yS` bas ≤ central ≤ haut ; garde de non-régression sur chaque rendement de l'instantané (`toBe`), comme le projet le fait pour les constantes.
+
+Ce que le module ne fait pas au Day 0 : pas de détail par commune, pas de niveau départemental distinct, pas de capitalisation de l'assiette, pas de transferts État-locaux.
+
+### 5.3 Effort
+
+| Poste | Jours-personne |
+|---|---|
+| Module (instantané, leviers, flux, textes français, tests) | 3 |
+| Vérification des sources (DMTO 2025 chez OFGL, revenus locatifs 2022 → 2024, clé de partage PS, écart de 0,3 Md€ entre BIS 209 et REI sur la TFPB) | 1,5 |
+| Cœur : équations par bloc, bloc local récepteur, rangée distincte du module, extension `flux[]` | 3 (dont ≈ 2 utiles à tout module) |
+| Entrée `yS` bas / central / haut dans E6, E7, E12 | 1 (déjà prévue par la note de modèle pour E5) |
+| Relecture par le cœur (validation du contrat) | 0,5 |
+| **Total version minimale** | **≈ 9 (fourchette 7 à 11)**, dont ≈ 4,5 propres au module |
+
+Version plus complète, après le Day 0 : recettes locales par impôt et transferts (fractions de TVA, compensations) dans la référence : 3 à 5 jours, surtout de la collecte (tableaux Insee des comptes des APU, OFGL) ; canal d'assiette (4.4) : 2 jours plus la décision ; levier de remplacement partiel : 1 jour ; stabilisateurs par bloc : 1 à 2 jours ; mise à jour de l'instantané après les PR 2 à 6 de LVTShift, qui dépendent de la machine de Patrick pour le réseau. Soit ≈ 10 à 14 jours.
+
+### 5.4 Ce que cela change à la décision D9
+
+D9 actuelle : « Bloc affiché, sans levier ». **Proposition :** « Bloc affiché, sans levier natif, **récepteur de sorties de modules** : il accepte `a(local, t)` et `flux[]` d'un module et les affiche sur une ligne distincte ; détail de recettes (taxe foncière, DMTO, autres) en version complète. » Trois décisions s'y ajoutent :
+- **D11. Affectation de la taxe nationale (S2, S3)** : fraction à la sécurité sociale (défaut) ou recette de remplacement de l'État avec un `a` de −0,10 % du PIB en sécurité sociale.
+- **D12. Capitalisation de l'assiette** : ignorée au Day 0 et dite telle, ou prise en compte par un `a` négatif en S2 et S3 (jusqu'à −0,2 % du PIB), ou compensée par un ajustement du taux.
+- **D13. Extension du contrat** : champ optionnel `flux[]`, hors solde.
+D2 n'est pas modifiée : `yS` central = 0, bloc optionnel non validé.
+
+### 5.5 Risques
+
+1. **Module nul au centre, donc invisible ou mal compris.** Sous D2, il ne change aucun chiffre : sa valeur est pédagogique. Sans flux bruts il semble inerte. Contre-mesure : flux bruts et textes dès le Day 0.
+2. **Perception politique.** LVTShift est un site à thèse (« Pour une terre productive ») ; le simulateur doit rester pédagogique. Afficher la borne haute de `yS` sans la contrepartie de la capitalisation (4.4) serait asymétrique. Contre-mesure : bas, central et haut présentés ensemble, statut « non validé ».
+3. **Millésimes et sources.** Revenus locatifs de 2022 ; DMTO très cycliques (de 11,3 à 16,8 Md€ selon l'année chez LVTShift) ; clé de partage PS à confirmer ; une différence de 0,3 Md€ entre deux sources sur la TFPB ; lignes « dérivées » non lues dans la source primaire. Contre-mesure : statuts conservés à l'affichage, vérification des cinq lignes avant le portillon.
+4. **Cible mouvante.** La spec 0005 de LVTShift est en brouillon, seules 13 communes sont dans le dépôt, les PR 2 à 6 manquent, l'exécution demande un réseau absent du cloud. Contre-mesure : instantané daté et figé, aucun appel à l'exécution.
+5. **Rendement égal non garanti ex post** (4.4) : jusqu'à ≈ 0,2 % du PIB en S3, si la capitalisation est complète.
+6. **Frontière de blocs.** La part sécurité sociale, ≈ 0,10 % du PIB, repose sur une clé non vérifiée, et la compensation des exonérations par l'État n'est pas clairement traitée dans les 42,8 Md€ de TFPB.
+7. **Calendrier.** Vingt-trois jours, un cœur sans code : l'effort de 9 jours est surtout dans le cœur ; sans portillon, le module peut retarder la version de revue.
+
+### 5.6 Ce qui n'a pas été fait
+
+Le code de LVTShift n'a pas été exécuté ; `METHODOLOGIE.md` (1 585 lignes), les notes `site-value-2026-11` (imputation de la valeur du sol) et les données des communes n'ont pas été relus ; les références académiques de la section 4 viennent de `dynamic-effects.md`, sauf celles notées « relu ». La valeur du sol imputée, base de tous les taux, est le maillon faible de LVTShift et n'a pas été auditée ici.
