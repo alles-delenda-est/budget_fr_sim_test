@@ -205,3 +205,35 @@ Réserves : la page ne précise pas si le champ est patronal seul ou patronal et
 | Mécanisme d'équilibrage automatique | ratio d'équilibre = actifs / engagements ; s'il est inférieur à 1,0000, l'indexation passe à un « indice d'équilibre » (ratio lissé) plus faible ; retour à l'indice de revenu après rattrapage. Ratio fin 2020 : 1,0824 | Orange Report 2020, chap. 4 ; le document du ministère ne traite pas le mécanisme |
 
 Références complémentaires non lues : Holzmann, Palmer et Robalino (dir.), « Nonfinancial Defined Contribution Pension Schemes in a Changing Pension World », vol. 1, Banque mondiale, 2013, notice du catalogue (https://openknowledge.worldbank.org/entities/publication/0a7f6b2c-7cfc-5989-a3dc-2c6d7e657c63) ; Orange Report 2025 (https://www.pensionsmyndigheten.se/statistik/publikationer/orange-rapport-2025/orange-rapport-2025.pdf), à consulter pour les paramètres à jour. Le chapitre cité est du millésime 2020 : taux, diviseur et ratio d'équilibre sont à revérifier sur le rapport le plus récent, et les valeurs OCDE (Pensions at a Glance) n'ont pas été consultées.
+
+## Référence du moteur v2 face aux repères (calcul du 17 novembre 2026, branche engine/v2)
+
+Moteur : leviers nuls, taux à l'émission pondéré (3,81 %), β = 3 pb par point de dette. Repères : comparateurs, jamais cibles. **Placeholders encore actifs : rendements BTF, 2–8 ans et 10 ans et plus (« à collecter »), dérive santé et autres dépenses (0), inflation après 2027, rendements des cotisations et de l'IS, taux avant réforme.** La référence n'est pas apte à la décision tant qu'ils ne sont pas remplacés.
+
+| Année | Dette (% PIB) moteur | Repères dette | Solde (% PIB) moteur | Repères solde | Intérêts moteur (Md€ ; % PIB) | Repères intérêts |
+|---|---|---|---|---|---|---|
+| 2026 | 117,7 | Gouv. 119,3 ; Cour 118,5 | −5,28 | Gouv. −5,4 ; CE −5,1 | 76,5 ; 2,48 | Gouv. 2,6 % ; Cour 77,4 Md€ ; CE 2,6 % |
+| 2027 | 120,2 | Gouv. 121,7 | −5,63 | Gouv. −5,0 ; CE −5,7 | 89,5 ; 2,83 | Gouv. 2,9 % ; CE 2,8 % |
+| 2029 | 125,7 | Cour 120,1 (plafonds) à 124,3 (dérive) | −6,28 | Cour −3,2 (plafonds) à −5,4 (dérive) | 116,4 ; 3,48 | Cour « plus de 100 Md€ » |
+| 2030 | 128,8 | non trouvé | −6,60 | non trouvé | 130,6 ; 3,80 | non trouvé |
+| 2036 | 152,4 | CE (DSM) 144,0 | −8,65 | non trouvé | 236,4 ; 5,81 | non trouvé |
+| 2040 | 173,5 | non trouvé | −10,40 | non trouvé | 343,3 ; 7,53 | non trouvé |
+| 2056 | 366,3 | non trouvé | −32,67 | non trouvé | 2 091,9 ; 29,28 | non trouvé |
+
+Lecture : 2056 est une trajectoire explosive (taux moyen 8,8 %, taux à l'émission 10,6 %), pas une prévision ; elle montre l'effet de β = 3 pb par point sur 30 ans sans correction budgétaire. Le DSM 144,0 % suppose un solde primaire structurel constant, hors vieillissement.
+
+### Écart de solde primaire (non comblé)
+
+| % du PIB | 2026 | 2027 |
+|---|---|---|
+| Moteur (référence, politique inchangée) | −2,80 | −2,80 |
+| Gouvernement (RESF 2027 : solde − intérêts) | −2,8 (−5,4 + 2,6) | −2,1 (−5,0 + 2,9) |
+| Commission européenne, printemps 2026, politique inchangée (calcul : solde − intérêts ; la Commission ne publie pas le solde primaire sur sa page pays) | −2,5 (−5,1 + 2,6) | −2,9 (−5,7 + 2,8) |
+
+Écart moteur − Gouvernement : 0,0 en 2026 et −0,7 point en 2027 (le Gouvernement suppose un effort de 0,7 point de PIB en 2027 que le moteur n'inclut pas, par construction). Écart moteur − Commission : −0,3 en 2026 et +0,1 en 2027. Le moteur reste donc proche de la trajectoire « politique inchangée » de la Commission. Millésime de la Commission : printemps 2026 (21 mai 2026) ; les prévisions d'automne n'ont pas été trouvées.
+
+### Taux à l'émission (sources de la collecte du 17 novembre 2026)
+
+- Parts : BTF 7,6 % (220 / 2 882 Md€ de dette négociable, AFT août 2026 p. 3) ; OAT 2–8 ans 42,6 % ; OAT 10 ans et plus 49,8 % (émission brute d'OAT janv.–juil. 2026, p. 2, ligne non étiquetée de 12,1 Md€ répartie au prorata).
+- Rendements, tous « à collecter » : BTF 2,5 % ; 2–8 ans 3,35 % (interpolé) ; 10 ans et plus 4,4 % (10 ans 4,23 % et 20 ans 4,74 % à l'adjudication du 3 septembre 2026, presse secondaire ; 30 ans non trouvé, 5,0 % supposé). Aucun rendement à 3 mois, 5 ans ou 30 ans n'a été trouvé dans les bulletins de l'AFT ni auprès de la Banque de France (outils web limités).
+- Contrôle croisé : taux moyen à l'émission 2025 de l'AFT : 2,73 % (ensemble) ou 3,14 % (taux fixe de plus d'un an, hors indexés) ; 2026 non publié. Le taux pondéré du modèle (3,81 %) est supérieur car les rendements ont monté en 2026 (10 ans : 3,45 % en février, 4,23 % début septembre).

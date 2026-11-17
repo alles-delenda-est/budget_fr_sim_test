@@ -84,6 +84,18 @@ describe('dérive de référence mesurée depuis 2025', () => {
   })
 })
 
+describe('solde primaire de référence : comparateurs seulement', () => {
+  it('la référence n\'est pas forcée sur la trajectoire du Gouvernement (−2,1 % en 2027)', () => {
+    const r = projectScenario({}).total
+    expect(r[1].primaryBalanceRatio * 100).toBeCloseTo(-2.8, 1)
+    const gouv = P['cmp.gouv.solde.2027'] + P['cmp.gouv.interets.2027'] // −2,1
+    expect(gouv).toBeCloseTo(-2.1, 10)
+    expect(r[1].primaryBalanceRatio * 100 - gouv).toBeLessThan(-0.5) // écart rapporté, non comblé
+    const ce = P['cmp.ce.solde.2027'] + P['cmp.ce.interets.2027'] // −2,9 (Commission, printemps 2026)
+    expect(Math.abs(r[1].primaryBalanceRatio * 100 - ce)).toBeLessThan(0.2)
+  })
+})
+
 describe('multiplicateurs (E4)', () => {
   for (const l of LEVERS) {
     it(`${l.id} : multiplicateur cumulé sur 10 ans < m, égal à m(1−λ^T)/((1−λ)T)`, () => {
