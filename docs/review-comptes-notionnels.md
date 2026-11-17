@@ -319,13 +319,13 @@ les données calculées par le modèle.
   GitHub Pages ; aucun CDN, aucun serveur de calcul. Pas de `package.json` : le
   JavaScript n'a pas de chaîne de build, donc pas de modules à auditer, mais pas
   non plus de typage ni de linter visible.
-- Données : environ 3 000 fichiers CSV/YAML dans `data/reference/`
+- Données : plusieurs centaines de fichiers CSV/YAML dans `data/reference/`
   (grilles de traitement, législation datée, régimes, mortalité, macro), un manifeste
   de sources, des « contrats » de schéma YAML, des « couches » de règles par
   scénario (par exemple `couches/comptes_notionnels.yaml`,
   `couches/valorisation_des_droits_acquis.yaml`) qui neutralisent ou ajoutent des
   étapes de calcul.
-- Documentation abondante (`docs/`, 13 notes de décision, limites par
+- Documentation abondante (`docs/`, une dizaine de notes de décision, limites par
   paragraphe) ; elle est très dense et en partie datée (voir 4.3).
 
 ### 4.2 Tests
@@ -402,3 +402,119 @@ Incohérences narratives et points à vérifier :
   répartition (RAFP et assurances sociales de 1930 sorties des six totaux), le
   bouclage macroéconomique, les effets comportementaux, les collectivités locales
   en tant que bloc (la CNRACL est traitée comme régime, pas comme budget).
+
+## 5. Ce que le simulateur budgétaire peut en tirer
+
+Constat de départ sur le simulateur budgétaire (lu dans cette branche,
+`src/projection-engine-v1.8.js`, `src/policy-impact.js`) : le levier
+« comptes notionnels » existant est une forme réduite, un booléen qui retire
+6 % de la masse de pensions (303,4 Md€) en 15 ans à partir de 2027
+(`PENSION_REFORM.notionnel`), étiqueté « Swedish notional accounts », avec pour
+seule source « francetdb.com, COR 2024 ». Aucune mécanique de compte, de
+diviseur ou d'indexation n'y figure. Les autres leviers sont l'âge de départ (base
+64 ans, −2,5 % de masse par année au-dessus, montée en charge sur 8 ans), la
+désindexation (0,5 point de revalorisation par point) et un plafond de hautes
+pensions. Le préréglage `reformeRetraites` combine âge 67, notionnel,
+désindexation 1,5 et plafond 15 %. À signaler : la base de 64 ans ne correspond
+pas à la référence annoncée pour ce travail (loi actuelle, réforme de 2023
+suspendue par la LFSS 2026 jusqu'en janvier 2028) ; ce n'est pas corrigé ici.
+
+Écart de grandeur à connaître : le site trouve, pour le scénario 3 (bascule 2026,
+droits acquis conservés), 25,2 % de dépense cumulée en moins sur 2025-2070 et
+−53 % de dépense en 2070 (282 contre 596 Md€) ; le levier existant retire 6 %. Le
+dépôt prévient que ces écarts ne sont pas des économies : le coefficient
+d'équilibre de 1,65 dit que le système a une marge, qu'un compte notionnel réel
+redistribuerait en relevant les pensions. Importer le chiffre brut comme
+économie budgétaire serait un contresens que le site dénonce lui-même.
+
+### 5.1 Comme préréglage
+
+Correspondance avec les leviers existants :
+
+| Paramètre du site | Levier du simulateur | Correspondance |
+|---|---|---|
+| Âge de référence / légal 65 ans (scénario 6 uniquement ; les scénarios 2 à 5 gardent les âges du droit en vigueur) | `retirementAge` | directe : 65 |
+| Passage aux comptes, bascule 2026 | `notionnel` (booléen, début 2027) | directe pour le principe ; date à décaler d'un an ou à aligner sur janvier 2028 (reprise de la réforme) |
+| Indexation du compte et de la pension sur la masse salariale (défaut), ou prix, ou triple lock inversé | `desindexation` (points sous la revalorisation de référence) | partielle : la masse salariale est au-dessus des prix (de 0,7 point par an dans le dépôt), donc un levier négatif ou nul, jamais une désindexation. Le triple lock inversé littéral est un cas extrême (1,5 % de pouvoir d'achat sur 1941-2025), non transposable |
+| Pas de plafond, pas de minimum | `pensionCap` | aucune correspondance : laisser à 0 |
+| Conversion des droits acquis, diviseur, table de mortalité, part patronale, taux unique 18 %, capitalisation, garantie vieillesse, LVT | rien | hors périmètre des leviers retraite ; ne pas reprendre dans le préréglage (le taux unique, la capitalisation et la LVT relèvent d'autres blocs et de choix de programme) |
+
+Deux voies :
+
+- Voie A, minimale : préréglage « Comptes notionnels (à partir de 2028) »
+  = `{ retirementAge: 65, desindexation: 0, pensionCap: 0, notionnel: true }`, sans
+  changer le moteur. Le libeller comme forme réduite et non comme reproduction du
+  site, avec la mention de la limite ci-dessus. Effort : 1 à 2 jours (préréglage,
+  tests de régression `toBe`, texte d'hypothèses, ARCHITECTURE.md).
+- Voie B, recalibrage : remplacer 6 % / 15 ans par une trajectoire de rapport de
+  masses issue d'une source citable. Le site ne la publie pas année par année pour
+  les scénarios 3 et 5 : `data/derive/equilibre.json` ne porte que le système
+  actuel et trois variantes (scénarios 2, 4, 6 sous des noms propres) ; les
+  scénarios 3 et 5 se lisent en 2026, 2070 et en cumul dans le README, ou se
+  recalculent avec le moteur. Effort : 4 à 6 jours, plus un recoupement
+  indépendant (COR, DREES) pour atteindre la confiance « medium » exigée par la
+  liste de contrôle académique. Sans cela, la confiance reste « low ».
+
+Recommandation : voie A maintenant, voie B seulement si le recoupement
+indépendant est faisable.
+
+### 5.2 Comme module (contrat décrit en tête de ce travail)
+
+Ce que le site peut fournir, par rubrique du contrat :
+
+| Rubrique du contrat | Fourni par le site ? |
+|---|---|
+| Identité, sources, statut | oui pour l'identité et les sources ; statut : « non validé » (aucune validation externe indépendante, éditeur partisan, chiffres instables) |
+| Leviers (id, unité, bornes, défaut, aide) | proposables à partir de `Parametres` : année de bascule, âge de référence, règle d'indexation (masse salariale / prix / PIB lissé / triple lock inversé), conversion des droits acquis (référence / liquidation), maintien ou non des avantages non contributifs, part patronale au compte |
+| Effets ex ante par année, en % du PIB, par bloc | partiellement : la différence de coût entre un scénario et le système actuel, en % du PIB, année par année jusqu'en 2070, au niveau du système de retraite entier. Pas de ventilation en État / Sécurité sociale / collectivités dans les sorties publiées. Les éléments d'une ventilation existent dans les données (contribution d'équilibre de l'État pour les fonctionnaires, 82,28 % du traitement en 2026 ; contribution CNRACL ; régimes de base et complémentaires), mais le dépôt ne les agrège pas ainsi ; il faudrait refaire tourner ou porter le moteur |
+| Coefficient de réponse comportementale | non : modèle statique ; aucune élasticité de l'offre de travail ou de l'âge de départ (seule une « part des reportés en emploi » de 50 % existe, pour le scénario 6) |
+| Catégorie de multiplicateur de demande | non : à fixer de notre côté (transferts aux ménages) |
+| Effet de niveau sur le PIB (bas, central, haut) | non : PIB et emploi du COR, effet nul par construction. Les trois valeurs devraient venir d'une autre source |
+| Textes explicatifs | oui, très riches, mais sous CC BY-SA 4.0 et dans la voix du parti (voir § 3 et 6) |
+| Ne jamais écrire dans la dette ni les intérêts | compatible : le dépôt calcule un « solde cumulé » du système mais celui-ci peut être ignoré |
+
+Trois façons d'en faire un module :
+
+1. Ingérer les séries publiées (coût annuel par scénario en % du PIB) comme table
+   statique. Effort : 5 à 8 jours (extraction, ventilation par bloc par
+   hypothèse, texte, tests). Déconseillé : les séries dérivées n'ont pas de
+   licence claire, leur périmètre est celui du COR et non du budget État + ASSO,
+   et elles changent de semaine en semaine.
+2. Construire notre propre module de comptes notionnels réduit (cohortes,
+   diviseur, indexation, bascule) en JavaScript, alimenté par les sources
+   primaires et validé par comparaison aux ordres de grandeur du site comme
+   contrôle externe, non comme entrée. Effort : 20 à 30 jours, avec ventilation
+   par bloc et plages basse/centrale/haute, plus la revue de sécurité exigée.
+3. Porter le moteur du dépôt : environ 160 000 lignes réparties sur deux langages,
+   dont un portage JavaScript déjà existant. Déconseillé : 40 jours et plus,
+   charge de maintenance disproportionnée, données de 6 Mo, évolution rapide du
+   dépôt amont.
+
+Recommandation : pas de module tant que le préréglage (voie A) n'est pas stabilisé ;
+si un module est voulu, la voie 2, avec le site en contrôle croisé.
+
+### 5.3 Comme données
+
+Réutilisables à la source, sans passer par le dépôt (à vérifier par série) :
+
+- projections de dépenses et ressources du système de retraite du COR (compte
+  « système de retraite », 13,86 % du PIB en 2024), dépenses observées de la
+  DREES (13,59 %), structure des ressources et transferts (branche famille,
+  Unédic, FSV) : utiles pour calibrer le périmètre du bloc Sécurité sociale ;
+- tables de mortalité INSEE (génération, niveau de vie) pour un diviseur ;
+- masse salariale D11 (INSEE) pour la règle d'indexation de référence ;
+- contributions employeur des régimes publics (Cour des comptes, CAS Pensions)
+  pour la ventilation État / collectivités.
+
+À ne pas reprendre sans accord écrit : les fichiers dérivés du modèle
+(`data/derive/*`, `docs/chiffrage_plf.csv`, `moteur/donnees.json`).
+
+Bonne pratique à reprendre : le manifeste de sources avec statut de
+rediffusion et empreinte, et l'échelle de fiabilité propagée jusqu'au résultat,
+comme modèle pour la fiche source de nos modules.
+
+Effort : 3 à 5 jours pour récupérer et documenter les séries primaires utiles ;
+confiance : élevée sur le principe, moyenne sur le calage de périmètre.
+
+Les efforts sont des ordres de grandeur en jours-personne, à ±50 %, pour un
+développeur qui connaît déjà la base de code du simulateur.
