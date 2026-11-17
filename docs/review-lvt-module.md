@@ -120,3 +120,34 @@ C'est l'ordre de grandeur du transfert à régler entre blocs si la taxe nationa
 | S3 avec IFI | 81,8 | 2,73 % | 65,4 | ≈ 13,0 à 13,3 | ≈ 3,1 à 3,4 |
 
 (Totaux LVTShift en euros 2025, moyennes quinquennales pour DMTO et plus-values. Bloc local : niveaux local 50,5 + départemental 14,9 de `yields.json`. Bloc sécurité sociale : calcul de cette note par la clé 2.3, appliquée aux moyennes quinquennales ; bloc centrales : total national de LVTShift moins la part sécurité sociale. La fourchette tient à la clé de partage, dont l'hypothèse n'est pas vérifiée.) Pour chaque scénario, la somme est **nulle par construction** : ce qui sort des recettes est remplacé par la taxe sur la valeur du sol.
+
+## 3. Ce dont le cœur du simulateur a besoin
+
+Rappel du contrat (note de modèle §7) : un module fournit `a` par bloc et par année (ex ante, en % du PIB), un coefficient `theta`, une catégorie de multiplicateur, et en option `yS` (bas / central / haut). La décision D9 est : « bloc local affiché, sans levier ».
+
+### 3.1 Le bloc local a-t-il besoin de leviers ?
+
+**Non.** Le module LVT apporte ses propres leviers (scénario S1/S2/S3, option IFI ; éventuellement une part de remplacement entre 0 et 100 %). Il n'y a aucun levier de dépense ou de recette locale « natif » à ajouter pour que le module fonctionne.
+
+**Mais le bloc local doit accepter des sorties de module.** « Sans levier » ne doit pas devenir « sans entrée ». Le bloc local doit pouvoir recevoir `a(local, t)` d'un module, l'ajouter à son solde, l'afficher sur une ligne distincte et l'agréger au consolidé. Pour LVT, `a(local, t)` est nul en net, mais le contrat le prévoit en général (un futur module sur la DGF ou sur le plafonnement des dépenses locales en aurait besoin).
+
+### 3.2 Besoins par échéance
+
+| Besoin | Day 0 (10 déc.) | Version plus complète |
+|---|---|---|
+| Équations E2, E3, E8 indexées par bloc (centrales, sécurité sociale, locales) ; somme au consolidé | **Oui.** Sans cela le contrat `a` par bloc n'a pas de support. Probablement déjà prévu par la note (§1.1) ; à vérifier dans le moteur | oui |
+| Entrée `yS` (bas / central / haut) dans E6, E7, E12 | **Oui** : c'est le seul canal budgétaire du module ; sans lui il n'a aucun effet | oui |
+| Affichage des **flux bruts** (impôts supprimés, taxe créée, par bloc) sur la ligne du module | **Oui, et c'est une extension du contrat** : `a` ne porte que le net, donc nul. Sans flux bruts, l'utilisateur voit un module « qui ne fait rien ». Champ optionnel `flux[]` : libellé, bloc, montant en % du PIB, **affichage seulement, n'entre pas dans le solde** | oui |
+| Recettes locales par impôt (TFPB, DMTO, fractions de TVA, DGF) dans la référence | **Non** : le module porte ses propres montants (sourcés, 2025, 5 ans pour les cycliques) | **Oui** : pour que « impôt supprimé » se lise sur une ligne existante de la référence, et pour contrôler que le module ne retire pas plus que la référence ne contient. La note de modèle indique déjà ce manque (§1.1, « non trouvé » : recettes 2025 par impôt et par bloc). BIS 209 fournit déjà le total : 68,6 Md€ de fiscalité directe, 115,6 avec la TVA affectée |
+| Transferts État ↔ locaux : compensations d'exonérations, fractions de TVA, DGF | **Non**, à condition de documenter la limite (voir ci-dessous) | **Oui** si l'on veut modéliser le niveau départemental avec fidélité : depuis 2021 les départements ne perçoivent plus de TFPB mais une fraction de TVA (loi de finances 2020, art. 16, de mémoire, non relue) ; la TVA affectée (≈ 47 Md€) est indexée sur la TVA, pas sur la taxe foncière |
+| Dette locale | **Non** : la dette est celle de Maastricht, consolidée ; un module n'écrit jamais dans la dette | Non, sauf à afficher la dette par bloc (hors périmètre du module) |
+| Stabilisateurs par bloc | **Non** : ε appliqué au consolidé suffit | Utile : les DMTO sont fortement cycliques (13,0 Md€ en 2023 contre 16,5 en 2021–2022, soit −21 % ; 11,3 en 2024 selon LVTShift), la taxe foncière non ; remplacer l'un par l'autre change la volatilité des recettes locales, effet que le modèle déterministe ne voit pas |
+| Règle d'affectation de la taxe nationale (S2, S3) entre État et sécurité sociale | **À trancher** : sans règle, le module ne peut pas remplir `a(sécurité sociale)`. Défaut proposé : affectation d'une fraction égale à la perte de la sécurité sociale (voir 2.3), donc `a` nul dans chaque bloc | oui |
+
+Limite à documenter pour le Day 0 : la part du produit de la taxe foncière payée par l'État en compensation (exonérations, réduction de moitié des valeurs locatives des établissements industriels) est un transfert État → locales. LVTShift l'utilise pour répartir la taxe entre groupes (« compensation WC75 ÷ taux 2020 ») mais ne dit pas si elle est incluse dans les 42,8 Md€ ; il exclut explicitement celle de l'exonération agricole du non bâti (≈ 131 M€). Le total de 67,2 Md€ est donc potentiellement un peu différent du « solde net des collectivités » en comptabilité nationale. Cela ne change pas `a = 0`, mais change l'affichage brut.
+
+### 3.3 Cohérence de base entre les deux outils
+
+- **Année et prix** : le cœur ancre sur 2025 en euros courants ; LVTShift exprime tout en euros 2025 et prend la moyenne de cinq ans pour DMTO et plus-values. Le module doit exposer ses flux en % du PIB 2025, constants (comme E2 le fait pour les leviers), et non en euros.
+- **Périmètre comptable** : LVTShift lit des montants de gestion (REI, comptes de gestion OFGL, avis d'imposition DGFiP) ; le cœur raisonne en comptabilité nationale (droits constatés, Insee). Les écarts seront petits pour l'impôt local, plus incertains pour les plus-values et l'IFI (budget contre avis, 2,3 contre 2,8 Md€ pour l'IFI en 2025).
+- **Statut « non validé »** : le contrat impose au module à effet dynamique la même validation que le cœur (§7). Les rendements LVTShift ont fait l'objet d'une revue interne (« Gemini », 27 octobre) et d'une vérification par le propriétaire, pas d'une validation par le cœur ; la plupart des chiffres de revenus locatifs sont de 2022.
