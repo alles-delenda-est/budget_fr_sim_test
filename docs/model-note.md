@@ -12,7 +12,7 @@ Conventions : montants en Md€ courants ; ratios en % du PIB ; taux en décimal
 
 ### 1.1 Périmètre
 
-Toutes administrations publiques (APU) en comptabilité nationale, en trois blocs : administrations centrales (État et ODAC), sécurité sociale (ASSO), collectivités locales (APUL). Le solde et la dette sont ceux de Maastricht. Les transferts entre blocs sont consolidés et affichés une seule fois.
+Toutes administrations publiques (APU) en comptabilité nationale, en trois blocs : administrations centrales (État et ODAC), sécurité sociale (ASSO), collectivités locales (APUL). Le solde et la dette sont ceux de Maastricht. Les transferts entre blocs sont consolidés et affichés une seule fois. Le bloc local est affiché sans levier natif ; il reçoit les sorties des modules (D9).
 
 Comptes 2025 (Insee, provisoires) :
 
@@ -83,7 +83,7 @@ En option, un décalage spécifique `comp.offset.prestations` = o(j) peut s'appl
 où Δa(j,k) est la variation du levier l'année k, m(j) le multiplicateur d'impact et λ ∈ (0,1) la persistance. Une mesure permanente de 1 % du PIB réduit le PIB de m % la première année, puis l'écart se referme.
 Vérification : multiplicateur cumulé sur T années = `m × (1 − λ^T) / ((1 − λ) × T)`. Avec m = 0,8, λ = 0,7, T = 10 : 0,26. Le pic vaut m. Le modèle actuel donne des valeurs de 5 à 98.
 
-**E5 — Effet d'offre (optionnel).** `yS(t) = Σj σ(j) × a(j) × min(t / L(j), 1)`, effet permanent sur le niveau du PIB, atteint en L années. Valeur centrale proposée : σ = 0 (décision D2).
+**E5 — Effet d'offre (optionnel).** `yS(t) = Σj σ(j) × a(j) × min(t / L(j), 1)`, effet permanent sur le niveau du PIB, atteint en L années. σ = 0 par défaut (décision D2). Un σ non nul n'est retenu qu'au cas par cas, quand les preuves le justifient, après une revue de preuves distincte (en cours : `docs/brief-supply-effects.md`). Chaque σ non nul s'affiche sur une ligne distincte et étiquetée, avec une fourchette bas / central / haut.
 
 **E6 — PIB.** `Y(t) = Yb(t) × (1 + yD(t) + yS(t))`.
 
@@ -151,7 +151,7 @@ Les coefficients hérités (0,9 ; 0,95 ; 0,7), qui se cumulaient avec les « eff
 | `comp.theta.cotis` | 0,15 | 0,05 / 0,30 | — | De mémoire | Idem, via l'emploi et les salaires. |
 | `comp.theta.tva` | 0,03 | 0 / 0,08 | — | De mémoire | Fraude et achats transfrontaliers. |
 | `comp.theta.is` | 0,25 | 0,20 / 0,38 | — | Formule 3.2 ; η = 0,8 à 1,5 de mémoire (Beer, de Mooij, Liu 2018) | Bénéfices déplacés vers d'autres pays. |
-| `offre.sigma.*` | 0 | à documenter | — | Décision D2 | Effet durable sur le niveau du PIB ; non retenu sans preuve. |
+| `offre.sigma.*` | 0 | à documenter, par mesure | — | Décision D2 ; revue de preuves en cours (`docs/brief-supply-effects.md`) | Effet durable sur le niveau du PIB ; non nul seulement si les preuves le justifient, sur une ligne distincte avec fourchette. |
 | `comp.offset.prestations` | à documenter (0 par défaut) | — | — | Section 2, E3 | Part de l'économie sur une prestation qui revient par d'autres dépenses ou des recettes perdues. |
 | `fisc.eps` | 0,6 | 0,5 / 0,65 | — | De mémoire (Commission européenne, Mourre et al. 2019, France ≈ 0,63) ; **non relu** | Quand le PIB baisse de 1 %, le solde se dégrade d'environ 0,6 point. |
 | `dette.M` | 8,45 ans | 8 / 9 | — | AFT, fin juillet 2026 : 8 ans 163 jours [S12] | Durée moyenne avant qu'un emprunt soit renouvelé. |
@@ -184,13 +184,18 @@ Tests de référence du moteur : chaque levier restitue son étalon (3.1) à 0,1
 
 **Droit en vigueur.** La LFSS 2026 gèle l'âge légal à 62 ans et 9 mois et la durée d'assurance à 170 trimestres jusqu'en janvier 2028 [S15][S16]. La référence suit ce calendrier, puis la reprise de la montée vers 64 ans (décision D8).
 
+Dépenses de retraites du COR à droit en vigueur (suspension de la réforme de 2023 incluse), scénario de référence : 14,1 % du PIB en 2025 et en 2030, 14,2 % en 2045, 15,3 % en 2070 (+1,2 pt) ; solde du système −0,2 % du PIB en 2025, −0,9 pt en 2045, −2,4 pts en 2070 ; âge moyen de départ 63,1 ans en 2025, 64,6 en 2070 [S23]. La suspension coûte environ 1,8 Md€ par an en moyenne jusqu'en 2032 (chiffre issu d'un résumé automatique : à relire sur le PDF avant usage).
+
 **Leviers conservés, validés :** indexation des pensions (en points par rapport à l'inflation, appliqués à la ligne « vieillesse ») ; ONDAM (en %). Rendement : 1 % de la ligne correspondante.
 
-**Portés « non validé — avis demandé » :** âge légal au-delà du droit en vigueur, plafonnement, comptes notionnels (paramètres issus de francetdb.com, site non identifié) ; bloc des réformes structurelles (effets exprimés en points de croissance annuelle, à reformuler en effets de niveau σ avec fourchette, E5). Ils restent visibles pour les relecteurs, désactivés par défaut, avec leur source et la question posée.
+**Portés « non validé — avis demandé » :** âge légal au-delà du droit en vigueur, plafonnement ; bloc des réformes structurelles (effets exprimés en points de croissance annuelle, à reformuler en effets de niveau σ avec fourchette, E5), auquel s'ajoutent, décision D5, des leviers de réforme du logement et du marché du travail (mesures candidates, d'après `docs/brief-supply-effects.md` : offre de logement et encadrement des loyers ; règles de licenciement et assurance chômage). Leur σ sera fixé d'après la revue de preuves ; en attendant, σ = 0. Ils restent visibles pour les relecteurs, désactivés par défaut, avec leur source et la question posée.
 
-**Supprimés :** liquidation HLM, impact migratoire, capitalisation (PR n° 3).
+**Préréglage « Comptes notionnels » (D8).** Âge légal 65 ans et passage aux comptes notionnels, à partir de janvier 2028 (aligné sur la reprise de la réforme), indexation des pensions sans écart, pas de plafonnement. Paramètres ancrés sur le COR [S23] et sur la littérature suédoise des comptes notionnels (NDC) : références à citer, à collecter. Il remplace le levier actuel du code (−6 % de la masse de pensions en 15 ans, sans source autre que « francetdb.com, COR 2024 »). C'est une forme réduite, libellée comme telle, « non validé », confiance « low » faute de recoupement indépendant (recalibrage sur une trajectoire citable : option, 4 à 6 jours d'après la revue [S25]).
+Implémentation citée : le simulateur du Parti libéral français [S24] (code Apache-2.0, textes CC BY-SA 4.0), présenté comme « modèle publié par le Parti libéral français », jamais comme « le » modèle des comptes notionnels ; l'éditeur est déclaré dans la description du préréglage. Nos textes sont écrits depuis les sources primaires. Le chiffre de −53 % de dépense en 2070 affiché par ce site n'est pas repris : c'est une marge du système, non une économie (coefficient d'équilibre supérieur à 1 selon la revue [S25]). Les éléments de programme du parti (taux unique de 18 %, capitalisation, garantie vieillesse, taxe sur le terrain) sont exclus.
 
-**Non trouvé :** projections COR 2026 (dépenses de retraite en % du PIB, effet de la suspension).
+**Supprimés :** liquidation HLM, impact migratoire, capitalisation (PR n° 3), levier notionnel à −6 % sur 15 ans (remplacé par le préréglage).
+
+**Non trouvé :** dépenses de retraites du COR en 2040 et 2050 (lisibles sur le graphique seulement) ; effet de la suspension en % du PIB ou du solde (non chiffré séparément).
 
 ## 7. Contrat de module
 
@@ -246,6 +251,9 @@ Taxe foncière sur la valeur du sol : à rendement égal, `a = 0` par constructi
 - [S21] Insee Première n° 2096, mars 2026 (référence fournie par Patrick ; URL non relevée, non relue pour cette note)
 - [S22] Insee, Informations rapides n° 270, 10 novembre 2026 (référence fournie par Patrick ; URL non relevée, non relue pour cette note)
 - [S23] COR, rapport annuel de juin 2026 : synthèse https://www.cor-retraites.fr/sites/default/files/2026-06/Synth%C3%A8se_RA_2026.pdf ; partie 2, chapitre 1 https://www.cor-retraites.fr/sites/default/files/2026-06/RA_Part2_Chap1.pdf (lecture primaire, via résumé d'outil ; voir `docs/baseline-data.md`, item 7)
+- [S24] Parti libéral français, simulateur « Retraite à comptes notionnels » (g-pliberal) : https://g-pliberal.github.io/retraitecomptenotionelle/ ; dépôt https://github.com/g-pliberal/retraitecomptenotionelle
+- [S25] Revue du simulateur de comptes notionnels, 17 novembre 2026 : `docs/review-comptes-notionnels.md`, branche `docs/review-ndc`
+- [S26] Revue du module taxe sur la valeur du sol (LVTShift), 17 novembre 2026 : `docs/review-lvt-module.md`, branche `docs/review-lvt`
 
 ## 10. Ce qui manque
 
