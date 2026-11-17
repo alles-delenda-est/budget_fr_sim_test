@@ -302,3 +302,103 @@ les données calculées par le modèle.
   confirmation écrite de l'éditeur, ne pas les reprendre ; reprendre les sources
   primaires.
 - Cette lecture n'est pas un avis juridique.
+
+## 4. Qualité technique
+
+### 4.1 Pile et structure
+
+- Moteur de référence : Python 3.10+, une seule dépendance d'exécution (PyYAML) ;
+  `src/retraite_notionnelle/` : 125 fichiers, environ 80 000 lignes. Dépendances
+  de développement : pytest, pytest-xdist, xlrd.
+- Portage JavaScript sans bibliothèque : `moteur/js/` (79 fichiers, environ
+  81 000 lignes), chargé dans le navigateur avec un paquet de données
+  `moteur/donnees.json` (6,1 Mo bruts, 823 Ko compressés d'après le README).
+  Depuis la décision 0005 du dépôt, « le JavaScript fait foi » et le Python
+  garde ses jumeaux jusqu'à leur retrait : deux moteurs coexistent pour l'instant.
+- Pages HTML pré-rendues (neuf), servies depuis la racine du dépôt par
+  GitHub Pages ; aucun CDN, aucun serveur de calcul. Pas de `package.json` : le
+  JavaScript n'a pas de chaîne de build, donc pas de modules à auditer, mais pas
+  non plus de typage ni de linter visible.
+- Données : environ 3 000 fichiers CSV/YAML dans `data/reference/`
+  (grilles de traitement, législation datée, régimes, mortalité, macro), un manifeste
+  de sources, des « contrats » de schéma YAML, des « couches » de règles par
+  scénario (par exemple `couches/comptes_notionnels.yaml`,
+  `couches/valorisation_des_droits_acquis.yaml`) qui neutralisent ou ajoutent des
+  étapes de calcul.
+- Documentation abondante (`docs/`, 13 notes de décision, limites par
+  paragraphe) ; elle est très dense et en partie datée (voir 4.3).
+
+### 4.2 Tests
+
+- Environ 5 400 fonctions `def test_` dans 266 fichiers Python, plus environ
+  280 cas dans 40 fichiers JavaScript (`node --test`), 934 simulations témoins
+  figées et 85 rendus de page figés ; le Python doit retrouver chaque
+  simulation témoin « au bit près », le JavaScript à 10⁻¹⁵ près (comparaison
+  de 175 713 nombres, selon le README). Un contrôle aléatoire à graine fixe
+  recalcule des carrières en Python et en JavaScript.
+- Les chiffres des textes sont des balises `<!--chiffre:…-->` recalculées par le
+  modèle et comparées à la page par des tests : bonne pratique pour la
+  cohérence prose/modèle.
+- Contrôle externe : 146 profils rejoués contre OpenFisca-France-Pension ; le
+  dépôt dit avoir trouvé des erreurs des deux côtés.
+- La suite complète prend plusieurs minutes (sept minutes en série d'après le
+  `pyproject.toml`, moins d'une avec xdist).
+- Indicateur d'instabilité : `.github/verdicts.tsv` enregistre 485 passages de
+  l'intégration continue sur environ six semaines, dont 85 rouges et 400
+  verts. La plupart des rouges sont corrigés dans l'heure, mais le dépôt change
+  vite et ses chiffres de tête avec lui.
+- Non vérifié : je n'ai exécuté aucun test.
+
+### 4.3 Erreurs et incohérences visibles à la lecture
+
+Je n'ai pas trouvé d'erreur d'arithmétique dans les chiffres que j'ai pu
+recouper à la main. Vérifiés cohérents : écarts de cumul 2025-2070 entre
+scénarios (par exemple 17 851 / 23 872 = −25,2 %), coûts 2070 et parts du PIB
+(596 − 282 = 314 Md€ ; 15,3 − 7,2 = 8,1 points ; 436 − 282 = 154 Md€), milliards
+rapportés aux parts de PIB (PIB 2025 implicite d'environ 3 000 Md€ partout),
+coefficient 1,65 → « 39 % » d'économie apparente, partage 0,0633/0,23 du taux
+unique (4,95 + 13,05 = 18 ; 1,38 + 3,62 = 5), produit de la LVT (78 Md€).
+
+Incohérences narratives et points à vérifier :
+
+1. Indexation des pensions servies : le tableau du § 5 du README dit que
+   « les pensions déjà servies à la bascule gardent les prix », alors que le
+   paragraphe « les pensions liquidées suivent la règle d'indexation » (corrigé
+   le 19 septembre 2026) dit que la pension suit la masse salariale, 0,7 point
+   au-dessus des prix. Une des deux phrases est périmée.
+2. Âge de référence : la documentation de méthode explique la conversion
+   des droits acquis avec « référence = 65 ans » mais cite le diviseur
+   `G(64, 2026)`, c'est-à-dire l'ancienne référence de 64 ans (cliquet). Le chiffre
+   de 23,56 ans et l'abattement de 17 % peuvent donc dater d'avant le passage à 65.
+3. Le README donne le solde moyen du scénario 6 à +0,20 % du PIB, tout en
+   conservant dans le même texte « de +0,12 % à −0,88 % » comme effet d'une
+   correction du 19 septembre : l'ordre chronologique est lisible, mais
+   deux valeurs différentes pour la même grandeur cohabitent.
+4. Les chiffres de tête ont changé plusieurs fois (le dépôt avoue des chiffres
+   « faux plusieurs jours de suite », un déficit fabriqué par construction aux
+   scénarios 3 et 5 jusqu'au 23 septembre 2026, une TVA à taux unique ajoutée
+   puis retirée le 24 septembre). Les valeurs du 17 novembre ne sont pas stabilisées.
+5. Solde 2025 du scénario 2 : +9,22 % du PIB (276 Md€) et coefficient d'équilibre
+   2,52. Ces chiffres sont arithmétiquement cohérents mais économiquement sans
+   portée pour un budget : le scénario est un contrefactuel sans transition.
+6. Coïncidence à vérifier : l'économie du scénario 3 en 2070 (8,1 points,
+   314 Md€) est égale au coût du scénario 6 la même année (8,1 %, 314 Md€). Les
+   deux sont des lectures distinctes, mais l'identité de deux chiffres sur deux
+   colonnes mérite un contrôle de copier-coller avant citation.
+7. Le scénario 3 « n'économise en 2026 que la réversion, qu'il cesse de servir à
+   la bascule », alors que les pensions déjà liquidées sont servies « telles
+   quelles, majorations pour enfants comprises ». Le sort de la réversion pour les
+   retraités actuels est ambigu dans le texte.
+
+### 4.4 Autres observations
+
+- La séparation entre « ce que dit la loi » et « ce que dit la proposition » est
+  soignée (avertissements, états de fiabilité propagés jusqu'au résultat).
+- Le périmètre du coût est le « système de retraite » du COR (dépenses 13,86 %
+  du PIB en 2024, régimes légalement obligatoires, FSV compris) contre 13,59 %
+  pour la répartition obligatoire de la DREES : deux périmètres voisins à 0,28
+  point, qu'il faut choisir et nommer.
+- Le dépôt ne modélise pas : la capitalisation obligatoire dans le coût de la
+  répartition (RAFP et assurances sociales de 1930 sorties des six totaux), le
+  bouclage macroéconomique, les effets comportementaux, les collectivités locales
+  en tant que bloc (la CNRACL est traitée comme régime, pas comme budget).
