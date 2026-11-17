@@ -60,3 +60,25 @@ Résultat : **non trouvé** dans les annexes du PLFSS 2026 lues ; la note garde 
 
 Ces montants agrègent plusieurs dispositifs et ne se divisent pas en rendement par point. Tenté : annexe 4 (moitié), recherche web ciblée (comptes rendus parlementaires, rapports du Sénat non ouverts). Pistes non explorées : annexe 5 et annexe 9 du PLFSS, réponses de la DSS aux questionnaires parlementaires.
 
+## Item 4. Dépenses des APU par fonction (COFOG)
+
+Année : **2024** (provisoire). Le niveau 2025 n'existe pas encore : la page Insee « Dépenses des APU ventilées par fonction en 2025 » (https://www.insee.fr/fr/statistiques/8988847) indique que les tableaux 3.301 à 3.307 paraîtront en décembre 2026. Définition : comptabilité nationale, toutes APU consolidées, COFOG division (première niveau), Md€ courants.
+
+Source : Insee Première n° 2093, « Usage de l'argent public : les dépenses publiques par fonction en 2024 », février 2026, figure 2 (https://www.insee.fr/fr/statistiques/fichier/8735252/IP2093.pdf). Lecture primaire, via résumé WebFetch.
+
+| Fonction | 2024, Md€ | Part de la dépense |
+|---|---|---|
+| Protection sociale (retraites, famille, chômage, maladie, exclusion) | 693 | 41 % |
+| Santé | 261 | 16 % |
+| Services généraux (dont charge de la dette 60 Md€) | 181 | 11 % |
+| Affaires économiques | 166 | 10 % |
+| Enseignement | 149 | 9 % |
+| Défense | 54 | 3 % ou moins (1,9 % du PIB) |
+| Ordre et sécurité publics | 52 | 3 % ou moins |
+| Loisirs, culture, culte | 43 | 3 % ou moins |
+| Logement et équipements collectifs | 42 | 3 % ou moins |
+| Protection de l'environnement | 30 | 3 % ou moins |
+| Total | 1 672 (57,0 % du PIB) | |
+
+Sous-postes de la protection sociale publiés dans le texte : famille 67 Md€ ; chômage 49 Md€ (incl. formation des demandeurs d'emploi). **Vieillesse : niveau non trouvé** (le texte donne seulement la hausse de +23 Md€, soit +6,2 %). Exclusion sociale et survie : non publiés séparément dans le texte. Les détails par groupe de fonctions sont aux tableaux xlsx 3.30x de l'Insee, illisibles ici (robots interdits). La somme des lignes (1 671) concorde avec le total à l'arrondi près. Le total 2024 de 1 672 est le chiffre provisoire de février 2026, à ne pas confondre avec les dépenses 2025 de 1 714,2.
+
