@@ -46,7 +46,7 @@ export function DecompositionTable({ decomposition, years, yearIdx, onYear }) {
       <p className="sb-help">Écart de solde public entre votre scénario et la référence, en Md€, pour l'année choisie. Les lignes nulles dans le cas retenu sont masquées.</p>
       <div className="sb-yearpick">
         <label htmlFor="sb-year">Année : <strong>{decomposition.year}</strong></label>
-        <input id="sb-year" type="range" className="sb-slider" min={1} max={years.length - 1} step={1} value={yearIdx} onChange={(e) => onYear(parseInt(e.target.value, 10))} />
+        <input id="sb-year" type="range" className="sb-slider" min={1} max={years.length - 1} step={1} value={yearIdx} aria-valuetext={`Année ${decomposition.year}`} onChange={(e) => onYear(parseInt(e.target.value, 10))} />
       </div>
       {lines.length === 0 ? <p className="sb-empty">Aucun levier actif : le scénario est identique à la référence.</p> : (
         <table className="sb-table">

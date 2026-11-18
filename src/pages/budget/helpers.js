@@ -122,6 +122,9 @@ export function decomposeAtYear(result, reference, t, eps) {
   return { year: tot.year, ecart, lines }
 }
 
+/** Vrai si au moins une ligne d'offre du résultat a un effet non nul dans le cas choisi (sinon bas / central / haut sont sans effet). */
+export const hasSupplyEffect = (result) => result.supply.lignes.some((l) => l.yS.some((v) => Number.isFinite(v) && v !== 0))
+
 /** Retire les lignes nulles (affichées « 0,0 ») : un σ nul dans le cas choisi n'apparaît pas. */
 export const visibleLines = (lines, threshold = HIDE_BELOW) =>
   lines.filter((l) => Number.isFinite(l.montant) && Math.abs(l.montant) >= threshold)

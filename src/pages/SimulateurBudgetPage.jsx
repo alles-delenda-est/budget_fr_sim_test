@@ -1,11 +1,15 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { projectScenario, HORIZONS } from '../engine/project.js'
 import { resolveParams, PARAM_BY_ID } from '../engine/params.js'
 import LeverPanel from './budget/LeverPanel'
 import Charts from './budget/Charts'
 import { Snapshots, DecompositionTable, BlocksTable } from './budget/Results'
+import ShareButton from './budget/ShareButton'
+import { buildCsv, buildExportRows, downloadCsv } from './budget/exportCsv'
+import { versionStamp } from '../version'
+import { decodeScenario, queryFromHash, scenarioHash, scenarioUrl } from './budget/share'
 import { InfoPopover, ParamInfo, StatusBadge } from './budget/InfoPopover'
-import { buildSeries, snapshotAt, decomposeAtYear, blocksAt, paramIdsFor, extremeLevers, SUPPLY_CASES } from './budget/helpers'
+import { buildSeries, snapshotAt, decomposeAtYear, hasSupplyEffect, blocksAt, paramIdsFor, extremeLevers, SUPPLY_CASES } from './budget/helpers'
 import './SimulateurBudgetPage.css'
 
 const P = resolveParams()
@@ -13,9 +17,11 @@ const EPS = P['fisc.eps']
 const DEFAULT_YEAR_IDX = 5
 
 export default function SimulateurBudgetPage() {
-  const [values, setValues] = useState({})
-  const [horizon, setHorizon] = useState('dixAns')
-  const [ysCase, setYsCase] = useState('central')
+  // Scénario lu une seule fois dans l'adresse (#/budget?h=…&cas=…&levier=…), validé par decodeScenario.
+  const [initial] = useState(() => decodeScenario(queryFromHash(window.location.hash)))
+  const [values, setValues] = useState(initial.values)
+  const [horizon, setHorizon] = useState(initial.horizon)
+  const [ysCase, setYsCase] = useState(initial.ysCase)
   const [yearIdxRaw, setYearIdx] = useState(DEFAULT_YEAR_IDX)
 
   // Référence (sans levier) et scénario : recalculés seulement si leviers, horizon ou cas changent.
@@ -34,6 +40,25 @@ export default function SimulateurBudgetPage() {
   const decomposition = useMemo(() => decomposeAtYear(result, reference, yearIdx, EPS), [result, reference, yearIdx])
   const blocks = useMemo(() => blocksAt(result, reference, yearIdx), [result, reference, yearIdx])
   const paramIds = useMemo(() => paramIdsFor(values, result), [values, result])
+
+  // Aucune ligne d'offre non nulle dans le résultat du moteur : le choix bas / central / haut ne change rien.
+  const noSupplyEffect = !hasSupplyEffect(result)
+
+  // Adresse du scénario mise à jour sans entrée d'historique, avec un délai pour ne pas écrire à chaque cran de curseur.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      window.history.replaceState(window.history.state, '', scenarioHash({ values, horizon, ysCase }))
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [values, horizon, ysCase])
+
+  const exportCsv = () => {
+    const csv = buildCsv({
+      stamp: versionStamp(), url: scenarioUrl(window.location, { values, horizon, ysCase }),
+      horizonLabel: HORIZONS[horizon].label, ysCase, values, rows: buildExportRows(result, reference, EPS),
+    })
+    downloadCsv(csv, `simulateur-budget-${horizon}-${ysCase}.csv`)
+  }
 
   const setLever = (id, x) => setValues((v) => ({ ...v, [id]: x }))
 
@@ -55,12 +80,22 @@ export default function SimulateurBudgetPage() {
           </div>
           <div>
             <label htmlFor="sb-case">Cas des effets d'offre</label>
-            <select id="sb-case" value={ysCase} onChange={(e) => setYsCase(e.target.value)}>
+            <select id="sb-case" aria-describedby={noSupplyEffect ? 'sb-case-hint' : undefined} value={ysCase} onChange={(e) => setYsCase(e.target.value)}>
               {SUPPLY_CASES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
             </select>
+            {noSupplyEffect && <p className="sb-hint" id="sb-case-hint">Sans effet pour les leviers choisis</p>}
           </div>
         </div>
         <p className="sb-help">Bas et haut désignent les résultats les moins et les plus favorables pour le PIB, et non l'ordre statistique des valeurs (σ). Au-delà de dix ans, lisez les trois cas ensemble : le modèle reste déterministe.</p>
+      </section>
+
+      <section className="sb-section" aria-labelledby="sb-partage">
+        <h2 id="sb-partage">Partager et exporter</h2>
+        <p className="sb-help">Le lien reprend les leviers, l'horizon et le cas des effets d'offre ; il rouvre exactement ce scénario. L'export CSV (séparateur « ; », virgule décimale, ouverture directe dans Excel) donne, année par année, le scénario, la référence et la décomposition par cause.</p>
+        <div className="sb-toolbar">
+          <ShareButton getUrl={() => scenarioUrl(window.location, { values, horizon, ysCase })} />
+          <button type="button" className="sb-btn" onClick={exportCsv}>Exporter (CSV)</button>
+        </div>
       </section>
 
       <div className="sb-layout">

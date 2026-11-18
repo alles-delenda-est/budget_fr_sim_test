@@ -1,0 +1,10 @@
+.review-banner {
+  background: #fff4d6;
+  color: #5a4300;
+  border-bottom: 1px solid #e6cf8f;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  text-align: center;
+  padding: 0.35rem 0.75rem;
+}
+.review-banner a { color: inherit; font-weight: 600; text-decoration: underline; }
