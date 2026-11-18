@@ -1,3 +1,7 @@
+// NOTE: The revenue/spending behavioral response tests below overlap substantially with
+// policy-impact.test.js (which has more granular, per-lever assertions). The "Projection &
+// Risk Engine" section has some unique tests (e.g., projection horizon parameter) not
+// duplicated elsewhere. Retained for belt-and-suspenders coverage.
 import { describe, it, expect } from 'vitest'
 import { calculatePolicyImpact, BASELINE, BEHAVIORAL_RESPONSE, FISCAL_MULTIPLIERS } from '../policy-impact'
 import { projectFiscalPath, calculateInterestRate, getBaselineProjection } from '../projection-engine-v1.8'
