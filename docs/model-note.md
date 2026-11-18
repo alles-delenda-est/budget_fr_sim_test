@@ -83,7 +83,13 @@ En option, un décalage spécifique `comp.offset.prestations` = o(j) peut s'appl
 où Δa(j,k) est la variation du levier l'année k, m(j) le multiplicateur d'impact et λ ∈ (0,1) la persistance. Une mesure permanente de 1 % du PIB réduit le PIB de m % la première année, puis l'écart se referme.
 Vérification : multiplicateur cumulé sur T années = `m × (1 − λ^T) / ((1 − λ) × T)`. Avec m = 0,8, λ = 0,7, T = 10 : 0,26. Le pic vaut m. Le modèle actuel donne des valeurs de 5 à 98.
 
-**E5 — Effet d'offre (optionnel).** `yS(t) = Σj σ(j) × a(j) × min(t / L(j), 1)`, effet permanent sur le niveau du PIB, atteint en L années. σ = 0 par défaut (décision D2). Un σ non nul n'est retenu qu'au cas par cas, quand les preuves le justifient, après une revue de preuves distincte (en cours : `docs/brief-supply-effects.md`). Chaque σ non nul s'affiche sur une ligne distincte et étiquetée, avec une fourchette bas / central / haut.
+**E5 — Effet d'offre (optionnel).** Effet permanent sur le niveau du PIB, mesure par mesure :
+`yS_j(t) = σ_j × a_j(t) × clamp((τ_j(t) − t0_j) / (L_j − t0_j), 0, 1)`, et `yS(t) = Σj yS_j(t)`.
+- `a_j(t)` est la taille signée de la mesure dans l'unité de son levier (x × rampe de la mesure), et non son effet sur le solde de E2 : +2 points de TVA donnent a = 2, −10 % de la ligne « enseignement » donnent a = −10.
+- `σ_j` est l'effet de long terme sur le niveau du PIB, en % du PIB par unité du levier, avec trois valeurs : bas / central / haut. Il peut différer selon le sens : `σ_hausse` s'applique si le levier augmente (x > 0), `σ_baisse` s'il diminue (x < 0) ; par défaut les deux valent σ.
+- `τ_j(t)` est le nombre d'années écoulées depuis l'entrée en vigueur de la mesure (t − année de début de la rampe ; entrée en vigueur en 2027, soit t = 1, par défaut). `L_j` est l'horizon d'ajustement complet, `t0_j` un délai de grâce avant que l'effet ne démarre (défaut 0). L'effet est nul avant t0, croît linéairement entre t0 et L, puis reste constant. Si L ≤ t0, l'effet est un échelon en t0. Une entrée non finie (σ, L ou t0) annule l'effet : jamais de NaN.
+- Les trois cas : « bas » est le plus faible des trois PIB obtenus avec σ bas / central / haut, « haut » le plus élevé, « central » est obtenu avec σ central. L'ordre suit donc le résultat sur le PIB, quel que soit le sens du levier.
+- σ = 0 par défaut (décision D2) : un σ non nul n'est retenu qu'au cas par cas, quand les preuves le justifient (revue : `docs/review-supply-effects-gemini.md`). Chaque σ non nul s'affiche sur une ligne distincte et étiquetée (`supply.lignes` dans le résultat du moteur ; `decomposition[t].offre` pour la variation du solde), avec son cas bas / central / haut. Les stabilisateurs de E7 jouent sur l'écart total ; la ligne `stabilisateurs` de la décomposition ne garde que la part due à la demande, chaque ligne `offre` portant celle de son effet.
 
 **E6 — PIB.** `Y(t) = Yb(t) × (1 + yD(t) + yS(t))`.
 

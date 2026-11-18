@@ -5,6 +5,7 @@
 import { resolveParams, interpolateSeries } from './params.js'
 import { BLOCKS, leversToInstruments } from './levers.js'
 import { runModule } from './modules.js'
+import { coreSupplyLines } from './supply.js'
 
 export const START_YEAR = 2026
 /** Trois horizons prédéfinis (D10). */
@@ -40,7 +41,8 @@ export function issuanceRate(P) {
  * @param {Array}  [options.modules]    [{ module, levers }]
  * @param {'bas'|'central'|'haut'} [options.ysCase] cas retenu pour yS des modules (défaut : central)
  * @param {number[]} [options.yS]       chemin yS externe supplémentaire (fraction du PIB), t = 0..N
- * @param {object} [options.sigma]      { idLevier: { sigma, L } } effets d'offre du cœur (E5) ; σ = 0 par défaut
+ * @param {object} [options.sigma]      { idLevier: { sigma | sigmaHausse, sigmaBaisse, L, t0 } } remplace les paramètres offre.* d'un levier (E5) ;
+ *                                      σ en % du PIB par unité du levier, t0 = 0 par défaut (voir supply.js)
  * @param {object} [options.ramp]       { start, years } rampe commune des leviers natifs
  */
 export function projectScenario(options = {}) {
@@ -89,15 +91,14 @@ export function projectScenario(options = {}) {
   const g = (t) => (t === 0 ? P['macro.g.2026'] : t === 1 ? P['macro.g.2027'] : P['macro.g.potentielle']) / 100
   const pi = (t) => (t === 0 ? P['macro.pi.2026'] : t === 1 ? P['macro.pi.2027'] : P['macro.pi.long']) / 100
 
-  // ---- Effets d'offre du cœur (E5) : σ = 0 par défaut ----
-  const sigmaOpts = options.sigma ?? {}
-  const yScore = (t) => Object.entries(sigmaOpts).reduce((s, [id, { sigma, L }]) => {
-    const inst = instruments.find((i) => i.id === id)
-    if (!inst || !Number.isFinite(sigma) || !(L > 0)) return s
-    return s + sigma * aTot(inst, t) * Math.min(t / L, 1)
-  }, 0)
-  const yModules = (t) => moduleRuns.reduce((s, inst) => s + (inst.yS ? inst.yS[ysCase][t] : 0), 0)
-  const yExt = (t) => (Number.isFinite(options.yS?.[t]) ? options.yS[t] : 0)
+  // ---- Effets d'offre (E5) : une ligne distincte et étiquetée par mesure, avec son cas (bas / central / haut) ----
+  // Mesures du cœur (paramètres offre.*), modules (yS fourni par le module) et chemin externe : trois sources, mêmes lignes.
+  const ysLines = [
+    ...coreSupplyLines(instruments, P, N, options.sigma).map((l) => ({ id: l.id, libelle: l.libelle, origine: 'levier', sigma: l.sigma, L: l.L, t0: l.t0, yS: l.cas[ysCase] })),
+    ...moduleRuns.filter((inst) => inst.yS).map((inst) => ({ id: inst.id, libelle: inst.titre, origine: 'module', yS: inst.yS[ysCase] })),
+    { id: 'externe', libelle: 'Chemin yS externe', origine: 'externe', yS: years.map((_, t) => (Number.isFinite(options.yS?.[t]) ? options.yS[t] : 0)) },
+  ].filter((l) => l.yS.some((v) => v !== 0))
+  const yOf = (t) => ysLines.reduce((sum, l) => sum + l.yS[t], 0)
 
   // ---- État initial : 2025 observé ----
   let YbPrev = P['base.pib.2025']
@@ -124,7 +125,7 @@ export function projectScenario(options = {}) {
       S[j] = lambda * S[j] + mOf(inst, t) * da
       yD -= S[j]
     })
-    const yS = yScore(t) + yModules(t) + yExt(t) // E5 (+ modules, + chemin externe)
+    const yS = yOf(t) // E5 (cœur + modules + chemin externe)
     const gap = yD + yS
     const Y = Yb * (1 + gap) // E6
 
@@ -194,17 +195,22 @@ export function projectScenario(options = {}) {
     })
 
     // Décomposition de la variation du solde (Md€) : exacte par construction.
-    const lv = { Yb, ref: refTot, exAnte: exAnteTot, behav: behavTot, stab: stabTot, iAvg, INT, balance, Dprev, Dprev2, dA, dB }
+    // Les stabilisateurs jouent sur l'écart de PIB total (E7) : on isole la part due à chaque effet d'offre.
+    const offreLvl = ysLines.map((l) => eps * l.yS[t] * Yb)
+    const lv = { Yb, ref: refTot, exAnte: exAnteTot, behav: behavTot, stab: stabTot, offre: offreLvl, iAvg, INT, balance, Dprev, Dprev2, dA, dB }
     if (t > 0) {
       const q = levels[t - 1]
       const refGrowth = (q.ref / q.Yb) * (Yb - q.Yb)
+      const offre = ysLines.map((l, k) => ({ id: l.id, libelle: l.libelle, cas: ysCase, montant: lv.offre[k] - q.offre[k] }))
+      const offreSum = offre.reduce((sum, o) => sum + o.montant, 0)
       decomposition.push({
         year: START_YEAR + t,
         refGrowth,
         refDrift: lv.ref - q.ref - refGrowth,
         leviers: lv.exAnte - q.exAnte,
         comportement: lv.behav - q.behav,
-        stabilisateurs: lv.stab - q.stab,
+        stabilisateurs: lv.stab - q.stab - offreSum, // demande seule ; l'offre est dans `offre`
+        offre,
         interetsTaux: -(iAvg - q.iAvg) * Dprev,
         interetsStock: -q.iAvg * (Dprev - Dprev2),
         total: balance - q.balance,
@@ -218,6 +224,7 @@ export function projectScenario(options = {}) {
 
   return {
     horizon: horizon.id, startYear: START_YEAR, endYear: horizon.endYear, years, total, blocks, decomposition,
+    supply: { cas: ysCase, lignes: ysLines.map(({ id, libelle, origine, sigma, L, t0, yS }) => ({ id, libelle, origine, cas: ysCase, sigma, L, t0, yS })) },
     modules: moduleRuns.map(({ id, titre, statut, flux, explications }) => ({ id, titre, statut, flux, explications })),
     instruments: instruments.map(({ id, source }) => ({ id, source })),
   }
@@ -228,7 +235,8 @@ export const DECOMPOSITION_LABELS = {
   refDrift: 'Dérive de référence (vieillissement, autres dépenses)',
   leviers: 'Mesures (effet ex ante)',
   comportement: 'Réaction des contribuables (θ)',
-  stabilisateurs: 'Stabilisateurs automatiques (écart de PIB)',
+  stabilisateurs: 'Stabilisateurs automatiques (écart de PIB dû à la demande)',
+  offre: 'Effets d\'offre (E5), une ligne par mesure',
   interetsTaux: 'Intérêts : hausse du taux moyen',
   interetsStock: 'Intérêts : dette supplémentaire',
 }

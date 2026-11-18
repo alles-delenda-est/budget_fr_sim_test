@@ -129,7 +129,11 @@ export function leversToInstruments(values, P, nYears, rampOpts) {
     const theta = leverTheta(lever, x, P)
     const aBlocks = { centrales: [], securiteSociale: [], locales: [] }
     for (let t = 0; t <= nYears; t++) for (const b of BLOCKS) aBlocks[b].push(total * shares[b] * ramp(t, rampOpts))
-    out.push({ id: lever.id, source: 'levier', categorie: lever.categorie, aBlocks, theta: Array(nYears + 1).fill(theta) })
+    // x : valeur signée du levier ; start : année (t) d'entrée en vigueur ; sizeByYear : x × rampe, taille de la mesure
+    // dans l'unité du levier (sert à l'effet d'offre E5, voir supply.js).
+    const sizeByYear = Array.from({ length: nYears + 1 }, (_, t) => x * ramp(t, rampOpts))
+    out.push({ id: lever.id, source: 'levier', categorie: lever.categorie, aBlocks, theta: Array(nYears + 1).fill(theta),
+      x, start: rampOpts?.start ?? 1, sizeByYear })
   }
   return out
 }

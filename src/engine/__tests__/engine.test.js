@@ -3,6 +3,7 @@ import { PARAMS, STATUSES, resolveParams } from '../params.js'
 import { LEVERS, LEVER_BY_ID, staticYield, thetaElasticity, leverTheta, BLOCKS } from '../levers.js'
 import { projectScenario, HORIZONS, issuanceRate, deepFreeze } from '../project.js'
 import { TEST_MODULE, validateModuleDefinition } from '../modules.js'
+import { supplyPhase } from '../supply.js'
 
 const P = resolveParams()
 const Y0 = P['base.pib.2025']
@@ -345,5 +346,108 @@ describe('modules', () => {
   })
   it('un module non conforme est refusé', () => {
     expect(validateModuleDefinition({ id: 'x' }).length).toBeGreaterThan(0)
+  })
+})
+
+describe('E5 : forme fonctionnelle de l\'effet d\'offre (σ, σ_hausse / σ_baisse, L, t0)', () => {
+  const yS = (r) => r.total.map((x) => x.yS)
+  it('σ = 0 : résultat identique à l\'absence d\'effet d\'offre', () => {
+    const levers = { tva_normal: 2, is: -2, dep_defense: -10 }
+    const base = projectScenario({ levers })
+    const zero = projectScenario({ levers, sigma: { tva_normal: { sigma: 0, L: 5 }, is: { sigma: 0, L: 0, t0: 3 } } })
+    expect(zero.total).toEqual(base.total)
+    expect(zero.supply.lignes).toEqual([])
+  })
+  it('σ_hausse et σ_baisse : chaque signe du levier prend sa branche', () => {
+    const sigma = { is: { sigmaHausse: 0.5, sigmaBaisse: 0.1, L: 4 } }
+    const up = projectScenario({ levers: { is: 2 }, sigma })
+    const down = projectScenario({ levers: { is: -2 }, sigma })
+    expect(yS(up)[8]).toBeCloseTo((0.5 * 2) / 100, 8)
+    expect(yS(down)[8]).toBeCloseTo((0.1 * -2) / 100, 8)
+  })
+  it('σ seul vaut pour les deux branches', () => {
+    const sigma = { is: { sigma: 0.3, L: 4 } }
+    expect(yS(projectScenario({ levers: { is: 1 }, sigma }))[8]).toBeCloseTo(0.003, 8)
+    expect(yS(projectScenario({ levers: { is: -1 }, sigma }))[8]).toBeCloseTo(-0.003, 8)
+  })
+  it('t0 retarde l\'effet ; la rampe atteint σ × a à τ = L', () => {
+    // mesure en vigueur en 2027 (t = 1) : τ = t − 1
+    const r = projectScenario({ levers: { tva_normal: 1 }, sigma: { tva_normal: { sigma: 1, L: 6, t0: 3 } } })
+    const y = yS(r)
+    expect(y[0]).toBe(0)
+    expect(y[1]).toBe(0)
+    expect(y[4]).toBe(0) // τ = 3 = t0
+    expect(y[5]).toBeCloseTo(0.01 / 3, 8) // τ = 4
+    expect(y[6]).toBeCloseTo((0.01 * 2) / 3, 8)
+    expect(y[7]).toBeCloseTo(0.01, 8) // τ = 6 = L
+    expect(y[10]).toBeCloseTo(0.01, 8) // plateau
+    const r0 = projectScenario({ levers: { tva_normal: 1 }, sigma: { tva_normal: { sigma: 1, L: 5 } } })
+    expect(yS(r0)[5]).toBeCloseTo(0.01 * 0.8, 8) // τ = 4
+    expect(yS(r0)[6]).toBeCloseTo(0.01, 8) // τ = L = 5
+  })
+  it('supplyPhase : bornes, échelon si L ≤ t0, entrées non finies', () => {
+    expect(supplyPhase(-1, 5, 0)).toBe(0)
+    expect(supplyPhase(2.5, 5, 0)).toBe(0.5)
+    expect(supplyPhase(5, 5, 0)).toBe(1)
+    expect(supplyPhase(50, 5, 0)).toBe(1)
+    expect(supplyPhase(8, 35, 8)).toBe(0)
+    expect(supplyPhase(3, 3, 3)).toBe(1) // L = t0 : échelon en t0
+    expect(supplyPhase(2, 3, 3)).toBe(0)
+    expect(supplyPhase(4, 2, 3)).toBe(1) // L < t0 : échelon en t0
+    expect(supplyPhase(0, 0, 0)).toBe(1)
+    expect(supplyPhase(3, 5, -2)).toBeCloseTo(0.6, 10) // t0 négatif ramené à 0
+    for (const bad of [NaN, Infinity, -Infinity, undefined]) {
+      expect(supplyPhase(bad, 5, 0)).toBe(0)
+      expect(supplyPhase(3, bad, 0)).toBe(0)
+      expect(supplyPhase(3, 5, bad === undefined ? 0 : bad)).toBe(bad === undefined ? 0.6 : 0)
+    }
+  })
+  it('L ≤ t0 dans le moteur : échelon en t0, sans NaN', () => {
+    const r = projectScenario({ levers: { tva_normal: 1 }, sigma: { tva_normal: { sigma: 1, L: 0, t0: 2 } } })
+    expect(yS(r).slice(0, 4)).toEqual([0, 0, 0, 0.01])
+    expect(r.total.every((x) => Number.isFinite(x.debt) && Number.isFinite(x.unemployment))).toBe(true)
+  })
+  it('entrées non finies : l\'effet est ignoré', () => {
+    const base = projectScenario({ levers: { tva_normal: 1 } })
+    for (const bad of [{ sigma: NaN, L: 5 }, { sigma: 1, L: NaN }, { sigma: 1, L: Infinity }, { sigma: 1, L: 5, t0: NaN }]) {
+      const r = projectScenario({ levers: { tva_normal: 1 }, sigma: { tva_normal: bad } })
+      expect(r.total.every((x) => Number.isFinite(x.gdp))).toBe(true)
+      expect(yS(r).every(Number.isFinite)).toBe(true)
+    }
+    expect(projectScenario({ levers: { tva_normal: 1 }, sigma: { tva_normal: { sigma: NaN, L: 5 } } }).total).toEqual(base.total)
+  })
+  it('chaque effet non nul est une ligne distincte, étiquetée, avec son cas ; la décomposition reste exacte', () => {
+    const levers = { tva_normal: 2, is: -2 }
+    const sigma = { tva_normal: { sigma: -0.1, L: 5 }, is: { sigma: -0.5, L: 7, t0: 1 } }
+    for (const ysCase of ['bas', 'central', 'haut']) {
+      const r = projectScenario({ levers, sigma, ysCase })
+      expect(r.supply.cas).toBe(ysCase)
+      expect(r.supply.lignes.map((l) => l.id).sort()).toEqual(['is', 'tva_normal'])
+      for (const l of r.supply.lignes) { expect(l.cas).toBe(ysCase); expect(l.libelle.length).toBeGreaterThan(3) }
+      for (let t = 1; t < r.total.length; t++) {
+        const d = r.decomposition[t]
+        expect(d.offre.map((o) => o.id).sort()).toEqual(['is', 'tva_normal'])
+        const s = d.refGrowth + d.refDrift + d.leviers + d.comportement + d.stabilisateurs + d.offre.reduce((a, o) => a + o.montant, 0) + d.interetsTaux + d.interetsStock
+        expect(s).toBeCloseTo(d.total, 8)
+      }
+      const sum = (t) => r.supply.lignes.reduce((a, l) => a + l.yS[t], 0)
+      expect(sum(8)).toBeCloseTo(r.total[8].yS, 12)
+    }
+  })
+  it('sans effet d\'offre, la décomposition n\'a pas de ligne d\'offre', () => {
+    const r = projectScenario({ levers: { is: -2 } })
+    expect(r.decomposition[3].offre).toEqual([])
+  })
+  it('aucun NaN : tous les leviers au minimum et au maximum, trois cas, deux horizons, σ extrêmes', () => {
+    const lo = Object.fromEntries(LEVERS.map((l) => [l.id, l.min]))
+    const hi = Object.fromEntries(LEVERS.map((l) => [l.id, l.max]))
+    const wild = Object.fromEntries(LEVERS.map((l) => [l.id, { sigmaHausse: 3, sigmaBaisse: -3, L: 1, t0: 40 }]))
+    const finiteAll = (o) => JSON.stringify(o, (k, v) => (typeof v === 'number' && !Number.isFinite(v) ? '__NF__' : v)).indexOf('__NF__') === -1
+    for (const horizon of ['dixAns', 'trenteAns']) for (const ysCase of ['bas', 'central', 'haut']) for (const levers of [lo, hi]) for (const sigma of [undefined, wild]) {
+      const r = projectScenario({ levers, horizon, ysCase, sigma })
+      expect(finiteAll(r.total)).toBe(true)
+      expect(finiteAll(r.decomposition.filter(Boolean))).toBe(true)
+      expect(finiteAll(r.supply)).toBe(true)
+    }
   })
 })
