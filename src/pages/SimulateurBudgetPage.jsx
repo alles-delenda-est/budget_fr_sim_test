@@ -14,6 +14,7 @@ import './SimulateurBudgetPage.css'
 
 const P = resolveParams()
 const EPS = P['fisc.eps']
+const EPS_OFFRE = P['fisc.eps_offre']
 const DEFAULT_YEAR_IDX = 5
 
 export default function SimulateurBudgetPage() {
@@ -37,7 +38,7 @@ export default function SimulateurBudgetPage() {
     { titre: 'Année 5', snap: snapshotAt(result, reference, Math.min(5, N)) },
     { titre: 'Fin d\'horizon', snap: snapshotAt(result, reference, N) },
   ], [result, reference, N])
-  const decomposition = useMemo(() => decomposeAtYear(result, reference, yearIdx, EPS), [result, reference, yearIdx])
+  const decomposition = useMemo(() => decomposeAtYear(result, reference, yearIdx, EPS, EPS_OFFRE), [result, reference, yearIdx])
   const blocks = useMemo(() => blocksAt(result, reference, yearIdx), [result, reference, yearIdx])
   const paramIds = useMemo(() => paramIdsFor(values, result), [values, result])
 
@@ -55,7 +56,7 @@ export default function SimulateurBudgetPage() {
   const exportCsv = () => {
     const csv = buildCsv({
       stamp: versionStamp(), url: scenarioUrl(window.location, { values, horizon, ysCase }),
-      horizonLabel: HORIZONS[horizon].label, ysCase, values, rows: buildExportRows(result, reference, EPS),
+      horizonLabel: HORIZONS[horizon].label, ysCase, values, rows: buildExportRows(result, reference, EPS, EPS_OFFRE),
     })
     downloadCsv(csv, `simulateur-budget-${horizon}-${ysCase}.csv`)
   }

@@ -158,6 +158,8 @@ const table = [
     PLACEHOLDER + '0 par défaut (aucun décalage) ; haut = 0,3 arbitraire. Part de l\'économie sur une prestation qui revient par d\'autres dépenses ou des recettes perdues.'),
   p('fisc.eps', 0.6, 0.5, 0.65, 'point de PIB par point d\'écart', 'Commission européenne, Mourre et al. 2019, France ≈ 0,63 (de mémoire ; non relu)', 'de mémoire',
     'Quand le PIB baisse de 1 %, le solde se dégrade d\'environ 0,6 point.'),
+  p('fisc.eps_offre', 0.436, 0.436, 0.522, 'point de PIB par point d\'écart d\'offre', 'Insee, taux de prélèvements obligatoires 2025 : 43,6 % du PIB (comptes nationaux, provisoire, publié le 28/08/2026) ; haut : recettes APU / PIB = (1 714,2 − 152,5) / 2 991 ≈ 0,522 (docs/baseline-data.md)', 'sourcé',
+    'Quand le PIB baisse durablement par l\'offre (moins de travail ou de capital), les recettes proportionnelles au PIB baissent, mais aucune dépense cyclique ne se déclenche : le solde se dégrade du taux de prélèvements obligatoires, soit environ 0,44 point par point de PIB.'),
   p('dette.M', 8.45, 8, 9, 'années', 'AFT, bulletin mensuel d\'août 2026 : 8 ans 163 jours [S12]', 'sourcé',
     'Durée moyenne avant qu\'un emprunt soit renouvelé.'),
   // Taux à l'émission : moyenne pondérée de trois classes (remplace l'ancien i* unique = TEC 10 ans, qui surestimait le coût des BTF).

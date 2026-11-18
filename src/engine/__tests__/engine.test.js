@@ -47,7 +47,7 @@ describe('paramètres', () => {
 describe('étalons statiques (§5)', () => {
   for (const [id, { x, md }] of Object.entries(YARDSTICKS)) {
     it(`${id} restitue son étalon à 0,1 Md€ près`, () => {
-      const r = projectScenario({ levers: { [id]: x }, overrides: { 'fisc.eps': 0 } })
+      const r = projectScenario({ levers: { [id]: x }, overrides: { 'fisc.eps': 0, 'fisc.eps_offre': 0 } })
       const a1 = BLOCKS.reduce((s, b) => s + r.blocks[b][1].leversExAnte, 0) / r.total[1].gdpBase * Y0
       expect(a1).toBeCloseTo(md, 0)
       expect(Math.abs(a1 - md)).toBeLessThan(0.1)
@@ -108,7 +108,7 @@ describe('multiplicateurs (E4)', () => {
       // a = 1 % du PIB, injecté via un module qui porte la catégorie d'instrument (les bornes des leviers natifs sont plus étroites)
       const mod = { ...TEST_MODULE, leviers: [{ ...TEST_MODULE.leviers[0], bornes: [-1, 1] }, TEST_MODULE.leviers[1]],
         calculer: (v, c) => ({ annees: Array.from({ length: c.nYears + 1 }, (_, t) => ({ a: { centrales: t >= 1 ? 0.01 : 0, securiteSociale: 0, locales: 0 }, theta: 0, categorie: l.categorie })) }) }
-      const r = projectScenario({ modules: [{ module: mod, levers: {} }], overrides: { 'fisc.eps': 0 } })
+      const r = projectScenario({ modules: [{ module: mod, levers: {} }], overrides: { 'fisc.eps': 0, 'fisc.eps_offre': 0 } })
       const cum = r.total.slice(1, 11).reduce((s, row) => s - row.yD / 0.01, 0) / 10
       expect(cum).toBeLessThan(m)
       expect(cum).toBeCloseTo((m * (1 - lambda ** 10)) / ((1 - lambda) * 10), 6)
@@ -269,7 +269,7 @@ describe('modules', () => {
     expect(validateModuleDefinition(TEST_MODULE)).toEqual([])
   })
   it('ses sorties atterrissent dans le bon bloc', () => {
-    const o = { 'fisc.eps': 0 }
+    const o = { 'fisc.eps': 0, 'fisc.eps_offre': 0 }
     const base = projectScenario({ overrides: o })
     const r = projectScenario({ overrides: o, modules: [{ module: TEST_MODULE, levers: { taille: 0.4 } }] })
     const Yb = base.total[1].gdpBase
@@ -534,14 +534,14 @@ describe('assurance chômage : levier de dépense actif', () => {
   })
   it('plus de générosité = plus de dépense, dans le seul bloc sécurité sociale ; resserrement = économie', () => {
     const base = projectScenario({})
-    const more = projectScenario({ levers: { travail_assurance_chomage: 10 }, overrides: { 'fisc.eps': 0 } })
-    const less = projectScenario({ levers: { travail_assurance_chomage: -10 }, overrides: { 'fisc.eps': 0 } })
+    const more = projectScenario({ levers: { travail_assurance_chomage: 10 }, overrides: { 'fisc.eps': 0, 'fisc.eps_offre': 0 } })
+    const less = projectScenario({ levers: { travail_assurance_chomage: -10 }, overrides: { 'fisc.eps': 0, 'fisc.eps_offre': 0 } })
     const Yb = more.total[2].gdpBase
     expect(more.blocks.securiteSociale[2].leversExAnte / Yb * Y0).toBeCloseTo(-3.72, 6)
     expect(less.blocks.securiteSociale[2].leversExAnte / Yb * Y0).toBeCloseTo(3.72, 6)
     for (const r of [more, less]) for (const b of ['centrales', 'locales']) expect(r.blocks[b][2].leversExAnte).toBe(0)
-    expect(more.total[3].balance).toBeLessThan(projectScenario({ overrides: { 'fisc.eps': 0 } }).total[3].balance)
-    expect(less.total[3].balance).toBeGreaterThan(projectScenario({ overrides: { 'fisc.eps': 0 } }).total[3].balance)
+    expect(more.total[3].balance).toBeLessThan(projectScenario({ overrides: { 'fisc.eps': 0, 'fisc.eps_offre': 0 } }).total[3].balance)
+    expect(less.total[3].balance).toBeGreaterThan(projectScenario({ overrides: { 'fisc.eps': 0, 'fisc.eps_offre': 0 } }).total[3].balance)
     expect(base.supply.lignes).toEqual([])
   })
   it('effet d\'offre : un resserrement de 10 % donne +0,05 / +0,12 / +0,22 % du PIB après 3 ans ; plus de générosité, l\'inverse', () => {
@@ -721,8 +721,8 @@ describe('σ des leviers fiscaux : calculé depuis les paramètres (docs/sigma-f
     const netOwn = row2.byInstrument.ir.exPost - ownLoss
     expect(row2.yS).toBeLessThan(0)
     expect(netOwn).toBeGreaterThan(0)
-    // Avec TOUTES les recettes qui suivent le PIB (stabilisateurs ε = 0,6, E7), la recette nette de l'IR à e_L = 0,20 est proche de zéro
-    // (voir le rapport de la PR : seuil de rentabilité vers e_L ≈ 0,18) ; on vérifie seulement qu'elle est finie et au-dessus de celle de e_L = 0,40.
+    // Avec TOUTES les recettes qui suivent le PIB (effet d'offre passé au solde par ε_offre = taux de prélèvements obligatoires, E7, D13),
+    // le seuil de rentabilité de l'IR se déplace (voir le rapport de la PR) ; on vérifie seulement qu'elle est finie et au-dessus de celle de e_L = 0,40.
     const dPrimary2 = row2.primaryBalance - ref.total[t].primaryBalance
     expect(Number.isFinite(dPrimary2)).toBe(true)
     expect(dPrimary2).toBeGreaterThan(dPrimary)

@@ -8,12 +8,23 @@ import { SUPPLY_BY_LEVER } from '../../engine/supply.js'
 const NF = (d) => new Intl.NumberFormat('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d })
 const FORMATS = { 0: NF(0), 1: NF(1), 2: NF(2), 3: NF(3) }
 
-/** Nombre au format français ; « — » si la valeur n'est pas un nombre fini (jamais de NaN affiché). */
+/** Seuil à partir duquel `fmt` abrège (en valeur absolue arrondie) : « 12,3 k » au-delà de 10 000, notation « 1,23e12 » au-delà de 1 million. */
+export const FMT_COMPACT_FROM = 1e4
+
+/**
+ * Nombre au format français ; « — » si la valeur n'est pas un nombre fini (jamais de NaN affiché).
+ * Les très grandes valeurs sont abrégées pour tenir dans une carte de 375 px (12 caractères au plus, signe compris) :
+ * de 10 000 à 1 million, « 12,3 k » (milliers, une décimale) ; au-delà, « 1,23e12 ». L'unité (Md€, %) est ajoutée par l'appelant.
+ */
 export function fmt(v, decimals = 1, { signed = false } = {}) {
   if (typeof v !== 'number' || !Number.isFinite(v)) return '—'
   const rounded = Number(v.toFixed(decimals))
-  const s = FORMATS[decimals].format(Math.abs(rounded) < 1e-9 ? 0 : rounded)
-  return signed && rounded > 0 ? `+${s}` : s
+  const abs = Math.abs(rounded)
+  const plus = signed && rounded > 0 ? '+' : ''
+  if (abs >= 1e6) return `${plus}${rounded.toExponential(2).replace('.', ',').replace('e+', 'e')}`
+  if (abs >= FMT_COMPACT_FROM) return `${plus}${FORMATS[1].format(rounded / 1e3)} k`
+  const s = FORMATS[decimals].format(abs < 1e-9 ? 0 : rounded)
+  return `${plus}${s}`
 }
 
 /** Valeur numérique finie ou null (les graphiques laissent un trou plutôt que d'afficher NaN). */
@@ -97,9 +108,11 @@ export function deltaTone(delta, lowerIsBetter) {
  * Décomposition, en Md€, de l'écart de solde (scénario − référence) l'année t. Exacte : la somme des lignes
  * (avant masquage) égale `ecart`. Niveaux, non variations annuelles : mesure ex ante, réaction des contribuables,
  * demande (stabilisateurs), effets d'offre (un par mesure et par cas), intérêts (taux et dette supplémentaire).
- * @param {number} eps  paramètre fisc.eps : les stabilisateurs jouent sur l'écart de PIB total (E7)
+ * @param {number} eps  paramètre fisc.eps : passage au solde de l'écart de PIB dû à la demande (E7)
+ * @param {number} epsOffre  paramètre fisc.eps_offre (taux de prélèvements obligatoires, D13) : passage au solde de chaque effet d'offre ;
+ *   doit être le même que dans le moteur pour que la décomposition reste exacte
  */
-export function decomposeAtYear(result, reference, t, eps) {
+export function decomposeAtYear(result, reference, t, eps, epsOffre) {
   const tot = result.total[t]
   const lines = []
   for (const [id, v] of Object.entries(tot.byInstrument)) {
@@ -109,7 +122,7 @@ export function decomposeAtYear(result, reference, t, eps) {
   }
   let offreTotal = 0
   const offreLines = result.supply.lignes.map((l) => {
-    const montant = eps * l.yS[t] * tot.gdpBase
+    const montant = epsOffre * l.yS[t] * tot.gdpBase
     offreTotal += montant
     const titre = LEVER_BY_ID[l.id]?.titre ?? l.libelle
     // Effet d'offre non validé (IR) : le libellé le dit, pour que le relecteur le voie dans la décomposition.
@@ -145,7 +158,7 @@ export function blocksAt(result, reference, t) {
 
 /** Identifiants de paramètres à expliquer pour les leviers actifs et les effets d'offre affichés. */
 export function paramIdsFor(values, result) {
-  const ids = ['dem.lambda', 'fisc.eps', 'emploi.kappa', 'dette.M', 'dette.beta']
+  const ids = ['dem.lambda', 'fisc.eps', 'fisc.eps_offre', 'emploi.kappa', 'dette.M', 'dette.beta']
   for (const l of LEVERS) {
     if (!values?.[l.id]) continue
     if (l.theta) ids.push(l.theta.id, l.theta.tau0)

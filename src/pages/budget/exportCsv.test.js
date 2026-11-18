@@ -4,6 +4,7 @@ import { PARAM_BY_ID } from '../../engine/params.js'
 import { csvNumber, csvText, buildExportRows, buildCsv, COLUMNS } from './exportCsv.js'
 
 const EPS = PARAM_BY_ID['fisc.eps'].value
+const EPS_OFFRE = PARAM_BY_ID['fisc.eps_offre'].value
 const levers = { tva_normal: 3, ir: -10 }
 const scen = (l, ysCase = 'central') => ({
   r: projectScenario({ levers: l, horizon: 'dixAns', ysCase }), ref: projectScenario({ levers: {}, horizon: 'dixAns', ysCase }),
@@ -27,7 +28,7 @@ describe('formats CSV', () => {
 
 describe('buildCsv', () => {
   const { r, ref } = scen(levers)
-  const rows = buildExportRows(r, ref, EPS)
+  const rows = buildExportRows(r, ref, EPS, EPS_OFFRE)
   const csv = buildCsv({ stamp: 'v0.0.0 · abc1234 · 2026-12-01', url: 'https://x.test/#/budget?h=dixAns&cas=central&tva_normal=3&ir=-10', horizonLabel: '10 ans', ysCase: 'central', values: levers, rows })
   const lines = csv.slice(1).split('\r\n')
 
@@ -63,14 +64,14 @@ describe('buildCsv', () => {
   })
   it('sans levier : mention explicite et écarts nuls', () => {
     const { r: r0, ref: ref0 } = scen({})
-    const out = buildCsv({ stamp: 's', url: 'u', horizonLabel: 'h', ysCase: 'central', values: {}, rows: buildExportRows(r0, ref0, EPS) })
+    const out = buildCsv({ stamp: 's', url: 'u', horizonLabel: 'h', ysCase: 'central', values: {}, rows: buildExportRows(r0, ref0, EPS, EPS_OFFRE) })
     expect(out).toContain('Aucun levier actif')
-    for (const row of buildExportRows(r0, ref0, EPS)) expect(Math.abs(row[11])).toBeLessThan(1e-9)
+    for (const row of buildExportRows(r0, ref0, EPS, EPS_OFFRE)) expect(Math.abs(row[11])).toBeLessThan(1e-9)
   })
   it('tient sur des leviers extrêmes et les trois cas sans NaN', () => {
     for (const ysCase of ['bas', 'central', 'haut']) {
       const { r: a, ref: b } = scen({ tva_normal: 5, ir: -30, dep_enseignement: -50 }, ysCase)
-      const out = buildCsv({ stamp: 's', url: 'u', horizonLabel: 'h', ysCase, values: {}, rows: buildExportRows(a, b, EPS) })
+      const out = buildCsv({ stamp: 's', url: 'u', horizonLabel: 'h', ysCase, values: {}, rows: buildExportRows(a, b, EPS, EPS_OFFRE) })
       expect(out).not.toMatch(/NaN|Infinity/)
     }
   })

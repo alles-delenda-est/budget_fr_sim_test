@@ -230,7 +230,7 @@ describe(`tests aléatoires (graine de base ${BASE_SEED})`, () => {
     })
   })
 
-  it('07 [seed +7] fmt et assimilés sur nombres aléatoires, ±Infinity, NaN, 1e-12, 1e12, -0 : jamais « NaN », « Infinity » ou « undefined », sortie ≤ 16 caractères', () => {
+  it('07 [seed +7] fmt et assimilés sur nombres aléatoires, ±Infinity, NaN, 1e-12, 1e12, -0 : jamais « NaN », « Infinity » ou « undefined », sortie ≤ 16 caractères (≤ 12 pour toute valeur finie)', () => {
     const specials = [NaN, Infinity, -Infinity, 1e-12, -1e-12, 1e12, -1e12, -0, 0, 1e9, -1e9, 123456.789, undefined, null, '12', {}]
     const bad = /NaN|Infinity|undefined/
     forCases('07', BASE_SEED + 7, 200, (rng, c) => {
@@ -243,16 +243,17 @@ describe(`tests aléatoires (graine de base ${BASE_SEED})`, () => {
         expect(typeof out).toBe('string')
         expect(out).not.toMatch(bad)
       }
-      // Borne de 16 caractères (carte de 375 px) pour |v| < 1e9, bien au-delà de toute valeur du moteur (dette ≈ 1e4 Md€).
-      // Au-delà (1e12, par exemple), fmt n'abrège pas : « +796 410 640 701,652 » fait 20 caractères (limite documentée dans la PR).
-      if (typeof v !== 'number' || Math.abs(v) < 1e9) expect(fmt(v, dec, { signed }).length, `fmt(${v}, ${dec}) = « ${fmt(v, dec, { signed })} »`).toBeLessThanOrEqual(16)
-      else expect(fmt(v, dec, { signed }).length).toBeLessThanOrEqual(22)
+      // Borne de 16 caractères (carte de 375 px) pour toute valeur finie ; fmt abrège au-delà de 10 000 et tient en fait en 12 caractères.
+      const shown = fmt(v, dec, { signed })
+      if (typeof v !== 'number' || Number.isFinite(v)) expect(shown.length, `fmt(${v}, ${dec}) = « ${shown} »`).toBeLessThanOrEqual(16)
+      if (Number.isFinite(v)) expect(shown.length, `fmt(${v}, ${dec}) = « ${shown} »`).toBeLessThanOrEqual(12)
       if (Object.is(v, -0)) expect(fmt(v, dec)).not.toMatch(/-/)
     })
   })
 
   it('08 [seed +8] décomposition d\'une année : libellés non vides, lignes finies, lignes sous le seuil masquées, visibles + masquées = écart total', () => {
     const eps = P0['fisc.eps']
+    const epsO = P0['fisc.eps_offre']
     forCases('08', BASE_SEED + 8, 150, (rng, c) => {
       const levers = rng() < 0.3 ? extremeMixLevers(rng) : randomLevers(rng)
       const horizon = pick(rng, HORIZON_IDS)
@@ -260,7 +261,7 @@ describe(`tests aléatoires (graine de base ${BASE_SEED})`, () => {
       const r = projectScenario({ levers, horizon, ysCase })
       const t = Math.floor(rng() * r.years.length)
       c.info = { levers, horizon, ysCase, t }
-      const d = decomposeAtYear(r, REFERENCE_FOR(horizon), t, eps)
+      const d = decomposeAtYear(r, REFERENCE_FOR(horizon), t, eps, epsO)
       const shown = visibleLines(d.lines)
       const hidden = d.lines.filter((l) => !shown.includes(l))
       for (const l of d.lines) {
@@ -400,6 +401,7 @@ describe(`tests aléatoires (graine de base ${BASE_SEED})`, () => {
 
   it('16 [seed +16] export CSV : nombre de lignes, cellules par ligne, virgules décimales relues, aucune cellule d\'injection (=, +, @, - non numérique)', () => {
     const eps = P0['fisc.eps']
+    const epsO = P0['fisc.eps_offre']
     const numeric = /^-?\d+(,\d+)?$/
     forCases('16', BASE_SEED + 16, 60, (rng, c) => {
       const levers = rng() < 0.3 ? extremeMixLevers(rng) : randomLevers(rng)
@@ -407,7 +409,7 @@ describe(`tests aléatoires (graine de base ${BASE_SEED})`, () => {
       const ysCase = pick(rng, CASES)
       c.info = { levers, horizon, ysCase }
       const r = projectScenario({ levers, horizon, ysCase })
-      const rows = buildExportRows(r, REFERENCE_FOR(horizon), eps)
+      const rows = buildExportRows(r, REFERENCE_FOR(horizon), eps, epsO)
       const csv = buildCsv({ stamp: 'test', url: `https://exemple.test/#/budget?${encodeScenario({ values: levers, horizon, ysCase })}`, horizonLabel: HORIZONS[horizon].label, ysCase, values: levers, rows })
       expect(csv.startsWith('﻿')).toBe(true)
       const lines = csv.slice(1).split('\r\n')
