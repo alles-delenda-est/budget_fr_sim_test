@@ -27,7 +27,25 @@ export function supplyPhase(tau, L, t0 = 0) {
  * `sigma` : id du paramètre (bas / central / haut) en % du PIB par unité du levier ; `sigmaBaisse` : id facultatif pour une baisse
  * du levier (sinon σ_baisse = σ) ; `scale(P)` : facteur de conversion appliqué à σ (défaut 1).
  */
-export const SUPPLY_EFFECTS = []
+export const SUPPLY_EFFECTS = [
+  { lever: 'dep_enseignement', libelle: 'Enseignement : capital humain à long terme',
+    sigma: 'offre.sigma.enseignement', L: 'offre.lag.enseignement', t0: 'offre.t0.enseignement' },
+  { lever: 'tva_normal', libelle: 'TVA (taux normal) : effet d\'offre du seul relèvement',
+    sigma: 'offre.sigma.tva', L: 'offre.lag.tva', t0: 'offre.t0.tva' },
+  { lever: 'tva_tous_taux', libelle: 'TVA (tous taux) : effet d\'offre du seul relèvement',
+    sigma: 'offre.sigma.tva', L: 'offre.lag.tva', t0: 'offre.t0.tva',
+    scale: (P) => P['rend.tva_tous_taux'] / P['rend.tva_normal'] },
+  { lever: 'travail_assurance_chomage', libelle: 'Assurance chômage : retour à l\'emploi',
+    sigma: 'offre.sigma.assurance_chomage', L: 'offre.lag.assurance_chomage', t0: 'offre.t0.assurance_chomage' },
+  { lever: 'ir', libelle: 'Impôt sur le revenu : effet d\'offre',
+    sigma: 'offre.sigma.ir', L: 'offre.lag.ir', t0: 'offre.t0.ir' },
+  { lever: 'is', libelle: 'Impôt sur les sociétés : effet d\'offre',
+    sigma: 'offre.sigma.is', L: 'offre.lag.is', t0: 'offre.t0.is' },
+  { lever: 'cotis_patronales', libelle: 'Cotisations patronales : effet d\'offre',
+    sigma: 'offre.sigma.cotis', L: 'offre.lag.cotis', t0: 'offre.t0.cotis' },
+  { lever: 'csg', libelle: 'CSG : effet d\'offre',
+    sigma: 'offre.sigma.csg', L: 'offre.lag.csg', t0: 'offre.t0.csg' },
+]
 export const SUPPLY_BY_LEVER = Object.fromEntries(SUPPLY_EFFECTS.map((e) => [e.lever, e]))
 
 // Triplet { low, value, high } d'un paramètre : value suit les remplacements éventuels, low et high le catalogue.

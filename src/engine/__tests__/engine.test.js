@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { PARAMS, STATUSES, resolveParams } from '../params.js'
+import { PARAMS, PARAM_BY_ID, STATUSES, resolveParams } from '../params.js'
 import { LEVERS, LEVER_BY_ID, staticYield, thetaElasticity, leverTheta, BLOCKS } from '../levers.js'
 import { projectScenario, HORIZONS, issuanceRate, deepFreeze } from '../project.js'
 import { TEST_MODULE, validateModuleDefinition } from '../modules.js'
@@ -448,6 +448,68 @@ describe('E5 : forme fonctionnelle de l\'effet d\'offre (σ, σ_hausse / σ_bais
       expect(finiteAll(r.total)).toBe(true)
       expect(finiteAll(r.decomposition.filter(Boolean))).toBe(true)
       expect(finiteAll(r.supply)).toBe(true)
+    }
+  })
+})
+
+describe('paramètres d\'offre décidés le 17 novembre (offre.sigma.*, offre.lag.*, offre.t0.*)', () => {
+  const yS = (r) => r.total.map((x) => x.yS)
+  const triple = (id) => [PARAM_BY_ID[id].low, PARAM_BY_ID[id].value, PARAM_BY_ID[id].high]
+  it('valeurs bas / central / haut, délais L et t0', () => {
+    const edHaut = (0.8 * LEVER_BY_ID.dep_enseignement.rendement(P)) / (P['base.pib.2025'] / 100) // 0,8 % du PIB par point de PIB -> par % de la ligne
+    expect(triple('offre.sigma.enseignement')).toEqual([0, 0, edHaut])
+    expect(edHaut).toBeCloseTo(0.03985, 4)
+    expect([P['offre.lag.enseignement'], P['offre.t0.enseignement']]).toEqual([35, 8])
+    expect(triple('offre.sigma.tva')).toEqual([-0.10, 0, 0])
+    expect(P['offre.lag.tva']).toBe(5)
+    expect(triple('offre.sigma.age_legal')).toEqual([0.15, 0.30, 0.50])
+    expect([P['offre.lag.age_legal'], P['offre.t0.age_legal']]).toEqual([6, 0])
+    expect(triple('offre.sigma.lvt')).toEqual([0.10, 0.20, 0.45])
+    expect([P['offre.lag.lvt'], P['offre.t0.lvt']]).toEqual([12, 1])
+    for (const id of ['ir', 'is', 'cotis', 'csg']) expect(triple(`offre.sigma.${id}`)).toEqual([0, 0, 0])
+  })
+  it('éducation : centre et bas nuls, haut non nul ; effet retardé de t0 = 8 ans puis lent', () => {
+    const run = (ysCase, levers = { dep_enseignement: 10 }) => projectScenario({ levers, horizon: 'trenteAns', ysCase })
+    expect(run('central').supply.lignes).toEqual([])
+    expect(run('bas').supply.lignes).toEqual([])
+    const h = run('haut')
+    expect(h.supply.lignes.map((l) => l.id)).toEqual(['dep_enseignement'])
+    const sig = PARAM_BY_ID['offre.sigma.enseignement'].high
+    expect(yS(h)[9]).toBe(0) // τ = 8 = t0
+    expect(yS(h)[10]).toBeCloseTo((sig * 10 / 100) * (1 / 27), 10)
+    expect(yS(h)[30]).toBeCloseTo((sig * 10 / 100) * (21 / 27), 10)
+    // hausse de la dépense : PIB plus haut ; baisse : PIB plus bas (symétrique)
+    expect(yS(h)[30]).toBeGreaterThan(0)
+    // pour une baisse, le cas « bas » (PIB le plus bas) est celui qui porte la perte
+    expect(yS(run('bas', { dep_enseignement: -10 }))[30]).toBeCloseTo(-(sig * 10 / 100) * (21 / 27), 10)
+    expect(yS(run('haut', { dep_enseignement: -10 }))[30]).toBe(0)
+  })
+  it('TVA : centre nul ; bas négatif pour un relèvement ; « tous taux » mis à l\'échelle des rendements', () => {
+    const run = (levers, ysCase) => projectScenario({ levers, ysCase })
+    expect(run({ tva_normal: 1 }, 'central').supply.lignes).toEqual([])
+    expect(yS(run({ tva_normal: 1 }, 'bas'))[6]).toBeCloseTo(-0.001, 10) // τ = 5 = L
+    expect(yS(run({ tva_normal: 1 }, 'bas'))[3]).toBeCloseTo(-0.001 * 0.4, 10) // τ = 2
+    expect(yS(run({ tva_tous_taux: 1 }, 'bas'))[6]).toBeCloseTo(-0.001 * (P['rend.tva_tous_taux'] / P['rend.tva_normal']), 10)
+    expect(yS(run({ tva_normal: 1 }, 'haut'))[6]).toBe(0)
+    // baisse du taux : le cas « bas » reste le PIB le plus bas (aucun gain), « haut » porte le gain symétrique
+    expect(yS(run({ tva_normal: -1 }, 'bas'))[6]).toBe(0)
+    expect(yS(run({ tva_normal: -1 }, 'haut'))[6]).toBeCloseTo(0.001, 10)
+  })
+  it('leviers fiscaux : σ = 0 par défaut, mais la forme E5 porte une valeur si on la fournit', () => {
+    for (const [id, x] of [['ir', 5], ['is', -2], ['cotis_patronales', 1], ['csg', 1]]) {
+      expect(projectScenario({ levers: { [id]: x } }).supply.lignes).toEqual([])
+    }
+    const r = projectScenario({ levers: { is: -2 }, overrides: { 'offre.sigma.is': 0.15 } })
+    expect(r.supply.lignes.map((l) => l.id)).toEqual(['is'])
+    expect(yS(r)[8]).toBeCloseTo((0.15 * -2) / 100, 10) // L = 7, t0 = 1 : τ = 7 -> plein effet
+    expect(yS(r)[2]).toBe(0) // τ = 1 = t0
+  })
+  it('chaque effet d\'offre du registre est une ligne étiquetée avec cas et source', () => {
+    for (const id of Object.keys(P).filter((k) => k.startsWith('offre.sigma.') && k !== 'offre.sigma.defaut')) {
+      const q = PARAM_BY_ID[id]
+      expect(q.unit).toMatch(/PIB/)
+      expect(q.source.length).toBeGreaterThan(10)
+      expect(q.explanation.length).toBeGreaterThan(20)
     }
   })
 })

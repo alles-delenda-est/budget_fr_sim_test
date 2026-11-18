@@ -191,6 +191,53 @@ const table = [
     'Solde primaire de 2026 en point de départ (le solde hors intérêts, avant toute mesure nouvelle).'),
 ]
 
+// ---------- 4bis. Effets d'offre (E5, note de modèle) : σ par mesure, délai de montée en charge L et délai de grâce t0 ----------
+// σ : effet de long terme sur le niveau du PIB, en % du PIB par unité du levier (voir src/engine/supply.js).
+// Valeurs : revue de preuves Gemini (docs/review-supply-effects-gemini.md), après les corrections et les décisions de Patrick du 17 novembre 2026.
+// Les études citées par Gemini n'ont été lues que sur résumé ou synthèse ; les sources de 2026 ne sont pas vérifiées.
+const GEM = 'Revue de preuves Gemini (docs/review-supply-effects-gemini.md, 17 nov. 2026 ; études lues sur résumé ou synthèse seulement)'
+const LAG_SRC = `${GEM} : délai de montée en charge proposé par Gemini, non vérifié`
+const lag = (id, v, lib) => p(`offre.lag.${id}`, v, v, v, 'années', LAG_SRC, 'non validé',
+  `Nombre d'années après l'entrée en vigueur de la mesure pour atteindre l'effet d'offre complet (${lib}).`)
+const t0 = (id, v, lib) => p(`offre.t0.${id}`, v, v, v, 'années', LAG_SRC, 'non validé',
+  `Délai de grâce avant que l'effet d'offre ne démarre (${lib}).`)
+const PRIOR = 'Valeur en attente de l\'accord de Patrick (décision 3 du 17 nov. : σ non nul déduit de la part « activité réelle » de θ ; les valeurs hautes de Gemini servent de plafond)'
+
+// Éducation : Gemini donne 0 / +0,8 / +2,5 % du PIB par point de PIB de dépense ; Patrick retient 0 / 0 / +0,8.
+// Conversion en % du PIB par % de la ligne : 1 % de la ligne = 149/100 Md€ (COFOG 2024, base.cofog.enseignement) ; 1 point de PIB = 2 991/100 Md€ (base.pib.2025).
+const SIGMA_ENS_HAUT = 0.8 * (149 / 100) / (2991 / 100)
+
+const offre = [
+  p('offre.sigma.enseignement', 0, 0, SIGMA_ENS_HAUT, '% du PIB (niveau) par % de la ligne', `${GEM}, n° 9 ; Bénabou, Kramarz et Prost (2009) ; DEPP 2026 (non vérifié) ; Jackson, Johnson et Persico (2016). Gemini : 0 / +0,8 / +2,5 par point de PIB de dépense ; fourchette retenue par Patrick (17 nov.) : 0 / 0 / +0,8. Conversion : 0,8 × 1,49 / 29,91 = 0,0399`, 'sourcé (fourchette), centre choisi',
+    'Effet de long terme sur le niveau du PIB d\'une hausse de 1 % de la ligne « enseignement » (capital humain), symétrique pour une baisse. Le centre est nul parce que le levier n\'est pas ciblé (variation uniforme de la dépense) et que les évaluations françaises ne montrent pas d\'effet durable ; le haut suppose une dépense bien ciblée. Conversion : 1 % de la ligne = 1,49 Md€ = 0,0498 % du PIB, donc 0,8 % du PIB par point de PIB de dépense vaut 0,8 × 0,0498 = 0,040 % du PIB par % de la ligne. Effet attendu après 35 ans, à partir de 8 ans.'),
+  lag('enseignement', 35, 'génération entière arrivée sur le marché du travail'), t0('enseignement', 8, 'durée de la scolarité avant les premiers effets'),
+  p('offre.sigma.tva', 0, -0.10, 0, '% du PIB (niveau) par point de taux normal', `${GEM}, n° 6 (branche « relèvement seul » de la TVA sociale : Gemini donne −0,20 à 0, centre 0 ou −0,10) ; Bozio et al. (2024) ; Carbonnier et al. (2022). Bas −0,10, centre 0, haut 0 : choix de Patrick (17 nov.)`, 'sourcé (fourchette), centre choisi',
+    'Effet de long terme sur le niveau du PIB d\'un relèvement de 1 point du taux normal de TVA, pris seul (sans la baisse de cotisations de la « TVA sociale », que le levier de cotisations compte à part). Le bas est négatif car l\'indexation et les négociations salariales effacent l\'avantage de coût ; le centre est nul. La valeur s\'applique en symétrique à une baisse. Pour le levier « tous taux », le bas est multiplié par le rapport des rendements rend.tva_tous_taux / rend.tva_normal (11,4 / 7,5 = 1,52, soit −0,152 par point).'),
+  lag('tva', 5, 'érosion de l\'avantage de coût par l\'indexation'), t0('tva', 0, 'effet dès l\'entrée en vigueur'),
+  p('offre.sigma.age_legal', 0.30, 0.15, 0.50, '% du PIB (niveau) par année d\'âge légal', `${GEM}, n° 1 ; Rabaté et Rochut (2020) ; Dubois et Koubi (2017) ; Hairault, Sopraseuth et Langot (2010). Gemini : +0,25 / +0,45 / +0,60. Fourchette retenue par Patrick (17 nov.) : +0,15 / +0,30 / +0,50`, 'sourcé (fourchette), centre choisi',
+    'Effet de long terme sur le niveau du PIB d\'un relèvement d\'un an de l\'âge légal de départ en retraite, via l\'emploi des seniors. Le centre (+0,30) est choisi sous celui de Gemini (+0,45), qui vient de la réforme de 2010 : à l\'époque la marge était de 60 ans, alors qu\'elle est aujourd\'hui de 62 ans et 9 mois, où moins de personnes sont encore en emploi. Pas encore branché sur un levier du moteur (aucune entrée d\'âge légal) : paramètre seul.'),
+  lag('age_legal', 6, 'montée en charge des cohortes concernées'), t0('age_legal', 0, 'effet dès l\'entrée en vigueur'),
+  p('offre.sigma.lvt', 0.20, 0.10, 0.45, '% du PIB (niveau), remplacement complet', `${GEM}, n° 15 (Gemini : +0,10 / +0,30 / +0,60 pour le remplacement des DMTO et de la taxe foncière) ; Patrick (17 nov.) : taxe foncière seule, sans les DMTO, +0,10 / +0,20 / +0,45`, 'sourcé (fourchette), centre choisi',
+    'Effet de long terme sur le niveau du PIB du remplacement intégral de la taxe foncière par une taxe sur la valeur du sol, à rendement égal et sans toucher aux droits de mutation. Paramètre destiné au module LVT. La moitié haute de la fourchette suppose un assouplissement des règles d\'urbanisme.'),
+  lag('lvt', 12, 'ajustement du bâti et de l\'usage des sols'), t0('lvt', 1, 'effet à partir de la deuxième année'),
+  p('offre.sigma.assurance_chomage', -0.012, -0.005, -0.022, '% du PIB (niveau) par % de la ligne (plus de générosité)', `${GEM}, n° 10 ; Le Barbanchon, Rathelot et Roulet (2019) ; Le Bihan et Fabre (2026, non vérifié). Gemini : +0,05 / +0,12 / +0,22 par resserrement de 10 % ; divisé par 10 et de signe opposé pour 1 % de générosité en plus`, 'sourcé (fourchette), centre choisi',
+    'Effet de long terme sur le niveau du PIB de 1 % de générosité en plus de l\'assurance chômage (durée ou taux de remplacement) : −0,012 au centre, donc +0,12 % du PIB pour un resserrement de 10 %. L\'effet passe par le retour plus rapide à l\'emploi, net de l\'effet d\'éviction entre demandeurs d\'emploi. Symétrique : un assouplissement réduit le PIB. Les cas bas / haut se lisent sur le résultat (le plus faible et le plus fort effet).'),
+  lag('assurance_chomage', 3, 'retour à l\'emploi des chômeurs'), t0('assurance_chomage', 0, 'effet dès l\'entrée en vigueur'),
+  // Leviers fiscaux : σ = 0 en attendant l'accord de Patrick ; la forme E5 peut déjà porter leurs valeurs (surcharger le paramètre central).
+  p('offre.sigma.ir', 0, 0, 0, '% du PIB (niveau) par % du produit', `${GEM}, n° 5 (Gemini : 0 / 0 / +0,03 par point de taux marginal supérieur) ; ${PRIOR}`, 'non validé',
+    'Effet d\'offre de l\'impôt sur le revenu : nul en attendant la décision.'),
+  lag('ir', 5, 'IR'), t0('ir', 0, 'IR'),
+  p('offre.sigma.is', 0, 0, 0, '% du PIB (niveau) par point de taux', `${GEM}, n° 4 (Gemini : 0 / 0 / +0,15 par point) ; ${PRIOR}`, 'non validé',
+    'Effet d\'offre de l\'impôt sur les sociétés : nul en attendant la décision.'),
+  lag('is', 7, 'IS'), t0('is', 1, 'IS'),
+  p('offre.sigma.cotis', 0, 0, 0, '% du PIB (niveau) par point de taux', `${GEM}, n° 2 et 3 (Gemini : 0 / 0 / +0,35 par % de PIB pour toutes les rémunérations) ; ${PRIOR}`, 'non validé',
+    'Effet d\'offre des cotisations patronales : nul en attendant la décision.'),
+  lag('cotis', 5, 'cotisations'), t0('cotis', 0, 'cotisations'),
+  p('offre.sigma.csg', 0, 0, 0, '% du PIB (niveau) par point de taux', `Pas de revue dédiée dans ${GEM} ; ${PRIOR}`, 'non validé',
+    'Effet d\'offre de la CSG : nul en attendant la décision.'),
+  lag('csg', 5, 'CSG ; valeur par défaut empruntée aux autres impôts, sans source propre'), t0('csg', 0, 'CSG'),
+]
+
 // ---------- 3.1 Rendements statiques (étalons) et taux avant réforme ----------
 const rend = [
   p('rend.tva_normal', 7.5, null, null, 'Md€ par point', 'DG Trésor 2025, repris par Vie-publique [S9]', 'sourcé', 'Un point de TVA au taux normal rapporte environ 7,5 Md€.'),
@@ -211,7 +258,7 @@ const rend = [
   p('comp.tau0.is', 25, null, null, '%', 'PLF 2026, Voies et moyens, tome I, p. 18', 'sourcé', 'Taux normal de l\'impôt sur les sociétés avant réforme.'),
 ]
 
-export const PARAMS = [...baseMacro, ...baseBlocs, ...partsBlocs, ...COFOG, ...table, ...rend, ...comparators]
+export const PARAMS = [...baseMacro, ...baseBlocs, ...partsBlocs, ...COFOG, ...table, ...offre, ...rend, ...comparators]
 
 export const PARAM_BY_ID = Object.fromEntries(PARAMS.map((q) => [q.id, q]))
 if (Object.keys(PARAM_BY_ID).length !== PARAMS.length) throw new Error('params: identifiants dupliqués')
