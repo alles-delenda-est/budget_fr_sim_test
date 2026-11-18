@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { WARNING_THRESHOLDS as W } from '../../config.js'
 import { projectScenario } from '../../engine/project.js'
 import { LEVERS } from '../../engine/levers.js'
-import { evaluateWarnings, interestShareOfRevenue, tier1Text, tier2Text, splitSeriesAtYear, visibleDomain } from './warnings.js'
+import { fmt } from './helpers.js'
+import { evaluateWarnings, interestShareOfRevenue, tier1Text, tier2Text, TIER2_EXPLANATION, splitSeriesAtYear, visibleDomain } from './warnings.js'
 
 /** Trajectoire synthétique : une ligne par année avec dette (en fraction du PIB), intérêts et recettes en Md€. */
 const row = (year, debtPct, { interest = 100, revenue = 1000, interestPct = 5, balancePct = -5 } = {}) =>
@@ -63,9 +64,12 @@ describe('textes', () => {
     const a = tier2Text({ year: 2044, debtPct: 521, interestSharePct: 53.3 })
     expect(a).toContain('en 2044, les intérêts absorberaient 53 % des recettes publiques')
     expect(a).toContain('un défaut, une forte inflation ou une restructuration de la dette interviendraient')
-    expect(a).not.toMatch(/ensemble des recettes/)
-    expect(tier2Text({ year: 2047, debtPct: 755, interestSharePct: 102 })).toContain('plus que l\'ensemble des recettes')
-    expect(tier2Text({ year: 2047, debtPct: 755, interestSharePct: 99.6 })).not.toMatch(/ensemble des recettes/)
+    expect(a).not.toMatch(/totalité/)
+    expect(tier2Text({ year: 2047, debtPct: 755, interestSharePct: 102 })).toBe('Trajectoire hors de toute expérience historique : en 2047, les intérêts dépasseraient la totalité des recettes publiques (102 %). Bien avant ce point, un défaut, une forte inflation ou une restructuration de la dette interviendraient ; le modèle ne décrit plus une situation réaliste.')
+    expect(tier2Text({ year: 2047, debtPct: 755, interestSharePct: 99.6 })).toContain('absorberaient 100 %')
+    expect(tier2Text({ year: 2047, debtPct: 755, interestSharePct: 99.6 })).not.toMatch(/dépasseraient/)
+    expect(TIER2_EXPLANATION).toContain('3 points de base par point de dette')
+    expect(TIER2_EXPLANATION).toContain('plafonnée à 25 %')
     expect(tier2Text({ year: 2047, debtPct: 755, interestSharePct: null })).not.toMatch(/absorberaient/)
   })
 })
@@ -112,5 +116,21 @@ describe('moteur : recettes et paliers de bout en bout', () => {
     expect(w.tier2.year).toBeLessThan(2056)
     expect(r.total.at(-1).debtRatio * 100).toBeGreaterThan(1000)
     for (const row2 of r.total) expect(Number.isFinite(row2.revenue)).toBe(true)
+  })
+  it('30 ans, dette > 500 % : X calculé par le moteur et formulation adaptée à X', () => {
+    const worst = Object.fromEntries(LEVERS.map((l) => [l.id, l.type === 'recette' ? l.min : l.max]))
+    const r = projectScenario({ horizon: 'trenteAns', levers: worst })
+    const w = evaluateWarnings(r)
+    const row2 = r.total[w.tier2.t]
+    expect(w.tier2.interestSharePct).toBeCloseTo((100 * row2.interest) / row2.revenue, 9)
+    const x = w.tier2.interestSharePct
+    const texte = tier2Text(w.tier2)
+    if (x >= 100) expect(texte).toContain(`les intérêts dépasseraient la totalité des recettes publiques (${fmt(x, 0)} %)`)
+    else expect(texte).toContain(`les intérêts absorberaient ${fmt(x, 0)} % des recettes publiques`)
+    // dette au-dessus de 500 % sur l'horizon : le palier 2 est atteint au plus tard l'année où elle franchit 500 %
+    const an500 = r.total.find((q) => q.debtRatio > 5)
+    expect(an500).toBeDefined()
+    expect(w.tier2.year).toBeLessThanOrEqual(an500.year)
+    expect(texte).toContain(`en ${w.tier2.year},`)
   })
 })

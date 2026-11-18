@@ -45,17 +45,21 @@ export const tier1Text = (w) =>
   `Au-delà du plus haut niveau jamais atteint par une économie avancée (Japon : ${W.tier1ReferencePct} % du PIB en ${W.tier1ReferenceYear}, FMI). `
   + `Seuil franchi en ${w.year} : dette à ${fmt(w.debtPct, 0)} % du PIB.`
 
+const TIER2_SUITE = 'Bien avant ce point, un défaut, une forte inflation ou une restructuration de la dette interviendraient ; le modèle ne décrit plus une situation réaliste.'
+
+/** Explication du palier 2 : pourquoi les intérêts dépassent les recettes à ces niveaux de dette (E9 : pente `dette.beta`, plafond du taux 25 %). */
+export const TIER2_EXPLANATION = 'Dans le moteur, le taux d\'intérêt monte avec la dette (prime de 3 points de base par point de dette au-delà de la référence, plafonnée à 25 %) : c\'est pourquoi les intérêts dépassent les recettes à ces niveaux.'
+
 /**
- * Texte du palier 2. N'affirme que les intérêts dépassent les recettes que si X ≥ 100 %.
+ * Texte du palier 2. Les intérêts ne sont dits supérieurs à la totalité des recettes que si X ≥ 100 % ; sinon, ils « absorbent X % ».
  * Si les recettes ne sont pas calculables, la phrase sur les intérêts est omise plutôt qu'inventée.
  */
 export function tier2Text(w) {
   const x = w.interestSharePct
-  const interets = x === null || !Number.isFinite(x)
-    ? `en ${w.year}, la dette atteindrait ${fmt(w.debtPct, 0)} % du PIB`
-    : `en ${w.year}, les intérêts absorberaient ${fmt(x, 0)} % des recettes publiques${x >= 100 ? ' (plus que l\'ensemble des recettes)' : ''}`
-  return `Trajectoire hors de toute expérience historique : ${interets}. `
-    + 'Bien avant ce point, un défaut, une forte inflation ou une restructuration de la dette interviendraient ; le modèle ne décrit plus une situation réaliste.'
+  const debut = 'Trajectoire hors de toute expérience historique : '
+  if (x === null || !Number.isFinite(x)) return `${debut}en ${w.year}, la dette atteindrait ${fmt(w.debtPct, 0)} % du PIB. ${TIER2_SUITE}`
+  if (x >= 100) return `${debut}en ${w.year}, les intérêts dépasseraient la totalité des recettes publiques (${fmt(x, 0)} %). ${TIER2_SUITE}`
+  return `${debut}en ${w.year}, les intérêts absorberaient ${fmt(x, 0)} % des recettes publiques. ${TIER2_SUITE}`
 }
 
 /**

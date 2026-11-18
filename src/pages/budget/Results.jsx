@@ -1,5 +1,5 @@
 import { fmt, deltaTone, visibleLines, HIDE_BELOW } from './helpers'
-import { tier1Text, tier2Text } from './warnings'
+import { tier1Text, tier2Text, TIER2_EXPLANATION } from './warnings'
 import { InfoPopover } from './InfoPopover'
 
 function Delta({ value, unit, lowerIsBetter }) {
@@ -12,7 +12,7 @@ export function WarningBanner({ warnings }) {
   if (!warnings?.tier1 && !warnings?.tier2) return null
   return (
     <div className="sb-warnings">
-      {warnings.tier2 && <p className="sb-warning sb-warning-2" role="alert"><strong>Attention.</strong> {tier2Text(warnings.tier2)}</p>}
+      {warnings.tier2 && <p className="sb-warning sb-warning-2" role="alert"><strong>Attention.</strong> {tier2Text(warnings.tier2)} <span className="sb-warning-why">{TIER2_EXPLANATION}</span></p>}
       {warnings.tier1 && <p className="sb-warning sb-warning-1" role="status">{tier1Text(warnings.tier1)}</p>}
     </div>
   )

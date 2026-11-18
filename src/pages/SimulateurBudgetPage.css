@@ -87,3 +87,4 @@
 .sb-warning { margin: 0; padding: 0.75rem 0.9rem; border-radius: 6px; border: 1px solid; font-size: 0.9375rem; line-height: 1.45; }
 .sb-warning-1 { border-color: var(--color-warning, #bf4000); background: #fff6f0; color: #7a2a00; }
 .sb-warning-2 { border-color: var(--color-negative, #b71c1c); background: #fdecea; color: #7f1212; }
+.sb-warning-why { display: block; margin-top: 0.4rem; font-size: 0.8125rem; opacity: 0.9; }
