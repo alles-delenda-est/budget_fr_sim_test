@@ -5,6 +5,8 @@ import LeverPanel from './budget/LeverPanel'
 import Charts from './budget/Charts'
 import { Snapshots, DecompositionTable, BlocksTable } from './budget/Results'
 import ShareButton from './budget/ShareButton'
+import { buildCsv, buildExportRows, downloadCsv } from './budget/exportCsv'
+import { versionStamp } from '../version'
 import { decodeScenario, queryFromHash, scenarioHash, scenarioUrl } from './budget/share'
 import { InfoPopover, ParamInfo, StatusBadge } from './budget/InfoPopover'
 import { buildSeries, snapshotAt, decomposeAtYear, hasSupplyEffect, blocksAt, paramIdsFor, extremeLevers, SUPPLY_CASES } from './budget/helpers'
@@ -50,6 +52,14 @@ export default function SimulateurBudgetPage() {
     return () => clearTimeout(timer)
   }, [values, horizon, ysCase])
 
+  const exportCsv = () => {
+    const csv = buildCsv({
+      stamp: versionStamp(), url: scenarioUrl(window.location, { values, horizon, ysCase }),
+      horizonLabel: HORIZONS[horizon].label, ysCase, values, rows: buildExportRows(result, reference, EPS),
+    })
+    downloadCsv(csv, `simulateur-budget-${horizon}-${ysCase}.csv`)
+  }
+
   const setLever = (id, x) => setValues((v) => ({ ...v, [id]: x }))
 
   return (
@@ -80,10 +90,11 @@ export default function SimulateurBudgetPage() {
       </section>
 
       <section className="sb-section" aria-labelledby="sb-partage">
-        <h2 id="sb-partage">Partager</h2>
-        <p className="sb-help">Le lien reprend les leviers, l'horizon et le cas des effets d'offre ; il rouvre exactement ce scénario.</p>
+        <h2 id="sb-partage">Partager et exporter</h2>
+        <p className="sb-help">Le lien reprend les leviers, l'horizon et le cas des effets d'offre ; il rouvre exactement ce scénario. L'export CSV (séparateur « ; », virgule décimale, ouverture directe dans Excel) donne, année par année, le scénario, la référence et la décomposition par cause.</p>
         <div className="sb-toolbar">
           <ShareButton getUrl={() => scenarioUrl(window.location, { values, horizon, ysCase })} />
+          <button type="button" className="sb-btn" onClick={exportCsv}>Exporter (CSV)</button>
         </div>
       </section>
 
