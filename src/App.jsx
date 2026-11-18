@@ -14,7 +14,7 @@ function App() {
       <header className="header">
         <h1>Simulateur Budget France <span className="version-badge">v2.0</span></h1>
         <p className="subtitle">
-          Vue intégrée État + Sécurité Sociale (APU totales) &bull; Réponse comportementale ETI &bull; Inertie dette
+          Administrations publiques : État, sécurité sociale, collectivités &bull; effets de demande et d'offre explicites &bull; charge d'intérêts selon les taux de marché
         </p>
       </header>
 
@@ -30,7 +30,7 @@ function App() {
       <footer className="footer">
         <p>Simulateur Budget France v2.0 &bull; Sources : PLF 2025, PLFSS 2026, FMI, OCDE, BCE, AFT</p>
         <p className="footer-note">
-          Vue consolidée État + Sécurité Sociale. Réponse comportementale ETI. Inertie taux OAT.
+          Administrations publiques (État, sécurité sociale, collectivités). Effets de demande et d'offre explicites.
         </p>
       </footer>
     </div>
