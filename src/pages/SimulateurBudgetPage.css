@@ -1,0 +1,77 @@
+/* Page « Simulateur budgétaire » (moteur v2). Mobile d'abord : une colonne, curseurs pleine largeur, aucun débordement horizontal. */
+.sb-page { max-width: 1200px; margin: 0 auto; padding: 0 var(--space-sm, 1rem); overflow-wrap: anywhere; }
+.sb-title { font-family: var(--font-serif); font-weight: 400; font-size: 1.75rem; margin: var(--space-sm, 1rem) 0 var(--space-xs, 0.5rem); }
+.sb-section { padding: 1.25rem 0; border-bottom: 1px solid var(--color-border-light, #f0f0f0); min-width: 0; }
+.sb-section h2 { font-family: var(--font-serif); font-weight: 400; font-size: 1.375rem; margin-bottom: 0.5rem; }
+.sb-help { font-size: 0.875rem; color: var(--color-ink-muted, #6b6b6b); margin: 0 0 0.75rem; }
+.sb-muted { color: var(--color-ink-muted, #6b6b6b); font-weight: 400; }
+.sb-empty { padding: 1rem 0; color: var(--color-ink-muted, #6b6b6b); }
+
+.sb-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 2rem; }
+.sb-results { min-width: 0; }
+@media (min-width: 1000px) {
+  .sb-layout { grid-template-columns: minmax(320px, 400px) minmax(0, 1fr); align-items: start; }
+}
+
+.sb-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; margin-bottom: 0.5rem; }
+.sb-options label, .sb-yearpick label { display: block; font-size: 0.875rem; margin-bottom: 0.25rem; }
+.sb-options select { width: 100%; min-height: 44px; padding: 0.5rem; font: inherit; border: 1px solid var(--color-border, #e0e0e0); border-radius: 4px; background: #fff; }
+
+.sb-toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+.sb-btn { min-height: 44px; padding: 0.5rem 0.9rem; border: 1px solid var(--color-accent, #5c6bc0); color: var(--color-accent, #5c6bc0); border-radius: 4px; background: #fff; }
+.sb-btn:hover { background: var(--color-accent-light, #e8eaf6); }
+
+.sb-group { border: 1px solid var(--color-border, #e0e0e0); border-radius: 6px; padding: 0.75rem; margin: 0 0 1rem; min-width: 0; }
+.sb-group legend { font-family: var(--font-serif); font-size: 1.125rem; padding: 0 0.4rem; }
+.sb-group-disabled { background: var(--color-background, #fafafa); }
+.sb-lever { padding: 0.6rem 0; border-top: 1px solid var(--color-border-light, #f0f0f0); }
+.sb-group .sb-help + .sb-lever { border-top: none; }
+.sb-lever-disabled { opacity: 0.75; }
+.sb-lever-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-bottom: 0.25rem; }
+.sb-lever-head label { font-weight: 500; }
+.sb-slider { width: 100%; min-height: 32px; accent-color: var(--color-accent, #5c6bc0); }
+.sb-lever-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.25rem 0.75rem; font-size: 0.875rem; }
+.sb-lever-value { font-variant-numeric: tabular-nums; }
+.sb-lever-yield { color: var(--color-ink-light, #4a4a4a); }
+
+.sb-badge { display: inline-block; font-size: 0.75rem; padding: 0.1rem 0.45rem; border-radius: 999px; border: 1px solid var(--color-border, #e0e0e0); color: var(--color-ink-light, #4a4a4a); background: #fff; white-space: nowrap; }
+.sb-badge-flag { border-color: var(--color-warning, #bf4000); color: var(--color-warning, #bf4000); background: #fff6f0; }
+
+.sb-info { position: relative; display: inline-block; }
+.sb-info-btn { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--color-accent, #5c6bc0); color: var(--color-accent, #5c6bc0); font-style: italic; font-weight: 600; line-height: 1; background: #fff; }
+.sb-info-btn[aria-expanded='true'] { background: var(--color-accent, #5c6bc0); color: #fff; }
+.sb-info-body { display: block; margin-top: 0.4rem; padding: 0.6rem 0.75rem; max-width: min(36rem, calc(100vw - 3rem)); font-size: 0.8125rem; font-style: normal; font-weight: 400; line-height: 1.45; background: #fff; border: 1px solid var(--color-accent, #5c6bc0); border-radius: 6px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); }
+.sb-info-line { display: block; margin-bottom: 0.3rem; }
+.sb-info-sub { display: block; border-top: 1px solid var(--color-border-light, #f0f0f0); padding-top: 0.4rem; margin-top: 0.4rem; }
+
+.sb-snaps { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0.75rem; }
+.sb-snap { border: 1px solid var(--color-border, #e0e0e0); border-radius: 6px; padding: 0.75rem; min-width: 0; }
+.sb-snap h3 { font-size: 1rem; margin-bottom: 0.5rem; }
+.sb-snap dl > div { margin-bottom: 0.5rem; }
+.sb-snap dt { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-ink-muted, #6b6b6b); }
+.sb-snap dd { margin: 0; }
+.sb-delta { display: block; font-size: 0.8125rem; }
+.sb-delta-mieux { color: var(--color-positive, #2e7d32); }
+.sb-delta-moins-bien { color: var(--color-negative, #b71c1c); }
+.sb-delta-neutre { color: var(--color-ink-muted, #6b6b6b); }
+
+.sb-charts { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+@media (min-width: 700px) { .sb-charts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.sb-chart { margin: 0; min-width: 0; }
+.sb-chart figcaption { font-weight: 500; margin-bottom: 0.25rem; }
+
+.sb-yearpick { margin-bottom: 0.75rem; }
+.sb-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; table-layout: fixed; }
+.sb-table th, .sb-table td { padding: 0.45rem 0.4rem; border-bottom: 1px solid var(--color-border-light, #f0f0f0); text-align: left; vertical-align: top; }
+.sb-table thead th { font-size: 0.75rem; text-transform: uppercase; color: var(--color-ink-muted, #6b6b6b); }
+.sb-table tbody th, .sb-table tfoot th { font-weight: 400; }
+.sb-table tfoot th, .sb-table tfoot td { font-weight: 700; border-top: 2px solid var(--color-ink, #1a1a1a); }
+.sb-table .sb-num { text-align: right; font-variant-numeric: tabular-nums; width: 5.5rem; }
+.sb-kind-title { display: block; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-accent, #5c6bc0); }
+.sb-params { list-style: none; padding: 0; }
+.sb-params li { padding: 0.35rem 0; border-bottom: 1px solid var(--color-border-light, #f0f0f0); }
+.sb-params code { font-size: 0.8125rem; }
+@media (max-width: 480px) {
+  .sb-table .sb-num { width: 4rem; }
+  .sb-table { font-size: 0.8125rem; }
+}
