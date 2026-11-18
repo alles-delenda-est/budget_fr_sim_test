@@ -3,7 +3,7 @@
 // Interprétations (la note est silencieuse) : voir les commentaires « INTERPRÉTATION ».
 
 import { resolveParams, interpolateSeries } from './params.js'
-import { BLOCKS, leversToInstruments } from './levers.js'
+import { BLOCKS, LEVER_BY_ID, leversToInstruments } from './levers.js'
 import { runModule } from './modules.js'
 import { coreSupplyLines } from './supply.js'
 
@@ -69,7 +69,8 @@ export function projectScenario(options = {}) {
 
   // ---- Paramètres convertis ----
   const lambda = P['dem.lambda']
-  const eps = P['fisc.eps']
+  const eps = P['fisc.eps'] // demande (stabilisateurs cycliques)
+  const epsOffre = P['fisc.eps_offre'] // offre : taux de prélèvements obligatoires (D13), sans dépense cyclique
   const kappa = P['emploi.kappa']
   const M = P['dette.M']
   const iStar = issuanceRate(P)
@@ -162,13 +163,20 @@ export function projectScenario(options = {}) {
         perInstrument[inst.id].exAnte += a
         perInstrument[inst.id].exPost += (1 - th) * a
       })
-      const stab = eps * gap * share('recettes', b) * Yb
+      // E7 : la demande passe au solde par ε (stabilisateurs), l'offre par le taux de prélèvements obligatoires (D13).
+      const stab = (eps * yD + epsOffre * yS) * share('recettes', b) * Yb
       const primary = ref + exAnte + behav + stab
       const interest = INT * share('interets', b)
       blk[b] = { ref, exAnte, behav, stab, primary, interest, balance: primary - interest }
       exAnteTot += exAnte; behavTot += behav; refTot += ref; stabTot += stab
     }
     const primary = BLOCKS.reduce((s, b) => s + blk[b].primary, 0)
+    // Recettes publiques (Md€), grandeur d'AFFICHAGE : le moteur n'a pas de série de recettes (il raisonne en solde primaire).
+    // Dérivée ainsi : recettes de référence (part de recettes APU dans le PIB de 2025 × PIB, élasticité unitaire, comme la référence)
+    // + effet ex post (après θ) des seuls leviers de recette. Les leviers de dépense et les modules n'y figurent pas.
+    // Elle sert au seul indicateur « intérêts / recettes » des avertissements ; elle n'entre jamais dans le solde ni dans la dette.
+    const revenue = (P['base.recettes.apu'] / P['base.pib.2025']) * Y
+      + Object.entries(perInstrument).reduce((sum, [id, v]) => sum + (LEVER_BY_ID[id]?.type === 'recette' ? v.exPost : 0), 0)
     const balance = primary - INT
     // E11 : dette
     const D = Dprev + INT - primary
@@ -190,13 +198,13 @@ export function projectScenario(options = {}) {
     total.push({
       year: START_YEAR + t, t, gdp: Y, gdpBase: Yb, gdpEffect: gap, yD, yS,
       balance, balanceRatio: balance / Y, primaryBalance: primary, primaryBalanceRatio: primary / Y,
-      interest: INT, interestRatio: INT / Y, avgRate: iAvg, newRate: iNew, riskPremium: premium,
+      revenue, interest: INT, interestRatio: INT / Y, avgRate: iAvg, newRate: iNew, riskPremium: premium,
       debt: D, debtRatio: ratio, unemployment: u, byInstrument: perInstrument, driftA: dA, driftB: dB, issuanceRate: iStar,
     })
 
     // Décomposition de la variation du solde (Md€) : exacte par construction.
-    // Les stabilisateurs jouent sur l'écart de PIB total (E7) : on isole la part due à chaque effet d'offre.
-    const offreLvl = ysLines.map((l) => eps * l.yS[t] * Yb)
+    // E7 : la demande passe par ε, chaque effet d'offre par ε_offre : on isole la part due à chaque effet d'offre.
+    const offreLvl = ysLines.map((l) => epsOffre * l.yS[t] * Yb)
     const lv = { Yb, ref: refTot, exAnte: exAnteTot, behav: behavTot, stab: stabTot, offre: offreLvl, iAvg, INT, balance, Dprev, Dprev2, dA, dB }
     if (t > 0) {
       const q = levels[t - 1]

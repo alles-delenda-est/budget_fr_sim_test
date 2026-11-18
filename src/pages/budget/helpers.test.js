@@ -8,6 +8,7 @@ import {
 } from './helpers.js'
 
 const EPS = PARAM_BY_ID['fisc.eps'].value
+const EPS_OFFRE = PARAM_BY_ID['fisc.eps_offre'].value
 const run = (levers, ysCase = 'central', horizon = 'dixAns') => ({
   r: projectScenario({ levers, horizon, ysCase }), ref: projectScenario({ levers: {}, horizon, ysCase }),
 })
@@ -74,7 +75,7 @@ describe('décomposition par cause', () => {
     for (const ysCase of ['bas', 'central', 'haut']) {
       const { r, ref } = run({ tva_normal: -5, dep_enseignement: -30, csg: 2, travail_assurance_chomage: 10 }, ysCase)
       for (const t of [1, 5, 10]) {
-        const d = decomposeAtYear(r, ref, t, EPS)
+        const d = decomposeAtYear(r, ref, t, EPS, EPS_OFFRE)
         expect(d.lines.reduce((s, l) => s + l.montant, 0)).toBeCloseTo(d.ecart, 6)
       }
     }
@@ -82,41 +83,41 @@ describe('décomposition par cause', () => {
   it('masque l\'éducation σ au cas central ; une coupe la montre au cas bas, une hausse au cas haut', () => {
     const lv = { dep_enseignement: -20 }
     const c = run(lv, 'central', 'trenteAns')
-    const central = decomposeAtYear(c.r, c.ref, 25, EPS)
+    const central = decomposeAtYear(c.r, c.ref, 25, EPS, EPS_OFFRE)
     expect(visibleLines(central.lines).some((l) => l.kind === 'offre')).toBe(false)
     const b = run(lv, 'bas', 'trenteAns')
-    const offre = visibleLines(decomposeAtYear(b.r, b.ref, 25, EPS).lines).filter((l) => l.kind === 'offre')
+    const offre = visibleLines(decomposeAtYear(b.r, b.ref, 25, EPS, EPS_OFFRE).lines).filter((l) => l.kind === 'offre')
     expect(offre.length).toBe(1)
     expect(offre[0].label).toBe('Effet d\'offre (cas bas) : Dépenses d\'enseignement')
     expect(offre[0].montant).toBeLessThan(0)
     const h = run({ dep_enseignement: 20 }, 'haut', 'trenteAns')
-    const up = visibleLines(decomposeAtYear(h.r, h.ref, 25, EPS).lines).filter((l) => l.kind === 'offre')
+    const up = visibleLines(decomposeAtYear(h.r, h.ref, 25, EPS, EPS_OFFRE).lines).filter((l) => l.kind === 'offre')
     expect(up.length).toBe(1)
     expect(up[0].montant).toBeGreaterThan(0)
   })
   it('étiquette l\'effet d\'offre de la TVA : gain d\'une baisse, au cas haut comme au cas bas (σ non nul dans les trois cas)', () => {
     const haut = run({ tva_normal: -3 }, 'haut')
-    const offre = visibleLines(decomposeAtYear(haut.r, haut.ref, 8, EPS).lines).filter((l) => l.kind === 'offre')
+    const offre = visibleLines(decomposeAtYear(haut.r, haut.ref, 8, EPS, EPS_OFFRE).lines).filter((l) => l.kind === 'offre')
     expect(offre.length).toBe(1)
     expect(offre[0].label).toBe('Effet d\'offre (cas haut) : TVA, taux normal')
     expect(offre[0].montant).toBeGreaterThan(0)
   })
   it('une hausse de TVA montre sa perte d\'offre au cas bas', () => {
     const { r, ref } = run({ tva_normal: 3 }, 'bas')
-    const offre = visibleLines(decomposeAtYear(r, ref, 8, EPS).lines).filter((l) => l.kind === 'offre')
+    const offre = visibleLines(decomposeAtYear(r, ref, 8, EPS, EPS_OFFRE).lines).filter((l) => l.kind === 'offre')
     expect(offre.length).toBe(1)
     expect(offre[0].montant).toBeLessThan(0)
   })
   it('IR : l\'effet d\'offre est étiqueté « non validé — avis demandé » dans la décomposition', () => {
     const { r, ref } = run({ ir: 10 }, 'central', 'trenteAns')
-    const offre = decomposeAtYear(r, ref, 25, EPS).lines.filter((l) => l.kind === 'offre')
+    const offre = decomposeAtYear(r, ref, 25, EPS, EPS_OFFRE).lines.filter((l) => l.kind === 'offre')
     expect(offre.length).toBe(1)
     expect(offre[0].label).toBe('Effet d\'offre de l\'IR (cas central) : non validé — avis demandé')
     expect(r.supply.lignes[0].statut).toBe('non validé')
   })
   it('sans levier : aucune ligne visible', () => {
     const { r, ref } = run({})
-    expect(visibleLines(decomposeAtYear(r, ref, 5, EPS).lines)).toEqual([])
+    expect(visibleLines(decomposeAtYear(r, ref, 5, EPS, EPS_OFFRE).lines)).toEqual([])
   })
   it('filtre les lignes nulles et non finies', () => {
     const lines = [{ montant: 0 }, { montant: 0.01 }, { montant: -2 }, { montant: NaN }, { montant: 0.05 }]
@@ -137,7 +138,7 @@ describe('décomposition : somme égale écart de solde (scénario − référen
       it(`${nom}, cas ${ysCase} : toutes les années`, () => {
         const { r, ref } = run(levers, ysCase)
         for (let t = 1; t < r.years.length; t++) {
-          const d = decomposeAtYear(r, ref, t, EPS)
+          const d = decomposeAtYear(r, ref, t, EPS, EPS_OFFRE)
           const ecartAttendu = r.total[t].balance - ref.total[t].balance
           expect(d.ecart).toBeCloseTo(ecartAttendu, 6)
           expect(d.lines.reduce((s, l) => s + l.montant, 0)).toBeCloseTo(ecartAttendu, 6)
@@ -148,7 +149,7 @@ describe('décomposition : somme égale écart de solde (scénario − référen
   it('tient aussi sur l\'horizon de trente ans', () => {
     const { r, ref } = run(LEVER_SETS.mixte, 'haut', 'trenteAns')
     for (const t of [1, 10, 20, r.years.length - 1]) {
-      const d = decomposeAtYear(r, ref, t, EPS)
+      const d = decomposeAtYear(r, ref, t, EPS, EPS_OFFRE)
       expect(d.lines.reduce((s, l) => s + l.montant, 0)).toBeCloseTo(r.total[t].balance - ref.total[t].balance, 6)
     }
   })

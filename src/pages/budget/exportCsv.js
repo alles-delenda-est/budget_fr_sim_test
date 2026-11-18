@@ -34,10 +34,10 @@ export const COLUMNS = [
 ]
 
 /** Lignes numériques du tableau, une par année (2026 comprise). Ratios en %, montants en Md€. */
-export function buildExportRows(result, reference, eps) {
+export function buildExportRows(result, reference, eps, epsOffre) {
   return result.total.map((r, t) => {
     const b = reference.total[t]
-    const d = decomposeAtYear(result, reference, t, eps)
+    const d = decomposeAtYear(result, reference, t, eps, epsOffre)
     const byKind = Object.fromEntries(KIND_SUM.map((k) => [k, d.lines.filter((l) => l.kind === k).reduce((s, l) => s + l.montant, 0)]))
     return [
       r.year,
