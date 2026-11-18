@@ -5,6 +5,8 @@
 // signe = +1 pour une recette (hausse => solde en hausse), −1 pour une dépense (hausse => solde en baisse).
 // Convention : a > 0 améliore le solde. Les blocs sont : centrales, securiteSociale, locales.
 
+import { supplyForCase, supplyPhase, partReelle, thetaNonReel } from './supply.js'
+
 export const BLOCKS = ['centrales', 'securiteSociale', 'locales']
 export const ZERO_BLOCKS = () => ({ centrales: 0, securiteSociale: 0, locales: 0 })
 
@@ -123,7 +125,7 @@ export const staticYield = (lever, x, P) => lever.signe * lever.rendement(P) * x
  * Convertit des valeurs de leviers { id: x } en instruments du moteur.
  * Instrument : { id, source, categorie, aBlocks: {bloc: number[]}, theta: number[] } sur t = 0..nYears (fractions du PIB).
  */
-export function leversToInstruments(values, P, nYears, rampOpts) {
+export function leversToInstruments(values, P, nYears, rampOpts, supply = {}) {
   const out = []
   for (const lever of LEVERS) {
     const x = sane(values?.[lever.id], lever.min, lever.max)
@@ -131,13 +133,19 @@ export function leversToInstruments(values, P, nYears, rampOpts) {
     const shares = lever.blocs(P)
     const total = staticYield(lever, x, P) / P['base.pib.2025']
     const theta = leverTheta(lever, x, P)
+    // θ ne garde que sa part non réelle quand le levier porte un effet d'offre σ ≠ 0 (pas de double compte avec E5 + E7), au rythme
+    // de montée en charge de l'effet d'offre : θ_non_réel(t) = max(0, θ − θ_réel × phase(t)). Sans σ, θ est inchangé.
+    const sup = lever.type === 'recette' ? supplyForCase(lever.id, x, P, supply.sigma, supply.ysCase) : null
+    const thReel = sup ? partReelle(lever.id, sup.sigma, lever.rendement(P), P) : 0
+    const start = rampOpts?.start ?? 1
+    const thetaByYear = Array.from({ length: nYears + 1 }, (_, t) => (thReel > 0 ? thetaNonReel(theta, thReel * supplyPhase(t - start, sup.L, sup.t0)) : theta))
     const aBlocks = { centrales: [], securiteSociale: [], locales: [] }
     for (let t = 0; t <= nYears; t++) for (const b of BLOCKS) aBlocks[b].push(total * shares[b] * ramp(t, rampOpts))
     // x : valeur signée du levier ; start : année (t) d'entrée en vigueur ; sizeByYear : x × rampe, taille de la mesure
     // dans l'unité du levier (sert à l'effet d'offre E5, voir supply.js).
     const sizeByYear = Array.from({ length: nYears + 1 }, (_, t) => x * ramp(t, rampOpts))
-    out.push({ id: lever.id, source: 'levier', categorie: lever.categorie, aBlocks, theta: Array(nYears + 1).fill(theta),
-      x, start: rampOpts?.start ?? 1, sizeByYear })
+    out.push({ id: lever.id, source: 'levier', categorie: lever.categorie, aBlocks, theta: thetaByYear,
+      x, start, sizeByYear })
   }
   return out
 }

@@ -94,9 +94,7 @@ describe('décomposition par cause', () => {
     expect(up.length).toBe(1)
     expect(up[0].montant).toBeGreaterThan(0)
   })
-  it('étiquette l\'effet d\'offre de la TVA : gain d\'une baisse au cas haut, masqué au cas bas', () => {
-    const bas = run({ tva_normal: -3 }, 'bas')
-    expect(visibleLines(decomposeAtYear(bas.r, bas.ref, 8, EPS).lines).filter((l) => l.kind === 'offre')).toEqual([])
+  it('étiquette l\'effet d\'offre de la TVA : gain d\'une baisse, au cas haut comme au cas bas (σ non nul dans les trois cas)', () => {
     const haut = run({ tva_normal: -3 }, 'haut')
     const offre = visibleLines(decomposeAtYear(haut.r, haut.ref, 8, EPS).lines).filter((l) => l.kind === 'offre')
     expect(offre.length).toBe(1)
@@ -108,6 +106,13 @@ describe('décomposition par cause', () => {
     const offre = visibleLines(decomposeAtYear(r, ref, 8, EPS).lines).filter((l) => l.kind === 'offre')
     expect(offre.length).toBe(1)
     expect(offre[0].montant).toBeLessThan(0)
+  })
+  it('IR : l\'effet d\'offre est étiqueté « non validé — avis demandé » dans la décomposition', () => {
+    const { r, ref } = run({ ir: 10 }, 'central', 'trenteAns')
+    const offre = decomposeAtYear(r, ref, 25, EPS).lines.filter((l) => l.kind === 'offre')
+    expect(offre.length).toBe(1)
+    expect(offre[0].label).toBe('Effet d\'offre de l\'IR (cas central) : non validé — avis demandé')
+    expect(r.supply.lignes[0].statut).toBe('non validé')
   })
   it('sans levier : aucune ligne visible', () => {
     const { r, ref } = run({})
@@ -152,8 +157,9 @@ describe('décomposition : somme égale écart de solde (scénario − référen
 describe('indication « sans effet d\'offre »', () => {
   it('sans levier ou avec un σ nul dans le cas choisi : pas d\'effet d\'offre', () => {
     expect(hasSupplyEffect(run({}).r)).toBe(false)
-    expect(hasSupplyEffect(run({ tva_normal: 3 }, 'central').r)).toBe(false)
-    expect(hasSupplyEffect(run({ ir: -10 }, 'haut').r)).toBe(false)
+    expect(hasSupplyEffect(run({ dep_defense: 3 }, 'central').r)).toBe(false)
+    expect(hasSupplyEffect(run({ dep_enseignement: 10 }, 'central').r)).toBe(false)
+    expect(hasSupplyEffect(run({ tva_normal: 3 }, 'central').r)).toBe(true)
   })
   it('un σ non nul dans le cas choisi donne un effet d\'offre', () => {
     expect(hasSupplyEffect(run({ tva_normal: 3 }, 'bas').r)).toBe(true)
@@ -172,7 +178,8 @@ describe('blocs et paramètres', () => {
     const { r } = run({ tva_normal: 1, csg: 1, ir: 5, dep_enseignement: -5 }, 'haut')
     const ids = paramIdsFor({ tva_normal: 1, csg: 1, ir: 5, dep_enseignement: -5 }, r)
     expect(ids).toContain('comp.theta.tva')
-    expect(ids).toContain('offre.sigma.tva')
+    expect(ids).toContain('offre.e_L')
+    expect(ids).toContain('base.conso_menages')
     for (const id of ids) {
       expect(PARAM_BY_ID[id].status).toBeTruthy()
       expect(PARAM_BY_ID[id].explanation).toBeTruthy()

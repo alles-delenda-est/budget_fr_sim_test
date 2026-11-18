@@ -112,7 +112,9 @@ export function decomposeAtYear(result, reference, t, eps) {
     const montant = eps * l.yS[t] * tot.gdpBase
     offreTotal += montant
     const titre = LEVER_BY_ID[l.id]?.titre ?? l.libelle
-    return { key: `offre:${l.id}`, kind: 'offre', leverId: l.id, label: `Effet d'offre (cas ${l.cas}) : ${titre}`, detail: l.libelle, gdpPct: l.yS[t] * 100, montant }
+    // Effet d'offre non validé (IR) : le libellé le dit, pour que le relecteur le voie dans la décomposition.
+    const label = l.statut === 'non validé' ? `${l.nomCourt ?? 'Effet d\'offre'} (cas ${l.cas}) : non validé — avis demandé` : `Effet d'offre (cas ${l.cas}) : ${titre}`
+    return { key: `offre:${l.id}`, kind: 'offre', leverId: l.id, label, detail: l.libelle, gdpPct: l.yS[t] * 100, montant }
   })
   const stab = BLOCKS.reduce((s, b) => s + result.blocks[b][t].stabilisers, 0)
   lines.push({ key: 'demande', kind: 'demande', label: 'Effet de demande (stabilisateurs automatiques)', detail: 'Part de l\'écart de PIB due à la demande, avant effets d\'offre.', gdpPct: tot.yD * 100, montant: stab - offreTotal })
@@ -149,17 +151,17 @@ export function paramIdsFor(values, result) {
     if (l.theta) ids.push(l.theta.id, l.theta.tau0)
     if (l.categorie) ids.push(`dem.m.${l.categorie}`)
     const reg = SUPPLY_BY_LEVER[l.id]
-    if (reg) ids.push(reg.sigma, reg.L, reg.t0)
+    if (reg) ids.push(...(reg.sigma ? [reg.sigma] : reg.sigmaParams), reg.L, reg.t0)
   }
   for (const line of result?.supply?.lignes ?? []) {
     const reg = SUPPLY_BY_LEVER[line.id]
-    if (reg) ids.push(reg.sigma, reg.L, reg.t0)
+    if (reg) ids.push(...(reg.sigma ? [reg.sigma] : reg.sigmaParams), reg.L, reg.t0)
   }
   return [...new Set(ids)].filter((id) => PARAM_BY_ID[id])
 }
 
 /** Statuts qui signalent une valeur non sourcée : mis en évidence pour les relecteurs. */
-export const FLAGGED_STATUSES = ['de mémoire', 'à collecter', 'non validé']
+export const FLAGGED_STATUSES = ['de mémoire', 'à collecter', 'non validé', 'calculé (estimation)']
 export const isFlagged = (status) => FLAGGED_STATUSES.includes(status)
 
 /** Valeur centrale et fourchette d'un paramètre, avec son unité. */
