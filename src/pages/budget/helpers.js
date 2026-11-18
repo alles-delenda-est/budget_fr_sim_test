@@ -116,7 +116,7 @@ export function debtMovesAgainstBalance(snap) {
 }
 
 /** Explication affichée sur la fiche de l'année 1 quand `debtMovesAgainstBalance` est vrai. */
-export const YEAR1_PARADOX_TEXT = 'La dette rapportée au PIB peut baisser la première année : la relance augmente aussi le PIB (dénominateur). L\'effet s\'inverse ensuite.'
+export const YEAR1_PARADOX_TEXT = 'La dette rapportée au PIB peut évoluer à l\'inverse du solde la première année : la mesure modifie aussi le PIB (dénominateur), dans le même sens que la dette. L\'effet s\'inverse ensuite.'
 
 /**
  * Bornes et graduations « rondes » d'un axe vertical : pas de 1, 2 ou 5 × 10^n (au moins `minStep`), au plus `maxTicks` graduations ;

@@ -206,6 +206,8 @@ describe('paradoxe de la première année (relance : dette/PIB en baisse malgré
   })
   it('condition : mêmes signes non négligeables seulement ; écarts nuls, négligeables ou non finis exclus', () => {
     expect(debtMovesAgainstBalance({ debtDelta: -0.5, balanceDelta: -0.7 })).toBe(true)
+    // cas symétrique (austérité) : solde meilleur, ratio de dette plus haut car le PIB baisse
+    expect(debtMovesAgainstBalance({ debtDelta: 0.4, balanceDelta: 0.6 })).toBe(true)
     expect(debtMovesAgainstBalance({ debtDelta: 0.5, balanceDelta: 0.7 })).toBe(true)
     expect(debtMovesAgainstBalance({ debtDelta: 0.5, balanceDelta: -0.7 })).toBe(false)
     expect(debtMovesAgainstBalance({ debtDelta: -0.5, balanceDelta: 0.7 })).toBe(false)
@@ -216,7 +218,7 @@ describe('paradoxe de la première année (relance : dette/PIB en baisse malgré
     expect(debtMovesAgainstBalance(null)).toBe(false)
   })
   it('texte demandé', () => {
-    expect(YEAR1_PARADOX_TEXT).toBe('La dette rapportée au PIB peut baisser la première année : la relance augmente aussi le PIB (dénominateur). L\'effet s\'inverse ensuite.')
+    expect(YEAR1_PARADOX_TEXT).toBe('La dette rapportée au PIB peut évoluer à l\'inverse du solde la première année : la mesure modifie aussi le PIB (dénominateur), dans le même sens que la dette. L\'effet s\'inverse ensuite.')
   })
 })
 
