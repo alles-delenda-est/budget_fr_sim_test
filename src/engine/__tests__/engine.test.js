@@ -553,3 +553,24 @@ describe('assurance chômage : levier de dépense actif', () => {
     expect(r.total[6].gdp).toBeGreaterThan(r.total[6].gdpBase * (1 + r.total[6].yD))
   })
 })
+
+describe('remarques de la revue de la PR n° 6', () => {
+  it('comp.tau0.cotis : statut « sourcé (calcul) » et formule dans l\'explication ; le calcul est exact', () => {
+    const q = PARAM_BY_ID['comp.tau0.cotis']
+    expect(STATUSES).toContain('sourcé (calcul)')
+    expect(q.status).toBe('sourcé (calcul)')
+    expect(q.explanation).toContain('1 + e = (1 − 0,430) / (1 − 0,582)')
+    expect((1 - 0.430) / (1 - 0.582) - 1).toBeCloseTo(q.value / 100, 3)
+  })
+  it('ref.derive.a_sante : le haut (longue durée comprise) est documenté et seule cette composante porte la longue durée', () => {
+    const q = PARAM_BY_ID['ref.derive.a_sante']
+    expect(q.high).toBeCloseTo(1.0 / 48, 10)
+    expect(q.explanation).toMatch(/double comptage/)
+    expect(P['ref.derive.b_autres']).toBe(0) // aucune autre composante de dérive ne porte la longue durée
+    const hi = projectScenario({ overrides: { 'ref.derive.a_sante': q.high } })
+    const base = projectScenario({})
+    // la dérive supplémentaire est portée par la seule sécurité sociale
+    for (const b of ['centrales', 'locales']) expect(hi.blocks[b][5].referencePrimary).toBeCloseTo(base.blocks[b][5].referencePrimary, 8)
+    expect(hi.blocks.securiteSociale[5].referencePrimary).toBeLessThan(base.blocks.securiteSociale[5].referencePrimary)
+  })
+})
