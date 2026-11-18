@@ -237,3 +237,16 @@ Lecture : 2056 est une trajectoire explosive (taux moyen 8,8 %, taux à l'émiss
 - Parts : BTF 7,6 % (220 / 2 882 Md€ de dette négociable, AFT août 2026 p. 3) ; OAT 2–8 ans 42,6 % ; OAT 10 ans et plus 49,8 % (émission brute d'OAT janv.–juil. 2026, p. 2, ligne non étiquetée de 12,1 Md€ répartie au prorata).
 - Rendements, tous « à collecter » : BTF 2,5 % ; 2–8 ans 3,35 % (interpolé) ; 10 ans et plus 4,4 % (10 ans 4,23 % et 20 ans 4,74 % à l'adjudication du 3 septembre 2026, presse secondaire ; 30 ans non trouvé, 5,0 % supposé). Aucun rendement à 3 mois, 5 ans ou 30 ans n'a été trouvé dans les bulletins de l'AFT ni auprès de la Banque de France (outils web limités).
 - Contrôle croisé : taux moyen à l'émission 2025 de l'AFT : 2,73 % (ensemble) ou 3,14 % (taux fixe de plus d'un an, hors indexés) ; 2026 non publié. Le taux pondéré du modèle (3,81 %) est supérieur car les rendements ont monté en 2026 (10 ans : 3,45 % en février, 4,23 % début septembre).
+
+## Recalcul après remplacement de placeholders (branche data/placeholders-1, 17 novembre 2026)
+
+Rendements retenus : BTF 3 mois 2,79 % ; OAT ≈ 5 ans 4,10 % ; OAT 10 ans et plus 4,86 % (secondaire) ; taux pondéré à l'émission 4,38 % ; dérive santé 0,00625 pt de PIB par an.
+
+| Année | Dette (% PIB) | Solde (% PIB) | Intérêts (Md€ ; % PIB) |
+|---|---|---|---|
+| 2026 | 117,8 | −5,39 | 79,7 ; 2,59 |
+| 2027 | 120,5 | −5,84 | 95,9 ; 3,03 |
+| 2029 | 126,7 | −6,68 | 129,2 ; 3,86 |
+| 2036 | 158,5 | −9,78 | 280,2 ; 6,88 |
+
+Encore placeholders : dérive des autres dépenses, rendements de l'IS et des cotisations, taux avant réforme de l'IR, inflation après 2027, taux moyen à l'émission 2026 de l'AFT.
