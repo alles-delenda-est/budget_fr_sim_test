@@ -31,9 +31,9 @@ function SimpleChart({ spec, data, tier1, tier2 }) {
           <Tooltip formatter={(v) => `${fmt(v, spec.dec)} ${tooltipUnit(spec)}`.trim()} labelFormatter={(y) => `Année ${y}`} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
           {tier2 && lastYear > tier2.year && <ReferenceArea x1={tier2.year} x2={lastYear} fill="#9e9e9e" fillOpacity={0.12} stroke="none" ifOverflow="hidden" label={{ value: 'Hors expérience', position: 'insideTopRight', fontSize: 10, fill: '#6b6b6b' }} />}
-          {spec.id === 'debt' && <ReferenceLine y={W.tier1DebtPct} stroke="#bf4000" strokeDasharray="2 4" ifOverflow="hidden" label={{ value: `${W.tier1DebtPct} % (record du Japon)`, position: 'insideBottomLeft', fontSize: 10, fill: '#bf4000' }} />}
-          {spec.id === 'debt' && tier1 && <ReferenceLine x={tier1.year} stroke="#bf4000" strokeDasharray="2 4" label={{ value: `${tier1.year}`, position: 'insideTopLeft', fontSize: 10, fill: '#bf4000' }} />}
-          {tier2 && <ReferenceLine x={tier2.year} stroke="#b71c1c" strokeWidth={1.5} label={spec.id === 'debt' ? { value: `${tier2.year} : hors expérience`, position: 'insideTopLeft', fontSize: 10, fill: '#b71c1c' } : undefined} />}
+          {spec.id === 'debt' && <ReferenceLine y={W.tier1DebtPct} stroke="#bf4000" strokeDasharray="2 4" ifOverflow="hidden" label={{ value: `${W.tier1DebtPct} %`, position: 'insideBottomLeft', fontSize: 10, fill: '#bf4000' }} />}
+          {spec.id === 'debt' && tier1 && <ReferenceLine x={tier1.year} stroke="#bf4000" strokeDasharray="2 4" />}
+          {tier2 && <ReferenceLine x={tier2.year} stroke="#b71c1c" strokeWidth={1.5} />}
           <Line type="monotone" dataKey={spec.key} name="Scénario" stroke="#5c6bc0" strokeWidth={2.5} dot={false} connectNulls={false} isAnimationActive={false} />
           {beyond && <Line type="monotone" dataKey={beyond} name="Scénario (hors expérience)" stroke="#9e9e9e" strokeWidth={2} strokeDasharray="1 4" dot={false} connectNulls={false} isAnimationActive={false} />}
           <Line type="monotone" dataKey={spec.ref} name="Référence (sans levier)" stroke="#6b6b6b" strokeWidth={1.75} strokeDasharray="5 4" dot={false} connectNulls={false} isAnimationActive={false} />
@@ -48,7 +48,7 @@ export default function Charts({ data, tier1 = null, tier2 = null }) {
   return (
     <section className="sb-section" aria-labelledby="sb-graphiques">
       <h2 id="sb-graphiques">Trajectoires</h2>
-      <p className="sb-help">Trait plein : votre scénario. Pointillés longs : la référence, sans aucun levier.{tier2 && ' Trait gris pointillé : trajectoire hors de toute expérience historique (le modèle ne décrit plus une situation réaliste) ; l\'axe vertical l\'ignore, les valeurs restent lisibles au survol et dans l\'export CSV.'}</p>
+      <p className="sb-help">Trait plein : votre scénario. Pointillés longs : la référence, sans aucun levier.{tier2 && ' Pointillé orangé : seuil de 260 % de dette (record du Japon) et année où il est franchi. Trait gris pointillé après la ligne rouge : trajectoire hors de toute expérience historique (le modèle ne décrit plus une situation réaliste) ; l\'axe vertical l\'ignore, les valeurs restent lisibles au survol et dans l\'export CSV.'}</p>
       <div className="sb-charts">
         {CHARTS.map((c) => <SimpleChart key={c.id} spec={c} data={shown} tier1={tier1} tier2={tier2} />)}
       </div>
