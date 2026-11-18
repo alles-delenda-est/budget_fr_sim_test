@@ -50,6 +50,7 @@
 .sb-snap dl > div { margin-bottom: 0.5rem; }
 .sb-snap dt { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-ink-muted, #6b6b6b); }
 .sb-snap dd { margin: 0; }
+.sb-snap-note { margin: 0.5rem 0 0; font-size: 0.8125rem; color: var(--color-ink-muted, #6b6b6b); }
 .sb-delta { display: block; font-size: 0.8125rem; }
 .sb-delta-mieux { color: var(--color-positive, #2e7d32); }
 .sb-delta-moins-bien { color: var(--color-negative, #b71c1c); }

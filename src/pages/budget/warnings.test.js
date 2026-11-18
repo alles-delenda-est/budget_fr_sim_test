@@ -3,7 +3,8 @@ import { WARNING_THRESHOLDS as W } from '../../config.js'
 import { projectScenario } from '../../engine/project.js'
 import { LEVERS } from '../../engine/levers.js'
 import { fmt } from './helpers.js'
-import { evaluateWarnings, interestShareOfRevenue, tier1Text, tier2Text, TIER2_EXPLANATION, splitSeriesAtYear, visibleDomain } from './warnings.js'
+import { PARAM_BY_ID } from '../../engine/params.js'
+import { evaluateWarnings, interestShareOfRevenue, tier1Text, tier2Text, tier2Explanation, splitSeriesAtYear, visibleDomain } from './warnings.js'
 
 /** Trajectoire synthétique : une ligne par année avec dette (en fraction du PIB), intérêts et recettes en Md€. */
 const row = (year, debtPct, { interest = 100, revenue = 1000, interestPct = 5, balancePct = -5 } = {}) =>
@@ -68,9 +69,30 @@ describe('textes', () => {
     expect(tier2Text({ year: 2047, debtPct: 755, interestSharePct: 102 })).toBe('Trajectoire hors de toute expérience historique : en 2047, les intérêts dépasseraient la totalité des recettes publiques (102 %). Bien avant ce point, un défaut, une forte inflation ou une restructuration de la dette interviendraient ; le modèle ne décrit plus une situation réaliste.')
     expect(tier2Text({ year: 2047, debtPct: 755, interestSharePct: 99.6 })).toContain('absorberaient 100 %')
     expect(tier2Text({ year: 2047, debtPct: 755, interestSharePct: 99.6 })).not.toMatch(/dépasseraient/)
-    expect(TIER2_EXPLANATION).toContain('3 points de base par point de dette')
-    expect(TIER2_EXPLANATION).toContain('plafonnée à 25 %')
+    expect(tier2Explanation()).toContain('plafonné à 25 %')
     expect(tier2Text({ year: 2047, debtPct: 755, interestSharePct: null })).not.toMatch(/absorberaient/)
+  })
+})
+
+describe('palier 2 : arrondi au seuil et hypothèse β', () => {
+  it('« plus de 50 % » quand la valeur dépasse 50 mais s\'arrondit à 50', () => {
+    for (const x of [50.01, 50.2, 50.49]) {
+      const t = tier2Text({ year: 2040, debtPct: 300, interestSharePct: x })
+      expect(t).toContain('absorberaient plus de 50 % des recettes publiques')
+      expect(t).not.toMatch(/absorberaient 50 %/)
+    }
+    expect(tier2Text({ year: 2040, debtPct: 300, interestSharePct: 50.5 })).toContain('absorberaient 51 % des recettes')
+    expect(tier2Text({ year: 2040, debtPct: 300, interestSharePct: 80 })).toContain('absorberaient 80 % des recettes')
+  })
+  it('l\'explication est une hypothèse du modèle et lit β dans les paramètres', () => {
+    const beta = PARAM_BY_ID['dette.beta'].value
+    const t = tier2Explanation()
+    expect(t).toMatch(/^Hypothèse du modèle/)
+    expect(t).toContain(`${fmt(beta, Number.isInteger(beta) ? 0 : 1)} point`)
+    expect(t).toContain('dette.beta')
+    expect(tier2Explanation(7)).toContain('7 points de base')
+    expect(tier2Explanation(1)).toContain('1 point de base')
+    expect(tier2Explanation(NaN)).toContain('— point')
   })
 })
 
@@ -126,6 +148,7 @@ describe('moteur : recettes et paliers de bout en bout', () => {
     const x = w.tier2.interestSharePct
     const texte = tier2Text(w.tier2)
     if (x >= 100) expect(texte).toContain(`les intérêts dépasseraient la totalité des recettes publiques (${fmt(x, 0)} %)`)
+    else if (x > 50 && Number(fmt(x, 0)) === 50) expect(texte).toContain('les intérêts absorberaient plus de 50 % des recettes publiques') // année du franchissement : jamais « absorberaient 50 % »
     else expect(texte).toContain(`les intérêts absorberaient ${fmt(x, 0)} % des recettes publiques`)
     // dette au-dessus de 500 % sur l'horizon : le palier 2 est atteint au plus tard l'année où elle franchit 500 %
     const an500 = r.total.find((q) => q.debtRatio > 5)

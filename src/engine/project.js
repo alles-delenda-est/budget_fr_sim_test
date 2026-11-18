@@ -174,6 +174,9 @@ export function projectScenario(options = {}) {
     // Recettes publiques (Md€), grandeur d'AFFICHAGE : le moteur n'a pas de série de recettes (il raisonne en solde primaire).
     // Dérivée ainsi : recettes de référence (part de recettes APU dans le PIB de 2025 × PIB, élasticité unitaire, comme la référence)
     // + effet ex post (après θ) des seuls leviers de recette. Les leviers de dépense et les modules n'y figurent pas.
+    // Cohérence : cette série d'affichage prend la part de TOUTES les recettes APU dans le PIB (base.recettes.apu / base.pib.2025 ≈ 0,522, élasticité
+    // unitaire) alors que le solde passe l'écart de PIB par ε (0,6, demande) et ε_offre (0,436, offre). L'écart sur X (intérêts / recettes) est ≤ 2 %
+    // en valeur relative ; il est assumé, la série n'entre ni dans le solde ni dans la dette.
     // Elle sert au seul indicateur « intérêts / recettes » des avertissements ; elle n'entre jamais dans le solde ni dans la dette.
     const revenue = (P['base.recettes.apu'] / P['base.pib.2025']) * Y
       + Object.entries(perInstrument).reduce((sum, [id, v]) => sum + (LEVER_BY_ID[id]?.type === 'recette' ? v.exPost : 0), 0)

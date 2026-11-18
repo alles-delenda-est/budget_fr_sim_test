@@ -4,7 +4,7 @@ import { LEVERS, STRUCTURAL_LEVERS } from '../../engine/levers.js'
 import { PARAM_BY_ID } from '../../engine/params.js'
 import {
   fmt, num, buildSeries, snapshotAt, decomposeAtYear, visibleLines, blocksAt, paramIdsFor, groupedLevers,
-  extremeLevers, hasSupplyEffect, deltaTone, isFlagged, paramRange, leverGroup,
+  extremeLevers, hasSupplyEffect, deltaTone, isFlagged, paramRange, leverGroup, debtMovesAgainstBalance, niceAxis, YEAR1_PARADOX_TEXT,
 } from './helpers.js'
 
 const EPS = PARAM_BY_ID['fisc.eps'].value
@@ -184,6 +184,60 @@ describe('blocs et paramètres', () => {
     for (const id of ids) {
       expect(PARAM_BY_ID[id].status).toBeTruthy()
       expect(PARAM_BY_ID[id].explanation).toBeTruthy()
+    }
+  })
+})
+
+describe('paradoxe de la première année (relance : dette/PIB en baisse malgré un solde dégradé)', () => {
+  const STIMULUS = { dep_enseignement: 30, dep_defense: 30, dep_ordre_securite: 30, dep_affaires_eco: 30 }
+  it('relance forte : solde dégradé, dette/PIB sous la référence en 2027, puis l\'effet s\'inverse', () => {
+    const { r, ref } = run(STIMULUS)
+    const y1 = snapshotAt(r, ref, 1)
+    expect(y1.balanceDelta).toBeLessThan(-0.01)
+    expect(y1.debtDelta).toBeLessThan(-0.01)
+    expect(debtMovesAgainstBalance(y1)).toBe(true)
+    const y5 = snapshotAt(r, ref, 5)
+    expect(y5.debtDelta).toBeGreaterThan(0)
+    expect(debtMovesAgainstBalance(y5)).toBe(false)
+  })
+  it('hausse de TVA ordinaire : dette et solde évoluent en sens inverse, pas de ligne d\'explication', () => {
+    const { r, ref } = run({ tva_normal: 5 })
+    expect(debtMovesAgainstBalance(snapshotAt(r, ref, 1))).toBe(false)
+  })
+  it('condition : mêmes signes non négligeables seulement ; écarts nuls, négligeables ou non finis exclus', () => {
+    expect(debtMovesAgainstBalance({ debtDelta: -0.5, balanceDelta: -0.7 })).toBe(true)
+    expect(debtMovesAgainstBalance({ debtDelta: 0.5, balanceDelta: 0.7 })).toBe(true)
+    expect(debtMovesAgainstBalance({ debtDelta: 0.5, balanceDelta: -0.7 })).toBe(false)
+    expect(debtMovesAgainstBalance({ debtDelta: -0.5, balanceDelta: 0.7 })).toBe(false)
+    expect(debtMovesAgainstBalance({ debtDelta: 0, balanceDelta: -0.7 })).toBe(false)
+    expect(debtMovesAgainstBalance({ debtDelta: -0.005, balanceDelta: -0.7 })).toBe(false)
+    expect(debtMovesAgainstBalance({ debtDelta: NaN, balanceDelta: -0.7 })).toBe(false)
+    expect(debtMovesAgainstBalance({ debtDelta: null, balanceDelta: -0.7 })).toBe(false)
+    expect(debtMovesAgainstBalance(null)).toBe(false)
+  })
+  it('texte demandé', () => {
+    expect(YEAR1_PARADOX_TEXT).toBe('La dette rapportée au PIB peut baisser la première année : la relance augmente aussi le PIB (dénominateur). L\'effet s\'inverse ensuite.')
+  })
+})
+
+describe('axe vertical « rond » (niceAxis)', () => {
+  it('l\'exemple relevé en revue (82 → 503) donne des multiples de 100', () => {
+    const a = niceAxis(82, 503, { minStep: 10 })
+    expect(a.ticks).toEqual([0, 100, 200, 300, 400, 500, 600])
+    expect(a.domain).toEqual([0, 600])
+  })
+  it('petite plage : pas de 10 au moins ; plage nulle : une graduation d\'écart', () => {
+    expect(niceAxis(112, 128, { minStep: 10 }).ticks).toEqual([110, 120, 130])
+    expect(niceAxis(100, 100, { minStep: 10 }).domain).toEqual([100, 110])
+  })
+  it('bornes non finies : null ; toutes les graduations contiennent les bornes', () => {
+    expect(niceAxis(NaN, 5)).toBeNull()
+    for (const [lo, hi] of [[115, 467], [60, 260], [90, 1240], [119.3, 121.7]]) {
+      const a = niceAxis(lo, hi, { minStep: 10 })
+      expect(a.domain[0]).toBeLessThanOrEqual(lo)
+      expect(a.domain[1]).toBeGreaterThanOrEqual(hi)
+      expect(a.ticks.length).toBeLessThanOrEqual(8)
+      expect(a.ticks.every((t) => t % a.step === 0)).toBe(true)
     }
   })
 })
