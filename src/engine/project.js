@@ -57,7 +57,7 @@ export function projectScenario(options = {}) {
   const years = Array.from({ length: N + 1 }, (_, t) => START_YEAR + t)
   // Contrat de module (note §7) : le module reçoit une copie profondément gelée, jamais l'objet vivant des paramètres.
   const context = deepFreeze(structuredClone({ startYear: START_YEAR, endYear: horizon.endYear, nYears: N, years, gdpBase2025: P['base.pib.2025'], params: P }))
-  const instruments = leversToInstruments(options.levers, P, N, options.ramp)
+  const instruments = leversToInstruments(options.levers, P, N, options.ramp, { sigma: options.sigma, ysCase })
   const moduleRuns = []
   for (const { module, levers } of options.modules ?? []) {
     const inst = runModule(module, levers, context)
@@ -94,7 +94,7 @@ export function projectScenario(options = {}) {
   // ---- Effets d'offre (E5) : une ligne distincte et étiquetée par mesure, avec son cas (bas / central / haut) ----
   // Mesures du cœur (paramètres offre.*), modules (yS fourni par le module) et chemin externe : trois sources, mêmes lignes.
   const ysLines = [
-    ...coreSupplyLines(instruments, P, N, options.sigma).map((l) => ({ id: l.id, libelle: l.libelle, origine: 'levier', sigma: l.sigma, L: l.L, t0: l.t0, yS: l.cas[ysCase] })),
+    ...coreSupplyLines(instruments, P, N, options.sigma).map((l) => ({ id: l.id, libelle: l.libelle, origine: 'levier', statut: l.statut, nomCourt: l.nomCourt, sigma: l.sigma, L: l.L, t0: l.t0, yS: l.cas[ysCase] })),
     ...moduleRuns.filter((inst) => inst.yS).map((inst) => ({ id: inst.id, libelle: inst.titre, origine: 'module', yS: inst.yS[ysCase] })),
     { id: 'externe', libelle: 'Chemin yS externe', origine: 'externe', yS: years.map((_, t) => (Number.isFinite(options.yS?.[t]) ? options.yS[t] : 0)) },
   ].filter((l) => l.yS.some((v) => v !== 0))
@@ -224,7 +224,7 @@ export function projectScenario(options = {}) {
 
   return {
     horizon: horizon.id, startYear: START_YEAR, endYear: horizon.endYear, years, total, blocks, decomposition,
-    supply: { cas: ysCase, lignes: ysLines.map(({ id, libelle, origine, sigma, L, t0, yS }) => ({ id, libelle, origine, cas: ysCase, sigma, L, t0, yS })) },
+    supply: { cas: ysCase, lignes: ysLines.map(({ id, libelle, origine, statut, nomCourt, sigma, L, t0, yS }) => ({ id, libelle, origine, statut, nomCourt, cas: ysCase, sigma, L, t0, yS })) },
     modules: moduleRuns.map(({ id, titre, statut, flux, explications }) => ({ id, titre, statut, flux, explications })),
     instruments: instruments.map(({ id, source }) => ({ id, source })),
   }
