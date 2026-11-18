@@ -492,7 +492,7 @@ describe('paramètres d\'offre décidés le 17 novembre (offre.sigma.*, offre.la
   it('TVA : σ calculé (−0,19 par point au centre), symétrique ; « tous taux » à l\'échelle de son rendement ; plus de cas nul', () => {
     const run = (levers, ysCase) => projectScenario({ levers, ysCase })
     const sg = sigmaFiscal('tva_normal', P)
-    expect([sg.low, sg.value, sg.high].map((v) => Number(v.toFixed(3)))).toEqual([-0.094, -0.188, -0.258])
+    expect([sg.low, sg.value, sg.high].map((v) => Number(v.toFixed(3)))).toEqual([-0.097, -0.194, -0.267])
     // 1 point relevé, L = 5 : plein effet à τ = 5 (t = 6) ; τ = 2 : 40 %
     expect(yS(run({ tva_normal: 1 }, 'central'))[6]).toBeCloseTo(sg.value / 100, 10)
     expect(yS(run({ tva_normal: 1 }, 'central'))[3]).toBeCloseTo((sg.value / 100) * 0.4, 10)
@@ -596,16 +596,18 @@ describe('σ des leviers fiscaux : calculé depuis les paramètres (docs/sigma-f
     expect(t('offre.is.alpha')).toEqual([0.16, 0.18, 0.21])
     expect(['dette.beta'].map((id) => [PARAM_BY_ID[id].low, PARAM_BY_ID[id].value, PARAM_BY_ID[id].high])).toEqual([[1, 3, 5]]) // β : fourchette lue (Banque de France WP 494), centre choisi
     expect(PARAM_BY_ID['dette.beta'].status).toBe('sourcé (fourchette), centre choisi')
-    expect(t('offre.is.eps_k')).toEqual([0.3, 0.5, 1.0])
-    expect(PARAM_BY_ID['offre.is.eps_k'].status).toBe('de mémoire')
+    expect(t('offre.is.eps_k')).toEqual([0.25, 0.5, 1.0])
+    expect(PARAM_BY_ID['offre.is.eps_k'].status).toBe('sourcé (fourchette), centre choisi')
     expect(P['offre.is.tau_effectif']).toBe(25.8)
     expect(P['comp.tau0.is']).toBe(25) // le taux normal reste dans comp.tau0.is
     expect(t('comp.tau0.ir')).toEqual([18, 21, 23])
     expect(PARAM_BY_ID['comp.tau0.ir'].status).toBe('calculé (estimation)')
     expect(PARAM_BY_ID['comp.tau0.ir'].unit).toBe('%')
     expect(P['offre.ir.conv_brut']).toBe(0.76)
-    expect(P['base.conso_menages']).toBe(1600)
-    expect(PARAM_BY_ID['base.conso_menages'].status).toBe('de mémoire')
+    expect(P['base.conso_menages']).toBe(1545.9)
+    expect(PARAM_BY_ID['base.conso_menages'].status).toBe('sourcé')
+    expect(t('base.tva.2025')).toEqual([200, 208.8, 215])
+    expect(PARAM_BY_ID['base.tva.2025'].status).toBe('sourcé')
     expect(P['base.ir.2025']).toBe(92.6)
   })
   it('σ par levier : formules et valeurs centrales (± 0,01), cas bas et haut', () => {
@@ -621,11 +623,11 @@ describe('σ des leviers fiscaux : calculé depuis les paramètres (docs/sigma-f
     expect(sigmaFiscal('csg', P).low).toBeCloseTo(-0.27, 2)
     expect(sigmaFiscal('csg', P).high).toBeCloseTo(-0.74, 2)
     // TVA : e_L × rendement du point / consommation des ménages
-    expect(sigmaFiscalCase('tva_normal', P)).toBeCloseTo(-100 * 0.4 * (7.5 / 1600), 10)
-    expect(sigmaFiscalCase('tva_tous_taux', P)).toBeCloseTo(-100 * 0.4 * (11.4 / 1600), 10)
+    expect(sigmaFiscalCase('tva_normal', P)).toBeCloseTo(-100 * 0.4 * (7.5 / 1545.9), 10)
+    expect(sigmaFiscalCase('tva_tous_taux', P)).toBeCloseTo(-100 * 0.4 * (11.4 / 1545.9), 10)
     expect(sigmaFiscal('tva_normal', P).value).toBeCloseTo(-0.19, 2)
-    expect(sigmaFiscal('tva_normal', P).low).toBeCloseTo(-0.09, 2)
-    expect(sigmaFiscal('tva_normal', P).high).toBeCloseTo(-0.26, 2)
+    expect(sigmaFiscal('tva_normal', P).low).toBeCloseTo(-0.10, 2)
+    expect(sigmaFiscal('tva_normal', P).high).toBeCloseTo(-0.27, 2)
     // IS : α × ε_K × Δc/c, Δc/c = 0,01 × (1/(1 − τ) − z/(1 − τz)), τ = 25,8 %, z = 0,742
     const tau = 0.258
     const dc = 0.01 * (1 / (1 - tau) - 0.742 / (1 - tau * 0.742))
@@ -633,7 +635,7 @@ describe('σ des leviers fiscaux : calculé depuis les paramètres (docs/sigma-f
     expect(dc).toBeCloseTo(0.0043, 4)
     expect(sigmaFiscal('is', P).value).toBeCloseTo(-100 * 0.18 * 0.5 * dc, 10)
     expect(sigmaFiscal('is', P).value).toBeCloseTo(-0.04, 2)
-    expect(sigmaFiscal('is', P).low).toBeCloseTo(-100 * 0.16 * 0.3 * dc, 10)
+    expect(sigmaFiscal('is', P).low).toBeCloseTo(-100 * 0.16 * 0.25 * dc, 10)
     expect(sigmaFiscal('is', P).high).toBeCloseTo(-100 * 0.21 * 1.0 * dc, 10)
     expect(sigmaFiscal('is', P).high).toBeCloseTo(-0.09, 2)
     // IR : e_L × 0,01 × (τ_IR × conversion brut) / part nette, par 1 % du produit

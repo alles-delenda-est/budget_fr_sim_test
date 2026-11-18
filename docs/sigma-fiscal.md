@@ -39,7 +39,7 @@ La v1 prenait 0,19 du CBO : élasticité totale (non compensée), États-Unis. D
 | z (valeur actuelle des amortissements) | 0,8 (de mémoire) | **0,742** (moyenne pondérée France 2025 : bâtiments 54,8 %, machines 88,0 %, incorporels 87,0 % ; actualisation 7,5 %) | Tax Foundation, *Capital Allowances in Europe 2025* |
 | Δc/c par point | 0,33 % | **0,43 %** | calcul |
 | α (part du capital des sociétés dans le PIB, brute) | 0,18 (de mémoire) | entre **0,16** (SNF seules ; mon estimation : taux de marge 31,4 % appliqué à leur valeur ajoutée) et **0,21** (EBE et revenu mixte des sociétés et entrepreneurs non financiers, 630,4 Md€ en 2025, sur PIB 2 991) ; 0,18 retenu | Insee, comptes nationaux 2025 |
-| ε_K | 0,5 (de mémoire) | non vérifié ; fourchette 0,3–1,0 | à sourcer |
+| ε_K | 0,5 (de mémoire) | fourchette **0,25–1,0**, centre 0,5 choisi : 0,25 (Chirinko, Fazzari et Meyer 1999, États-Unis) et au plus 0,26 (Chatelain et Tiomo 2002, France 1990–1999, seule estimation française lue) avec des modèles à retards échelonnés ; ≈ 1 (Dwenger 2014, Allemagne ; Millar et Coulibaly 2010) en correction d'erreur ; 0,40 (panel long de Chirinko et al.) | résumés lus, 18 nov. 2026 |
 
 ## 4. Chiffres (e_L = 0,40 ; fourchette e_L 0,20–0,55)
 
@@ -49,7 +49,7 @@ Signes pour une **baisse**. « Par point de PIB » = par 1 % du PIB de coût sta
 |---|---|---|---|---|
 | Cotisations patronales, −1 pt | 0,73 % | 0,15 / **0,29** / 0,40 | 1,05 | 0,35 par point de PIB (n° 3, données CICE) |
 | CSG, −1 pt | 1,36 % | 0,27 / **0,54** / 0,75 | 0,97 | aucun |
-| TVA taux normal, −1 pt | 0,47 % | 0,09 / **0,19** / 0,26 | 0,76 | voir n° 6 |
+| TVA taux normal, −1 pt | 0,49 % | 0,10 / **0,19** / 0,27 | 0,79 | voir n° 6 |
 | IS, −1 pt | 0,43 % | 0,02 / **0,04** / 0,09 | 0,52 | 0,15 par point (n° 4) |
 | IR, −1 % du produit | dépend du taux marginal moyen pondéré | **en attente** | — | — |
 
@@ -79,7 +79,7 @@ Dans le cas simple d'un coin uniforme `T` sur le travail, la recette est maximal
 1. **Méthode approuvée** (coin fiscal × e_L ; coût d'usage pour l'IS), avec **e_L = 0,40** (fourchette 0,20–0,55).
 2. **Pas de plafond Gemini** pour les impôts larges sur le travail (cotisations, CSG, TVA, IR). Le plafond de l'IS ne mord pas (0,04 contre 0,15).
 3. **θ réduit à sa partie non réelle** quand σ ≠ 0 : θ_non réel = max(0, θ − θ_réel), où θ_réel est la perte de recette propre due à la baisse du PIB, rapportée au rendement statique.
-4. **TVA alignée sur la méthode** : central −0,19 % du PIB par point de hausse (bas −0,26, haut −0,09) ; tous taux à l'échelle du rendement.
+4. **TVA alignée sur la méthode** : central −0,19 % du PIB par point de hausse (bas −0,27, haut −0,10 ; consommation des ménages Insee 2025, 1 545,9 Md€) ; tous taux à l'échelle du rendement.
 5. **IR** : taux marginal moyen pondéré par les revenus **21 %** du revenu imposable (calculé, fourchette 18–23 %, voir section 7), soit environ 16 % du salaire brut ; σ activé avec la même méthode ; résultat marqué « non validé — avis demandé » et inscrit parmi les questions aux relecteurs.
 6. Levier « allègements généraux » (bas salaires, élasticité de la demande) et cotisations au niveau du Smic : reportés après le Day 0.
 
