@@ -4,7 +4,7 @@ import { LEVERS, STRUCTURAL_LEVERS } from '../../engine/levers.js'
 import { PARAM_BY_ID } from '../../engine/params.js'
 import {
   fmt, num, buildSeries, snapshotAt, decomposeAtYear, visibleLines, blocksAt, paramIdsFor, groupedLevers,
-  extremeLevers, deltaTone, isFlagged, paramRange, leverGroup,
+  extremeLevers, hasSupplyEffect, deltaTone, isFlagged, paramRange, leverGroup,
 } from './helpers.js'
 
 const EPS = PARAM_BY_ID['fisc.eps'].value
@@ -116,6 +116,48 @@ describe('décomposition par cause', () => {
   it('filtre les lignes nulles et non finies', () => {
     const lines = [{ montant: 0 }, { montant: 0.01 }, { montant: -2 }, { montant: NaN }, { montant: 0.05 }]
     expect(visibleLines(lines).map((l) => l.montant)).toEqual([-2, 0.05])
+  })
+})
+
+describe('décomposition : somme égale écart de solde (scénario − référence)', () => {
+  const LEVER_SETS = {
+    aucun: {},
+    tva: { tva_normal: 3 },
+    mixte: { tva_normal: -5, dep_enseignement: -30, csg: 2, travail_assurance_chomage: 10, ir: -10 },
+    minimum: extremeLevers('min'),
+    maximum: extremeLevers('max'),
+  }
+  for (const [nom, levers] of Object.entries(LEVER_SETS)) {
+    for (const ysCase of ['bas', 'central', 'haut']) {
+      it(`${nom}, cas ${ysCase} : toutes les années`, () => {
+        const { r, ref } = run(levers, ysCase)
+        for (let t = 1; t < r.years.length; t++) {
+          const d = decomposeAtYear(r, ref, t, EPS)
+          const ecartAttendu = r.total[t].balance - ref.total[t].balance
+          expect(d.ecart).toBeCloseTo(ecartAttendu, 6)
+          expect(d.lines.reduce((s, l) => s + l.montant, 0)).toBeCloseTo(ecartAttendu, 6)
+        }
+      })
+    }
+  }
+  it('tient aussi sur l\'horizon de trente ans', () => {
+    const { r, ref } = run(LEVER_SETS.mixte, 'haut', 'trenteAns')
+    for (const t of [1, 10, 20, r.years.length - 1]) {
+      const d = decomposeAtYear(r, ref, t, EPS)
+      expect(d.lines.reduce((s, l) => s + l.montant, 0)).toBeCloseTo(r.total[t].balance - ref.total[t].balance, 6)
+    }
+  })
+})
+
+describe('indication « sans effet d\'offre »', () => {
+  it('sans levier ou avec un σ nul dans le cas choisi : pas d\'effet d\'offre', () => {
+    expect(hasSupplyEffect(run({}).r)).toBe(false)
+    expect(hasSupplyEffect(run({ tva_normal: 3 }, 'central').r)).toBe(false)
+    expect(hasSupplyEffect(run({ ir: -10 }, 'haut').r)).toBe(false)
+  })
+  it('un σ non nul dans le cas choisi donne un effet d\'offre', () => {
+    expect(hasSupplyEffect(run({ tva_normal: 3 }, 'bas').r)).toBe(true)
+    expect(hasSupplyEffect(run({ dep_enseignement: 20 }, 'haut').r)).toBe(true)
   })
 })
 

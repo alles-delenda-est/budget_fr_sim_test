@@ -5,7 +5,7 @@ import LeverPanel from './budget/LeverPanel'
 import Charts from './budget/Charts'
 import { Snapshots, DecompositionTable, BlocksTable } from './budget/Results'
 import { InfoPopover, ParamInfo, StatusBadge } from './budget/InfoPopover'
-import { buildSeries, snapshotAt, decomposeAtYear, blocksAt, paramIdsFor, extremeLevers, SUPPLY_CASES } from './budget/helpers'
+import { buildSeries, snapshotAt, decomposeAtYear, hasSupplyEffect, blocksAt, paramIdsFor, extremeLevers, SUPPLY_CASES } from './budget/helpers'
 import './SimulateurBudgetPage.css'
 
 const P = resolveParams()
@@ -35,6 +35,9 @@ export default function SimulateurBudgetPage() {
   const blocks = useMemo(() => blocksAt(result, reference, yearIdx), [result, reference, yearIdx])
   const paramIds = useMemo(() => paramIdsFor(values, result), [values, result])
 
+  // Aucune ligne d'offre non nulle dans le résultat du moteur : le choix bas / central / haut ne change rien.
+  const noSupplyEffect = !hasSupplyEffect(result)
+
   const setLever = (id, x) => setValues((v) => ({ ...v, [id]: x }))
 
   return (
@@ -55,9 +58,10 @@ export default function SimulateurBudgetPage() {
           </div>
           <div>
             <label htmlFor="sb-case">Cas des effets d'offre</label>
-            <select id="sb-case" value={ysCase} onChange={(e) => setYsCase(e.target.value)}>
+            <select id="sb-case" aria-describedby={noSupplyEffect ? 'sb-case-hint' : undefined} value={ysCase} onChange={(e) => setYsCase(e.target.value)}>
               {SUPPLY_CASES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
             </select>
+            {noSupplyEffect && <p className="sb-hint" id="sb-case-hint">Sans effet pour les leviers choisis</p>}
           </div>
         </div>
         <p className="sb-help">Bas et haut désignent les résultats les moins et les plus favorables pour le PIB, et non l'ordre statistique des valeurs (σ). Au-delà de dix ans, lisez les trois cas ensemble : le modèle reste déterministe.</p>
