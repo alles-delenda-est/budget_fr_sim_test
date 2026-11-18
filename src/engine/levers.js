@@ -74,6 +74,9 @@ export const LEVERS = [
   { id: 'ondam', titre: 'ONDAM (dépenses de santé)', unite: '% de la ligne', min: -10, max: 10, type: 'depense', signe: -1,
     rendement: (P) => P['base.cofog.sante'] / 100, categorie: 'prestations', blocs: () => ALL_SECU,
     statut: 'sourcé', aide: '1 % de la fonction « santé » (COFOG 2024, proxy de l\'ONDAM).' },
+  { id: 'travail_assurance_chomage', titre: 'Assurance chômage (allocations)', unite: '% de la ligne', min: -30, max: 30, type: 'depense', signe: -1,
+    rendement: (P) => P['base.unedic.allocations'] / 100, categorie: 'prestations', blocs: () => ALL_SECU,
+    statut: 'sourcé', aide: '1 % des allocations de l\'Unédic (37,2 Md€ en 2025) : environ 0,37 Md€. Positif = plus généreux (plus de dépense) ; négatif = resserrement. L\'Unédic est classée en sécurité sociale (ASSO).' },
   { id: 'indexation_pensions', titre: 'Indexation des pensions', unite: 'points sous l\'inflation', min: -3, max: 3, type: 'depense', signe: -1,
     rendement: (P) => (P['ref.derive.a_retraites'][2025] / 100) * P['base.pib.2025'] / 100, categorie: 'prestations', blocs: () => ALL_SECU,
     offsetGroup: 'prestations', statut: 'sourcé',
@@ -81,9 +84,10 @@ export const LEVERS = [
 ]
 
 // Leviers de réforme du logement et du marché du travail (D5) : visibles, désactivés, sans effet budgétaire (σ = 0).
+// L'assurance chômage n'en fait plus partie : c'est un levier de dépense actif (voir LEVERS).
 export const STRUCTURAL_LEVERS = [
   ['logement_offre', 'Offre de logement'], ['logement_loyers', 'Encadrement des loyers'],
-  ['travail_licenciement', 'Règles de licenciement'], ['travail_assurance_chomage', 'Assurance chômage'],
+  ['travail_licenciement', 'Règles de licenciement'],
 ].map(([id, titre]) => ({ id, titre, unite: 'intensité (0 à 1)', min: 0, max: 1, defaut: 0, actif: false, statut: 'non validé',
   aide: 'Non validé — avis demandé. σ = 0 en attendant la revue de preuves (docs/brief-supply-effects.md) : aucun effet.' }))
 
@@ -129,7 +133,11 @@ export function leversToInstruments(values, P, nYears, rampOpts) {
     const theta = leverTheta(lever, x, P)
     const aBlocks = { centrales: [], securiteSociale: [], locales: [] }
     for (let t = 0; t <= nYears; t++) for (const b of BLOCKS) aBlocks[b].push(total * shares[b] * ramp(t, rampOpts))
-    out.push({ id: lever.id, source: 'levier', categorie: lever.categorie, aBlocks, theta: Array(nYears + 1).fill(theta) })
+    // x : valeur signée du levier ; start : année (t) d'entrée en vigueur ; sizeByYear : x × rampe, taille de la mesure
+    // dans l'unité du levier (sert à l'effet d'offre E5, voir supply.js).
+    const sizeByYear = Array.from({ length: nYears + 1 }, (_, t) => x * ramp(t, rampOpts))
+    out.push({ id: lever.id, source: 'levier', categorie: lever.categorie, aBlocks, theta: Array(nYears + 1).fill(theta),
+      x, start: rampOpts?.start ?? 1, sizeByYear })
   }
   return out
 }
