@@ -98,6 +98,44 @@ export function snapshotAt(result, reference, t) {
   }
 }
 
+/** Seuil (en points de PIB) sous lequel un écart de la fiche est traité comme nul pour le test du paradoxe de la première année. */
+const PARADOX_EPS = 0.01
+
+/**
+ * Paradoxe de la première année (E11) : la dette de l'année inclut le déficit de l'année, mais le PIB (dénominateur) réagit aussi dans la même
+ * année. Une relance forte peut donc creuser le solde (écart < 0) tout en baissant la dette rapportée au PIB (écart < 0), ou l'inverse
+ * pour une austérité. Vrai quand la dette ne bouge PAS en sens inverse du solde (un solde plus bas devrait relever la dette) :
+ * écarts de même signe numérique, tous deux non négligeables.
+ */
+export function debtMovesAgainstBalance(snap) {
+  const d = snap?.debtDelta
+  const b = snap?.balanceDelta
+  if (!Number.isFinite(d) || !Number.isFinite(b)) return false
+  if (Math.abs(d) < PARADOX_EPS || Math.abs(b) < PARADOX_EPS) return false
+  return Math.sign(d) === Math.sign(b)
+}
+
+/** Explication affichée sur la fiche de l'année 1 quand `debtMovesAgainstBalance` est vrai. */
+export const YEAR1_PARADOX_TEXT = 'La dette rapportée au PIB peut évoluer à l\'inverse du solde la première année : la mesure modifie aussi le PIB (dénominateur), dans le même sens que la dette. L\'effet s\'inverse ensuite.'
+
+/**
+ * Bornes et graduations « rondes » d'un axe vertical : pas de 1, 2 ou 5 × 10^n (au moins `minStep`), au plus `maxTicks` graduations ;
+ * le domaine arrondit les bornes aux multiples du pas. `null` si les bornes ne sont pas finies.
+ * @returns {{ domain: [number, number], ticks: number[], step: number } | null}
+ */
+export function niceAxis(lo, hi, { maxTicks = 6, minStep = 1 } = {}) {
+  if (!Number.isFinite(lo) || !Number.isFinite(hi)) return null
+  const raw = Math.max((hi - lo) / Math.max(maxTicks - 1, 1), minStep)
+  const mag = 10 ** Math.floor(Math.log10(raw))
+  const step = [1, 2, 5, 10].map((m) => m * mag).find((c) => c >= raw)
+  const a = Math.floor(lo / step) * step
+  let b = Math.ceil(hi / step) * step
+  if (b === a) b = a + step
+  const ticks = []
+  for (let v = a; v <= b + step / 1e6; v += step) ticks.push(Math.round(v * 1e6) / 1e6)
+  return { domain: [a, b], ticks, step }
+}
+
 /** Sens d'un écart : « mieux » si le solde monte ou si la dette / les intérêts baissent. */
 export function deltaTone(delta, lowerIsBetter) {
   if (!Number.isFinite(delta) || Math.abs(delta) < 0.05) return 'neutre'

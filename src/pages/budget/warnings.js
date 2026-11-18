@@ -3,6 +3,7 @@
 
 import { WARNING_THRESHOLDS as W } from '../../config.js'
 import { fmt } from './helpers.js'
+import { PARAM_BY_ID } from '../../engine/params.js'
 
 const above = (v, threshold) => Number.isFinite(v) && v > threshold
 
@@ -47,11 +48,20 @@ export const tier1Text = (w) =>
 
 const TIER2_SUITE = 'Bien avant ce point, un défaut, une forte inflation ou une restructuration de la dette interviendraient ; le modèle ne décrit plus une situation réaliste.'
 
-/** Explication du palier 2 : pourquoi les intérêts dépassent les recettes à ces niveaux de dette (E9 : pente `dette.beta`, plafond du taux 25 %). */
-export const TIER2_EXPLANATION = 'Dans le moteur, le taux d\'intérêt monte avec la dette (prime de 3 points de base par point de dette au-delà de la référence, plafonnée à 25 %) : c\'est pourquoi les intérêts dépassent les recettes à ces niveaux.'
+/**
+ * Explication du palier 2 : pourquoi les intérêts dépassent les recettes à ces niveaux de dette (E9 : pente `dette.beta`, plafond du taux 25 %).
+ * Présentée comme une hypothèse du modèle, jamais comme un fait ; β vient des paramètres (pb par point de dette), pas d'un littéral.
+ * @param {number} [betaPb] pente β en points de base par point de dette (défaut : paramètre `dette.beta`)
+ */
+export function tier2Explanation(betaPb = PARAM_BY_ID['dette.beta'].value) {
+  const b = Number.isFinite(betaPb) ? fmt(betaPb, Number.isInteger(betaPb) ? 0 : 1) : '—'
+  return `Hypothèse du modèle : le taux d'intérêt monte de ${b} point${betaPb > 1 ? 's' : ''} de base par point de dette au-delà de la référence (plafonné à 25 %). `
+    + 'Cette pente est une hypothèse, non un fait (voir « Hypothèses utilisées », paramètre dette.beta) : c\'est elle qui fait dépasser les recettes par les intérêts à ces niveaux.'
+}
 
 /**
  * Texte du palier 2. Les intérêts ne sont dits supérieurs à la totalité des recettes que si X ≥ 100 % ; sinon, ils « absorbent X % ».
+ * Le palier se déclenche sur la valeur non arrondie (> 50 %) : si l'arrondi retombe sur le seuil, on écrit « plus de 50 % » (jamais « absorberaient 50 % »).
  * Si les recettes ne sont pas calculables, la phrase sur les intérêts est omise plutôt qu'inventée.
  */
 export function tier2Text(w) {
@@ -59,6 +69,8 @@ export function tier2Text(w) {
   const debut = 'Trajectoire hors de toute expérience historique : '
   if (x === null || !Number.isFinite(x)) return `${debut}en ${w.year}, la dette atteindrait ${fmt(w.debtPct, 0)} % du PIB. ${TIER2_SUITE}`
   if (x >= 100) return `${debut}en ${w.year}, les intérêts dépasseraient la totalité des recettes publiques (${fmt(x, 0)} %). ${TIER2_SUITE}`
+  const seuil = W.tier2InterestShareRevenuePct
+  if (x > seuil && Number(fmt(x, 0)) === seuil) return `${debut}en ${w.year}, les intérêts absorberaient plus de ${seuil} % des recettes publiques. ${TIER2_SUITE}`
   return `${debut}en ${w.year}, les intérêts absorberaient ${fmt(x, 0)} % des recettes publiques. ${TIER2_SUITE}`
 }
 

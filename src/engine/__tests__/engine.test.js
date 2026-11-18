@@ -594,6 +594,8 @@ describe('σ des leviers fiscaux : calculé depuis les paramètres (docs/sigma-f
     expect(P['comp.coin.part_nette']).toBe(0.57)
     expect(P['offre.is.z']).toBe(0.742)
     expect(t('offre.is.alpha')).toEqual([0.16, 0.18, 0.21])
+    expect(['dette.beta'].map((id) => [PARAM_BY_ID[id].low, PARAM_BY_ID[id].value, PARAM_BY_ID[id].high])).toEqual([[1, 3, 5]]) // β : fourchette lue (Banque de France WP 494), centre choisi
+    expect(PARAM_BY_ID['dette.beta'].status).toBe('sourcé (fourchette), centre choisi')
     expect(t('offre.is.eps_k')).toEqual([0.3, 0.5, 1.0])
     expect(PARAM_BY_ID['offre.is.eps_k'].status).toBe('de mémoire')
     expect(P['offre.is.tau_effectif']).toBe(25.8)

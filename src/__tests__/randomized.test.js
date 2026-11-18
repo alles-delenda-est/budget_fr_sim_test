@@ -357,7 +357,7 @@ describe(`tests aléatoires (graine de base ${BASE_SEED})`, () => {
     const snapshot = JSON.stringify(PARAMS)
     forCases('13', BASE_SEED + 13, 60, (rng, c) => {
       const levers = deepFreeze(randomLevers(rng))
-      const overrides = deepFreeze({ 'dette.beta': uniform(rng, 2, 5), 'fisc.eps': uniform(rng, 0.5, 0.65) })
+      const overrides = deepFreeze({ 'dette.beta': uniform(rng, 1, 5), 'fisc.eps': uniform(rng, 0.5, 0.65) })
       const opts = { levers, overrides, horizon: pick(rng, HORIZON_IDS), ysCase: pick(rng, CASES), modules: rng() < 0.3 ? [{ module: TEST_MODULE, levers: { taille: uniform(rng, -1, 1), effet_offre: uniform(rng, -2, 2) } }] : [] }
       c.info = { levers, overrides, horizon: opts.horizon, ysCase: opts.ysCase }
       const a = projectScenario(opts)
@@ -371,7 +371,7 @@ describe(`tests aléatoires (graine de base ${BASE_SEED})`, () => {
   it('14 [seed +14] indépendance à l\'ordre : clés de leviers et de remplacements mélangées donnent le même résultat', () => {
     forCases('14', BASE_SEED + 14, 80, (rng, c) => {
       const levers = randomLevers(rng, { density: 0.7 })
-      const overrides = { 'dette.beta': uniform(rng, 2, 5), 'emploi.kappa': uniform(rng, 0.3, 0.5), 'dem.lambda': uniform(rng, 0.5, 0.85) }
+      const overrides = { 'dette.beta': uniform(rng, 1, 5), 'emploi.kappa': uniform(rng, 0.3, 0.5), 'dem.lambda': uniform(rng, 0.5, 0.85) }
       const horizon = pick(rng, HORIZON_IDS)
       const ysCase = pick(rng, CASES)
       c.info = { levers, overrides, horizon, ysCase }
@@ -483,7 +483,7 @@ describe(`tests aléatoires (graine de base ${BASE_SEED})`, () => {
       const levers = rng() < 0.3 ? extremeMixLevers(rng) : randomLevers(rng)
       const horizon = pick(rng, HORIZON_IDS)
       c.info = { levers, horizon }
-      projectScenario({ levers, horizon, ysCase: pick(rng, CASES), overrides: { 'dette.beta': uniform(rng, 2, 5) } })
+      projectScenario({ levers, horizon, ysCase: pick(rng, CASES), overrides: { 'dette.beta': uniform(rng, 1, 5) } })
       const h = pick(rng, HORIZON_IDS)
       expect(projectScenario({ horizon: h })).toEqual(refs[h])
     })

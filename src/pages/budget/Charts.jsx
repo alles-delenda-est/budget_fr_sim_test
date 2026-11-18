@@ -1,6 +1,6 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, ReferenceArea } from 'recharts'
 import { WARNING_THRESHOLDS as W } from '../../config'
-import { fmt } from './helpers'
+import { fmt, niceAxis } from './helpers'
 import { splitSeriesAtYear, visibleDomain } from './warnings'
 
 const CHARTS = [
@@ -14,11 +14,20 @@ const CHARTS = [
 /** Unité affichée dans l'infobulle : « % du PIB » tel quel, « % » pour les autres séries en pourcentage. */
 const tooltipUnit = (spec) => (spec.unite.startsWith('% du PIB') ? spec.unite : '%')
 
+/** Minimum et maximum à représenter : bornes du palier 2 si elles existent, sinon toutes les valeurs finies du scénario et de la référence. */
+function extent(data, spec, domain) {
+  if (domain) return domain
+  const vals = data.flatMap((r) => [r[spec.key], r[spec.ref]]).filter(Number.isFinite)
+  return vals.length ? [Math.min(...vals), Math.max(...vals)] : [NaN, NaN]
+}
+
 function SimpleChart({ spec, data, tier1, tier2 }) {
   const tick = { fontSize: 11 }
   const beyond = tier2 ? `${spec.key}Beyond` : null
   // Après le palier 2, le trait du scénario est grisé et pointillé ; l'axe vertical ignore cette partie pour ne pas écraser les autres courbes.
   const domain = visibleDomain(data, spec.key, spec.ref, tier2?.year)
+  // Axe de la dette : bornes et graduations rondes (multiples de 10, 20, 50, 100…), calculées sur la partie visible.
+  const nice = spec.id === 'debt' ? niceAxis(...extent(data, spec, domain), { minStep: 10 }) : null
   const lastYear = data.length ? data[data.length - 1].year : null
   return (
     <figure className="sb-chart" aria-label={`${spec.titre} (${spec.unite})`}>
@@ -27,7 +36,7 @@ function SimpleChart({ spec, data, tier1, tier2 }) {
         <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
           <XAxis dataKey="year" tick={tick} minTickGap={24} />
-          <YAxis tick={tick} width={44} tickFormatter={(v) => fmt(v, spec.tickDec ?? (spec.dec === 1 ? 0 : 1))} domain={domain ?? ['auto', 'auto']} allowDataOverflow={domain !== null} />
+          <YAxis tick={tick} width={44} tickFormatter={(v) => fmt(v, spec.tickDec ?? (spec.dec === 1 ? 0 : 1))} domain={nice?.domain ?? domain ?? ['auto', 'auto']} ticks={nice?.ticks} allowDataOverflow={domain !== null || nice !== null} />
           <Tooltip formatter={(v) => `${fmt(v, spec.dec)} ${tooltipUnit(spec)}`.trim()} labelFormatter={(y) => `Année ${y}`} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
           {tier2 && lastYear > tier2.year && <ReferenceArea x1={tier2.year} x2={lastYear} fill="#9e9e9e" fillOpacity={0.12} stroke="none" ifOverflow="hidden" label={{ value: 'Hors expérience', position: 'insideTopRight', fontSize: 10, fill: '#6b6b6b' }} />}

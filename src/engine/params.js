@@ -184,8 +184,17 @@ const table = [
     PLACEHOLDER + 'taux moyen à l\'émission 2026 de l\'AFT, non trouvé ; 3,5 % est un ordre de grandeur sans source (ne sert qu\'à l\'affichage, jamais dans le calcul).'),
   p('dette.i_moy_2025', 1.9, null, null, '%', 'Cour des comptes : 65,7 Md€ en 2025, 2,2 % du PIB [S14] ; calcul : 64,7 / moyenne (3 306,1 ; 3 460,5)', 'sourcé',
     'Taux moyen payé sur toute la dette.'),
-  p('dette.beta', 3, 2, 5, 'pb par point de PIB de dette', 'Laubach 2009 ; Baldacci et Kumar 2010 (de mémoire)', 'de mémoire',
-    'Hausse du taux quand la dette augmente d\'un point de PIB.'),
+  // β : sourcé en fourchette seulement. Lu (pages récupérées le 18 nov. 2026) : Banque de France WP 494 ; résumé de Laubach (2009) sur le site de la Fed.
+  // Non lu faute d'accès : le coefficient de la dette de Laubach (2009), Attinasi et al., Gruber et Kamin, Ardagna et al., Baldacci et Kumar, le DSM.
+  p('dette.beta', 3, 1, 5, 'pb par point de PIB de dette',
+    'Fourchette : Bortoli, Harreau et Pouvelle, Banque de France, Working Paper n° 494 (juin 2014), « Determinants of OECD countries\' sovereign yields », 22 pays de l\'OCDE, janv. 1999 – déc. 2013, écart du rendement à 10 ans sur le taux de swap, dette/PIB : 0,5 pb par point (tableau 3, modèle de base, non significatif) ; 1,3 pb (variante macro, significatif à 10 %) ; long terme PMG 0,7 pb (tableau 8 ; « 10 points de dette = 7 pb ») ; court terme PMG 4,5 pb ; zone euro après Lehman : −1,7 pb, non significatif (tableau 6) ; aucun seuil ni test de non-linéarité. '
+    + 'Laubach (2009, Journal of the European Economic Association 7(4), 858-885 ; Fed, FEDS 2003-12), États-Unis, projections CBO/OMB : +1 point de déficit projeté/PIB = environ +25 pb sur les taux longs (résumé lu sur le site de la Fed) ; le résumé publié de l\'article donne 3 à 4 pb par point de dette projetée/PIB (la version de travail de 2003 : 4 à 5 pb). '
+    + 'Kirpson et Staehr (Banque d\'Estonie, WP 2025-06), zone euro, panel annuel 1999–2024, effets fixes et variables instrumentales : +1 point de dette/PIB ≈ +3 pb sur le taux de la dette publique (résumé lu). Fed, FEDS 2026-031 (États-Unis, étude d\'événement) : 1 à 2 pb sur le taux neutre et 2 à 3 pb sur la prime de terme à 10 ans (résumé lu). '
+    + 'Centre 3 : estimation de zone euro de Kirpson et Staehr, bas de Laubach ; bas 1 (≈ long terme de la Banque de France, 0,7), haut 5 (≈ court terme de la Banque de France, 4,5 ; Laubach 2003, 4 à 5). '
+    + 'Ancre : la prime se mesure par rapport au ratio dette/PIB de 2026 (t = 0), année où le taux d\'émission i* est observé : c\'est une convention du modèle, non une norme de la littérature (qui estime un effet de niveau, linéaire, sur le taux). '
+    + 'Limites : la Banque de France ne trouve pas d\'effet significatif dans la zone euro après 2008 (β = 0 est donc plausible) ; les estimations portent sur des ratios de 40 à 200 % du PIB, le modèle prolonge la pente linéairement jusqu\'à 300-900 % sur 30 ans.',
+    'sourcé (fourchette), centre choisi',
+    'Hausse du taux d\'émission quand la dette dépasse son niveau de 2026 : 3 points de base par point de PIB au centre (1 à 5). Hypothèse du modèle : les estimations empiriques sont dispersées et faibles pour la zone euro ; cette pente décide du chemin de dette à 30 ans (voir la note de modèle, E9).'),
   p('emploi.kappa', 0.4, 0.3, 0.5, 'point de chômage par % de PIB', 'Ball, Leigh, Loungani 2017 (de mémoire)', 'de mémoire',
     '1 % de PIB en moins : 0,4 point de chômage en plus.'),
   // ref.derive (D7)
@@ -248,7 +257,7 @@ const offreFiscal = [
     'Valeur actuelle des amortissements déductibles par euro investi : plus elle est haute, moins l\'impôt sur les sociétés pèse sur le coût du capital.'),
   p('offre.is.alpha', 0.18, 0.16, 0.21, 'part du PIB', 'Insee, comptes nationaux 2025 : 0,16 = sociétés non financières seules (taux de marge 31,4 % appliqué à leur valeur ajoutée, mon estimation) ; 0,21 = EBE et revenu mixte des sociétés et entrepreneurs non financiers, 630,4 Md€ sur un PIB de 2 991 Md€ ; 0,18 retenu', 'sourcé (fourchette), centre choisi',
     'Part du capital productif des sociétés dans le PIB (brute) : elle transforme une variation du coût du capital en variation du PIB.'),
-  p('offre.is.eps_k', 0.5, 0.3, 1.0, 'élasticité (sans unité)', 'De mémoire ; fourchette 0,3 à 1,0 non vérifiée (docs/sigma-fiscal.md, section 3 : « à sourcer »)', 'de mémoire',
+  p('offre.is.eps_k', 0.5, 0.3, 1.0, 'élasticité (sans unité)', 'De mémoire ; fourchette 0,3 à 1,0 non vérifiée (docs/sigma-fiscal.md, section 3 : « à sourcer »). Recherche du 18 nov. 2026 : références identifiées, aucune relue (accès aux textes refusé) : Zwick et Mahon (2017, AER 107(1), 217-248 ; NBER w21876), Chirinko, Fazzari et Meyer (1999, 2011), Dwenger (2014)', 'de mémoire',
     'Élasticité du stock de capital au coût d\'usage du capital : une hausse de 1 % de ce coût réduit le capital, donc le PIB de long terme, de ε_K × α %. À sourcer.'),
   p('offre.is.tau_effectif', 25.8, null, null, '%', 'BOFiP, 12 août 2026 ; Legifiscal : taux normal 25 % + contribution sociale de 3,3 % (grandes entreprises) ; hors contribution exceptionnelle (temporaire). Le taux normal de 25 % reste dans comp.tau0.is', 'sourcé',
     'Taux d\'IS pris dans le calcul du coût d\'usage du capital : taux normal et contribution sociale, hors contribution exceptionnelle des plus grandes entreprises (temporaire).'),
@@ -262,9 +271,9 @@ const offreFiscal = [
     'Taux marginal d\'impôt sur le revenu auquel est déduite la part déductible de la CSG, pour le salarié moyen.'),
   p('offre.csg.assiette', 0.9825, null, null, 'part', 'Code de la sécurité sociale, art. L. 136-2 : abattement de 1,75 % (assiette = 98,25 % du salaire brut)', 'sourcé',
     'Part du salaire brut qui entre dans l\'assiette de la CSG sur les revenus d\'activité.'),
-  obs('base.conso_menages', 1600, 'Md€', 'De mémoire : consommation des ménages ≈ 1 600 Md€ ; à vérifier sur les comptes nationaux de l\'Insee', 'Consommation finale des ménages en valeur : sert à convertir un point de TVA en variation du prix à la consommation (rendement du point / consommation).', 'de mémoire'),
+  obs('base.conso_menages', 1600, 'Md€', 'De mémoire : consommation des ménages ≈ 1 600 Md€ ; à vérifier sur les comptes nationaux de l\'Insee. Recherche du 18 nov. 2026 : page à lire, non lue (accès refusé) : Insee, Comptes nationaux annuels 2025 (base 2020), https://www.insee.fr/fr/statistiques/8988793 et « Évolution de la dépense et du pouvoir d\'achat des ménages » https://www.insee.fr/fr/statistiques/2385829', 'Consommation finale des ménages en valeur : sert à convertir un point de TVA en variation du prix à la consommation (rendement du point / consommation).', 'de mémoire'),
   obs('base.ir.2025', 92.6, 'Md€', 'DGFiP 2025 ; Vie-publique, IR 2025 (docs/sigma-fiscal.md, section 7)', 'Produit net de l\'impôt sur le revenu en 2025 : recette propre de l\'IR qui varie avec le PIB (calcul de θ non réel).'),
-  p('base.tva.2025', 190, 150, 210, 'Md€', 'Ordre de grandeur de la TVA nette, non relu sur le tome I des Voies et moyens', 'à collecter',
+  p('base.tva.2025', 190, 150, 210, 'Md€', 'Ordre de grandeur de la TVA nette, non relu sur le tome I des Voies et moyens. Recherche du 18 nov. 2026 : document à lire, non lu (accès refusé) : PLF 2026, Voies et moyens, tome I, Évaluations des recettes (assemblee-nationale.fr, 1087930) ou Insee, Recettes du budget général https://www.insee.fr/fr/statistiques/2381416', 'à collecter',
     PLACEHOLDER + 'TVA nette totale (190 Md€) : recette propre qui varie avec le PIB (calcul de θ non réel). Si la valeur est supérieure à environ 120 Md€, θ non réel de la TVA est nul.'),
   obs('base.is.produit_etat_2026', 59.0, 'Md€', 'PLF 2026, Voies et moyens, tome I, p. 6 : IS net de l\'État 59,0 Md€ en 2026', 'Produit net de l\'IS de l\'État en 2026 : recette propre qui varie avec le PIB (calcul de θ non réel).'),
 ]

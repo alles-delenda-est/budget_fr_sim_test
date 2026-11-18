@@ -1,5 +1,5 @@
-import { fmt, deltaTone, visibleLines, HIDE_BELOW } from './helpers'
-import { tier1Text, tier2Text, TIER2_EXPLANATION } from './warnings'
+import { fmt, deltaTone, visibleLines, HIDE_BELOW, debtMovesAgainstBalance, YEAR1_PARADOX_TEXT } from './helpers'
+import { tier1Text, tier2Text, tier2Explanation } from './warnings'
 import { InfoPopover } from './InfoPopover'
 
 function Delta({ value, unit, lowerIsBetter }) {
@@ -12,13 +12,13 @@ export function WarningBanner({ warnings }) {
   if (!warnings?.tier1 && !warnings?.tier2) return null
   return (
     <div className="sb-warnings">
-      {warnings.tier2 && <p className="sb-warning sb-warning-2" role="alert"><strong>Attention.</strong> {tier2Text(warnings.tier2)} <span className="sb-warning-why">{TIER2_EXPLANATION}</span></p>}
+      {warnings.tier2 && <p className="sb-warning sb-warning-2" role="alert"><strong>Attention.</strong> {tier2Text(warnings.tier2)} <span className="sb-warning-why">{tier2Explanation()}</span></p>}
       {warnings.tier1 && <p className="sb-warning sb-warning-1" role="status">{tier1Text(warnings.tier1)}</p>}
     </div>
   )
 }
 
-function SnapshotCard({ titre, snap }) {
+function SnapshotCard({ titre, snap, explainParadox = false }) {
   return (
     <div className="sb-snap">
       <h3>{titre} <span className="sb-muted">({snap.year})</span></h3>
@@ -27,6 +27,7 @@ function SnapshotCard({ titre, snap }) {
         <div><dt>Solde</dt><dd><strong>{fmt(snap.balanceRatio, 2)} % du PIB</strong><Delta value={snap.balanceDelta} unit="pt" lowerIsBetter={false} /></dd></div>
         <div><dt>Intérêts</dt><dd><strong>{fmt(snap.interest, 1)} Md€</strong> <span className="sb-muted">({fmt(snap.interestRatio, 2)} % du PIB)</span><Delta value={snap.interestDelta} unit="Md€" lowerIsBetter /></dd></div>
       </dl>
+      {explainParadox && debtMovesAgainstBalance(snap) && <p className="sb-snap-note">{YEAR1_PARADOX_TEXT}</p>}
     </div>
   )
 }
@@ -37,7 +38,7 @@ export function Snapshots({ snaps }) {
       <h2 id="sb-fiches">Résultats clés</h2>
       <p className="sb-help">Vert : mieux que la référence ; rouge : moins bien (dette et intérêts plus bas, solde plus haut = mieux).</p>
       <div className="sb-snaps">
-        {snaps.map((s) => <SnapshotCard key={s.titre} titre={s.titre} snap={s.snap} />)}
+        {snaps.map((s, i) => <SnapshotCard key={s.titre} titre={s.titre} snap={s.snap} explainParadox={i === 0} />)}
       </div>
     </section>
   )
