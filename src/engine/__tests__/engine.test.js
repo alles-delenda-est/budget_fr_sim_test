@@ -3,10 +3,12 @@ import { PARAMS, PARAM_BY_ID, STATUSES, resolveParams } from '../params.js'
 import { LEVERS, LEVER_BY_ID, STRUCTURAL_LEVERS, staticYield, thetaElasticity, leverTheta, BLOCKS } from '../levers.js'
 import { projectScenario, HORIZONS, issuanceRate, deepFreeze } from '../project.js'
 import { TEST_MODULE, validateModuleDefinition } from '../modules.js'
-import { supplyPhase } from '../supply.js'
+import { supplyPhase, sigmaFiscal, sigmaFiscalCase, partReelle, supplyForCase, coutUsageParPoint } from '../supply.js'
 
 const P = resolveParams()
 const Y0 = P['base.pib.2025']
+// σ explicitement nul pour tous les leviers fiscaux : isole les tests de trajectoire (excédent, etc.) de l'effet d'offre calculé.
+const SANS_OFFRE = Object.fromEntries(['tva_normal', 'tva_tous_taux', 'csg', 'ir', 'is', 'cotis_patronales'].map((id) => [id, { sigma: 0, L: 5 }]))
 
 // Étalons de la note (§3.1). Les lignes IS et cotisations sont des valeurs provisoires : on teste la cohérence avec la table.
 const YARDSTICKS = {
@@ -122,7 +124,7 @@ describe('taux et prime', () => {
   it('un excédent ne déclenche aucune prime', () => {
     const r = projectScenario({
       levers: { tva_tous_taux: 5, csg: 3, ir: 30, is: 10, cotis_patronales: 5, dep_enseignement: -30, dep_affaires_eco: -30 },
-      horizon: 'trenteAns',
+      horizon: 'trenteAns', sigma: SANS_OFFRE,
     })
     expect(Math.min(...r.total.map((x) => x.balance))).toBeLessThan(Infinity)
     expect(r.total[r.total.length - 1].balance).toBeGreaterThan(0)
@@ -171,7 +173,7 @@ describe('E9 : pente de la dette et taux à l\'émission pondéré', () => {
     expect((lo[t].newRate - issuanceRate(P)) * 100).toBeCloseTo(0.03 * points, 8)
   })
   it('un excédent (ratio en baisse) abaisse le taux sans prime de stress du déficit', () => {
-    const rows = yRows({ levers: { tva_tous_taux: 5, csg: 3, ir: 30, is: 10, cotis_patronales: 5, dep_enseignement: -30, dep_affaires_eco: -30 } })
+    const rows = yRows({ levers: { tva_tous_taux: 5, csg: 3, ir: 30, is: 10, cotis_patronales: 5, dep_enseignement: -30, dep_affaires_eco: -30 }, sigma: SANS_OFFRE })
     const ref = rows[0].debtRatio
     const t = rows.findIndex((x, i) => i > 0 && rows[i - 1].debtRatio < ref - 0.05 && x.balance > 0)
     expect(t).toBeGreaterThan(0)
@@ -255,7 +257,7 @@ describe('cohérence par bloc', () => {
     const r = projectScenario({ levers: { tva_normal: 2, is: -2, dep_defense: -10 } })
     for (let t = 1; t < r.total.length; t++) {
       const d = r.decomposition[t]
-      const s = d.refGrowth + d.refDrift + d.leviers + d.comportement + d.stabilisateurs + d.interetsTaux + d.interetsStock
+      const s = d.refGrowth + d.refDrift + d.leviers + d.comportement + d.stabilisateurs + d.offre.reduce((a, o) => a + o.montant, 0) + d.interetsTaux + d.interetsStock
       expect(s).toBeCloseTo(d.total, 8)
       expect(d.total).toBeCloseTo(r.total[t].balance - r.total[t - 1].balance, 8)
     }
@@ -339,11 +341,12 @@ describe('modules', () => {
     const noFlux = projectScenario({ modules: [{ module: { ...TEST_MODULE, calculer: (v, c) => ({ ...TEST_MODULE.calculer(v, c), flux: [] }) }, levers: { taille: 0.4 } }] })
     expect(r.blocks.locales[2].balance).toBeCloseTo(noFlux.blocks.locales[2].balance, 8)
   })
-  it('σ du cœur : nul par défaut, appliqué quand il est fourni', () => {
+  it('σ du cœur : nul pour une dépense sans effet d\'offre, calculé pour un levier fiscal, remplaçable par l\'option sigma', () => {
+    expect(projectScenario({ levers: { dep_defense: -10 } }).total[5].yS).toBe(0)
     const base = projectScenario({ levers: { is: -2 } })
-    expect(base.total[5].yS).toBe(0)
+    expect(base.total[5].yS).toBeGreaterThan(0) // baisse d'IS : le PIB monte
     const r = projectScenario({ levers: { is: -2 }, sigma: { is: { sigma: -1, L: 10 } } })
-    expect(r.total[5].yS).not.toBe(0)
+    expect(r.total[5].yS).not.toBe(base.total[5].yS)
   })
   it('un module non conforme est refusé', () => {
     expect(validateModuleDefinition({ id: 'x' }).length).toBeGreaterThan(0)
@@ -354,7 +357,7 @@ describe('E5 : forme fonctionnelle de l\'effet d\'offre (σ, σ_hausse / σ_bais
   const yS = (r) => r.total.map((x) => x.yS)
   it('σ = 0 : résultat identique à l\'absence d\'effet d\'offre', () => {
     const levers = { tva_normal: 2, is: -2, dep_defense: -10 }
-    const base = projectScenario({ levers })
+    const base = projectScenario({ levers, overrides: { 'offre.e_L': 0, 'offre.is.eps_k': 0 } }) // σ calculé nul
     const zero = projectScenario({ levers, sigma: { tva_normal: { sigma: 0, L: 5 }, is: { sigma: 0, L: 0, t0: 3 } } })
     expect(zero.total).toEqual(base.total)
     expect(zero.supply.lignes).toEqual([])
@@ -409,7 +412,7 @@ describe('E5 : forme fonctionnelle de l\'effet d\'offre (σ, σ_hausse / σ_bais
     expect(r.total.every((x) => Number.isFinite(x.debt) && Number.isFinite(x.unemployment))).toBe(true)
   })
   it('entrées non finies : l\'effet est ignoré', () => {
-    const base = projectScenario({ levers: { tva_normal: 1 } })
+    const base = projectScenario({ levers: { tva_normal: 1 }, overrides: { 'offre.e_L': 0 } })
     for (const bad of [{ sigma: NaN, L: 5 }, { sigma: 1, L: NaN }, { sigma: 1, L: Infinity }, { sigma: 1, L: 5, t0: NaN }]) {
       const r = projectScenario({ levers: { tva_normal: 1 }, sigma: { tva_normal: bad } })
       expect(r.total.every((x) => Number.isFinite(x.gdp))).toBe(true)
@@ -436,7 +439,7 @@ describe('E5 : forme fonctionnelle de l\'effet d\'offre (σ, σ_hausse / σ_bais
     }
   })
   it('sans effet d\'offre, la décomposition n\'a pas de ligne d\'offre', () => {
-    const r = projectScenario({ levers: { is: -2 } })
+    const r = projectScenario({ levers: { dep_defense: -2 } })
     expect(r.decomposition[3].offre).toEqual([])
   })
   it('aucun NaN : tous les leviers au minimum et au maximum, trois cas, deux horizons, σ extrêmes', () => {
@@ -461,13 +464,14 @@ describe('paramètres d\'offre décidés le 17 novembre (offre.sigma.*, offre.la
     expect(triple('offre.sigma.enseignement')).toEqual([0, 0, edHaut])
     expect(edHaut).toBeCloseTo(0.03985, 4)
     expect([P['offre.lag.enseignement'], P['offre.t0.enseignement']]).toEqual([35, 8])
-    expect(triple('offre.sigma.tva')).toEqual([-0.10, 0, 0])
     expect(P['offre.lag.tva']).toBe(5)
     expect(triple('offre.sigma.age_legal')).toEqual([0.15, 0.30, 0.50])
     expect([P['offre.lag.age_legal'], P['offre.t0.age_legal']]).toEqual([6, 0])
     expect(triple('offre.sigma.lvt')).toEqual([0.10, 0.20, 0.45])
     expect([P['offre.lag.lvt'], P['offre.t0.lvt']]).toEqual([12, 1])
-    for (const id of ['ir', 'is', 'cotis', 'csg']) expect(triple(`offre.sigma.${id}`)).toEqual([0, 0, 0])
+    // une seule source de vérité : plus de σ saisi pour les leviers fiscaux, ils sont calculés
+    for (const id of ['tva', 'ir', 'is', 'cotis', 'csg']) expect(PARAM_BY_ID[`offre.sigma.${id}`]).toBeUndefined()
+    expect([P['offre.lag.is'], P['offre.t0.is'], P['offre.lag.cotis'], P['offre.t0.cotis'], P['offre.lag.ir'], P['offre.lag.csg']]).toEqual([7, 1, 5, 0, 5, 5])
   })
   it('éducation : centre et bas nuls, haut non nul ; effet retardé de t0 = 8 ans puis lent', () => {
     const run = (ysCase, levers = { dep_enseignement: 10 }) => projectScenario({ levers, horizon: 'trenteAns', ysCase })
@@ -485,30 +489,34 @@ describe('paramètres d\'offre décidés le 17 novembre (offre.sigma.*, offre.la
     expect(yS(run('bas', { dep_enseignement: -10 }))[30]).toBeCloseTo(-(sig * 10 / 100) * (21 / 27), 10)
     expect(yS(run('haut', { dep_enseignement: -10 }))[30]).toBe(0)
   })
-  it('TVA : centre nul ; bas négatif pour un relèvement ; « tous taux » mis à l\'échelle des rendements', () => {
+  it('TVA : σ calculé (−0,19 par point au centre), symétrique ; « tous taux » à l\'échelle de son rendement ; plus de cas nul', () => {
     const run = (levers, ysCase) => projectScenario({ levers, ysCase })
-    expect(run({ tva_normal: 1 }, 'central').supply.lignes).toEqual([])
-    expect(yS(run({ tva_normal: 1 }, 'bas'))[6]).toBeCloseTo(-0.001, 10) // τ = 5 = L
-    expect(yS(run({ tva_normal: 1 }, 'bas'))[3]).toBeCloseTo(-0.001 * 0.4, 10) // τ = 2
-    expect(yS(run({ tva_tous_taux: 1 }, 'bas'))[6]).toBeCloseTo(-0.001 * (P['rend.tva_tous_taux'] / P['rend.tva_normal']), 10)
-    expect(yS(run({ tva_normal: 1 }, 'haut'))[6]).toBe(0)
-    // baisse du taux : le cas « bas » reste le PIB le plus bas (aucun gain), « haut » porte le gain symétrique
-    expect(yS(run({ tva_normal: -1 }, 'bas'))[6]).toBe(0)
-    expect(yS(run({ tva_normal: -1 }, 'haut'))[6]).toBeCloseTo(0.001, 10)
+    const sg = sigmaFiscal('tva_normal', P)
+    expect([sg.low, sg.value, sg.high].map((v) => Number(v.toFixed(3)))).toEqual([-0.094, -0.188, -0.258])
+    // 1 point relevé, L = 5 : plein effet à τ = 5 (t = 6) ; τ = 2 : 40 %
+    expect(yS(run({ tva_normal: 1 }, 'central'))[6]).toBeCloseTo(sg.value / 100, 10)
+    expect(yS(run({ tva_normal: 1 }, 'central'))[3]).toBeCloseTo((sg.value / 100) * 0.4, 10)
+    expect(yS(run({ tva_normal: 1 }, 'bas'))[6]).toBeCloseTo(sg.high / 100, 10) // « bas » = PIB le plus bas = σ haut en valeur absolue
+    expect(yS(run({ tva_normal: 1 }, 'haut'))[6]).toBeCloseTo(sg.low / 100, 10)
+    expect(yS(run({ tva_tous_taux: 1 }, 'central'))[6]).toBeCloseTo(sg.value / 100 * (P['rend.tva_tous_taux'] / P['rend.tva_normal']), 10)
+    // baisse du taux : gain symétrique
+    expect(yS(run({ tva_normal: -1 }, 'central'))[6]).toBeCloseTo(-sg.value / 100, 10)
+    expect(yS(run({ tva_normal: -1 }, 'haut'))[6]).toBeCloseTo(-sg.high / 100, 10)
   })
-  it('leviers fiscaux : σ = 0 par défaut, mais la forme E5 porte une valeur si on la fournit', () => {
+  it('leviers fiscaux : une ligne d\'offre par levier, remplaçable par l\'option sigma ; e_L remplacé suit', () => {
     for (const [id, x] of [['ir', 5], ['is', -2], ['cotis_patronales', 1], ['csg', 1]]) {
-      expect(projectScenario({ levers: { [id]: x } }).supply.lignes).toEqual([])
+      expect(projectScenario({ levers: { [id]: x } }).supply.lignes.map((l) => l.id)).toEqual([id])
     }
-    const r = projectScenario({ levers: { is: -2 }, overrides: { 'offre.sigma.is': 0.15 } })
-    expect(r.supply.lignes.map((l) => l.id)).toEqual(['is'])
-    expect(yS(r)[8]).toBeCloseTo((0.15 * -2) / 100, 10) // L = 7, t0 = 1 : τ = 7 -> plein effet
+    const r = projectScenario({ levers: { is: -2 }, sigma: { is: { sigma: -0.15, L: 7, t0: 1 } } })
+    expect(yS(r)[8]).toBeCloseTo((-0.15 * -2) / 100, 10) // L = 7, t0 = 1 : τ = 7 -> plein effet
     expect(yS(r)[2]).toBe(0) // τ = 1 = t0
+    const r2 = projectScenario({ levers: { cotis_patronales: 1 }, overrides: { 'offre.e_L': 0.2 } })
+    expect(yS(r2)[6]).toBeCloseTo(-0.2 / 1.364 / 100, 6)
   })
   it('chaque effet d\'offre du registre est une ligne étiquetée avec cas et source', () => {
-    for (const id of Object.keys(P).filter((k) => k.startsWith('offre.sigma.') && k !== 'offre.sigma.defaut')) {
+    for (const id of Object.keys(P).filter((k) => k.startsWith('offre.') && !k.startsWith('offre.lag.') && !k.startsWith('offre.t0.') && k !== 'offre.sigma.defaut')) {
       const q = PARAM_BY_ID[id]
-      expect(q.unit).toMatch(/PIB/)
+      expect(q.unit.length).toBeGreaterThan(0)
       expect(q.source.length).toBeGreaterThan(10)
       expect(q.explanation.length).toBeGreaterThan(20)
     }
@@ -572,5 +580,166 @@ describe('remarques de la revue de la PR n° 6', () => {
     // la dérive supplémentaire est portée par la seule sécurité sociale
     for (const b of ['centrales', 'locales']) expect(hi.blocks[b][5].referencePrimary).toBeCloseTo(base.blocks[b][5].referencePrimary, 8)
     expect(hi.blocks.securiteSociale[5].referencePrimary).toBeLessThan(base.blocks.securiteSociale[5].referencePrimary)
+  })
+})
+
+describe('σ des leviers fiscaux : calculé depuis les paramètres (docs/sigma-fiscal.md, décisions du 18 nov.)', () => {
+  const yS = (r) => r.total.map((x) => x.yS)
+  const Pm = (id) => P[id]
+  const eL = (c) => ({ low: 0.20, value: 0.40, high: 0.55 }[c])
+  it('nouveaux paramètres : valeurs, fourchettes, statuts', () => {
+    const t = (id) => [PARAM_BY_ID[id].low, PARAM_BY_ID[id].value, PARAM_BY_ID[id].high]
+    expect(t('offre.e_L')).toEqual([0.20, 0.40, 0.55])
+    expect(PARAM_BY_ID['offre.e_L'].status).toBe('sourcé (fourchette), centre choisi')
+    expect(P['comp.coin.part_nette']).toBe(0.57)
+    expect(P['offre.is.z']).toBe(0.742)
+    expect(t('offre.is.alpha')).toEqual([0.16, 0.18, 0.21])
+    expect(t('offre.is.eps_k')).toEqual([0.3, 0.5, 1.0])
+    expect(PARAM_BY_ID['offre.is.eps_k'].status).toBe('de mémoire')
+    expect(P['offre.is.tau_effectif']).toBe(25.8)
+    expect(P['comp.tau0.is']).toBe(25) // le taux normal reste dans comp.tau0.is
+    expect(t('comp.tau0.ir')).toEqual([18, 21, 23])
+    expect(PARAM_BY_ID['comp.tau0.ir'].status).toBe('calculé (estimation)')
+    expect(PARAM_BY_ID['comp.tau0.ir'].unit).toBe('%')
+    expect(P['offre.ir.conv_brut']).toBe(0.76)
+    expect(P['base.conso_menages']).toBe(1600)
+    expect(PARAM_BY_ID['base.conso_menages'].status).toBe('de mémoire')
+    expect(P['base.ir.2025']).toBe(92.6)
+  })
+  it('σ par levier : formules et valeurs centrales (± 0,01), cas bas et haut', () => {
+    // cotisations patronales : e_L × 0,01 / (1 + τ_patronal), en % du PIB par point
+    for (const c of ['low', 'value', 'high']) expect(sigmaFiscalCase('cotis_patronales', P, c)).toBeCloseTo(-eL(c) / (1 + Pm('comp.tau0.cotis') / 100), 10)
+    expect(sigmaFiscal('cotis_patronales', P).value).toBeCloseTo(-0.29, 2)
+    expect(sigmaFiscal('cotis_patronales', P).low).toBeCloseTo(-0.15, 2)
+    expect(sigmaFiscal('cotis_patronales', P).high).toBeCloseTo(-0.40, 2)
+    // CSG : assiette 0,9825 ; part déductible 6,8 / 9,2 imposée à 30 % ; reste plein ; divisé par la part nette 0,57
+    const dlnCsg = (0.01 * 0.9825 * ((6.8 / 9.2) * 0.7 + (1 - 6.8 / 9.2))) / 0.57
+    expect(sigmaFiscalCase('csg', P)).toBeCloseTo(-100 * 0.4 * dlnCsg, 10)
+    expect(sigmaFiscal('csg', P).value).toBeCloseTo(-0.54, 2)
+    expect(sigmaFiscal('csg', P).low).toBeCloseTo(-0.27, 2)
+    expect(sigmaFiscal('csg', P).high).toBeCloseTo(-0.74, 2)
+    // TVA : e_L × rendement du point / consommation des ménages
+    expect(sigmaFiscalCase('tva_normal', P)).toBeCloseTo(-100 * 0.4 * (7.5 / 1600), 10)
+    expect(sigmaFiscalCase('tva_tous_taux', P)).toBeCloseTo(-100 * 0.4 * (11.4 / 1600), 10)
+    expect(sigmaFiscal('tva_normal', P).value).toBeCloseTo(-0.19, 2)
+    expect(sigmaFiscal('tva_normal', P).low).toBeCloseTo(-0.09, 2)
+    expect(sigmaFiscal('tva_normal', P).high).toBeCloseTo(-0.26, 2)
+    // IS : α × ε_K × Δc/c, Δc/c = 0,01 × (1/(1 − τ) − z/(1 − τz)), τ = 25,8 %, z = 0,742
+    const tau = 0.258
+    const dc = 0.01 * (1 / (1 - tau) - 0.742 / (1 - tau * 0.742))
+    expect(coutUsageParPoint(P)).toBeCloseTo(dc, 12)
+    expect(dc).toBeCloseTo(0.0043, 4)
+    expect(sigmaFiscal('is', P).value).toBeCloseTo(-100 * 0.18 * 0.5 * dc, 10)
+    expect(sigmaFiscal('is', P).value).toBeCloseTo(-0.04, 2)
+    expect(sigmaFiscal('is', P).low).toBeCloseTo(-100 * 0.16 * 0.3 * dc, 10)
+    expect(sigmaFiscal('is', P).high).toBeCloseTo(-100 * 0.21 * 1.0 * dc, 10)
+    expect(sigmaFiscal('is', P).high).toBeCloseTo(-0.09, 2)
+    // IR : e_L × 0,01 × (τ_IR × conversion brut) / part nette, par 1 % du produit
+    expect(sigmaFiscalCase('ir', P)).toBeCloseTo(-100 * 0.4 * (0.01 * 0.21 * 0.76) / 0.57, 10)
+    expect(sigmaFiscal('ir', P).value).toBeCloseTo(-0.11, 2)
+  })
+  it('plafond de l\'IS (Gemini n° 4) : 0,15 par point en valeur absolue, sans effet au centre ; pas de plafond pour le travail', () => {
+    expect(Math.abs(sigmaFiscal('is', P).high)).toBeLessThan(P['offre.is.plafond'])
+    const grand = resolveParams({ 'offre.is.alpha': 0.9, 'offre.is.eps_k': 9 })
+    expect(sigmaFiscalCase('is', grand)).toBe(-0.15)
+    expect(sigmaFiscalCase('cotis_patronales', resolveParams({ 'offre.e_L': 5 }))).toBeLessThan(-0.15)
+  })
+  it('le moteur applique le σ calculé : hausse = baisse du PIB, baisse = gain symétrique, L = 5 (IS : L = 7, t0 = 1)', () => {
+    const up = projectScenario({ levers: { cotis_patronales: 1 } })
+    const down = projectScenario({ levers: { cotis_patronales: -1 } })
+    expect(yS(up)[6]).toBeCloseTo(sigmaFiscal('cotis_patronales', P).value / 100, 10)
+    expect(yS(up)[6]).toBeLessThan(0)
+    expect(yS(down)[6]).toBeCloseTo(-yS(up)[6], 12)
+    expect(yS(up)[1]).toBe(0)
+    const is = projectScenario({ levers: { is: 1 } })
+    expect(yS(is)[2]).toBe(0) // τ = 1 = t0
+    expect(yS(is)[8]).toBeCloseTo(sigmaFiscal('is', P).value / 100, 10) // τ = 7 = L
+  })
+  it('θ non réel : ≥ 0, valeurs centrales attendues, jamais supérieur à θ', () => {
+    const attendu = { cotis_patronales: 0.05, csg: 0.06, tva_normal: 0, ir: 0.05, is: 0.25 }
+    for (const [id, th] of Object.entries(attendu)) {
+      const lever = LEVER_BY_ID[id]
+      const theta = leverTheta(lever, 1, P)
+      const sg = sigmaFiscal(id, P)
+      for (const c of ['low', 'value', 'high']) {
+        const reel = partReelle(id, sg[c], lever.rendement(P), P)
+        expect(reel).toBeGreaterThanOrEqual(0)
+        expect(Math.max(0, theta - reel)).toBeGreaterThanOrEqual(0)
+        expect(Math.max(0, theta - reel)).toBeLessThanOrEqual(theta)
+      }
+      const nonReel = Math.max(0, theta - partReelle(id, sg.value, lever.rendement(P), P))
+      expect(nonReel).toBeCloseTo(th, 1)
+    }
+    // plus σ est grand, plus la part réelle est grande (θ_réel dépend du cas)
+    const l = LEVER_BY_ID.csg
+    expect(partReelle('csg', sigmaFiscal('csg', P).high, l.rendement(P), P)).toBeGreaterThan(partReelle('csg', sigmaFiscal('csg', P).low, l.rendement(P), P))
+  })
+  it('θ est inchangé quand σ est remplacé par 0 (ou absent) ; réduit quand σ ≠ 0, au rythme de l\'effet d\'offre', () => {
+    const run = (sigma) => projectScenario({ levers: { cotis_patronales: 1 }, horizon: 'trenteAns', sigma })
+    const theta0 = leverTheta(LEVER_BY_ID.cotis_patronales, 1, P)
+    const zero = run({ cotis_patronales: { sigma: 0, L: 5 } })
+    const ex = (r, t) => r.total[t].byInstrument.cotis_patronales
+    expect(1 - ex(zero, 30).exPost / ex(zero, 30).exAnte).toBeCloseTo(theta0, 10)
+    expect(zero.supply.lignes).toEqual([])
+    const calc = run(undefined)
+    expect(1 - ex(calc, 30).exPost / ex(calc, 30).exAnte).toBeLessThan(theta0)
+    expect(1 - ex(calc, 30).exPost / ex(calc, 30).exAnte).toBeCloseTo(0.05, 1)
+    // l'année de l'entrée en vigueur, aucun effet d'offre n'a encore joué : θ est entier
+    expect(1 - ex(calc, 1).exPost / ex(calc, 1).exAnte).toBeCloseTo(theta0, 10)
+    // un σ explicite positif (sens contraire) ne réduit pas θ
+    const pos = run({ cotis_patronales: { sigma: 0.3, L: 5 } })
+    expect(1 - ex(pos, 30).exPost / ex(pos, 30).exAnte).toBeCloseTo(theta0, 10)
+    // sans levier de recette : supplyForCase nul
+    expect(supplyForCase('dep_defense', -10, P)).toBeNull()
+  })
+  it('pas de double compte : perte de recette propre à long terme = θ × statique (θ_non_réel + perte due au PIB), pas θ + θ_réel', () => {
+    const r = projectScenario({ levers: { cotis_patronales: 1 }, horizon: 'trenteAns' })
+    const t = 30
+    const row = r.total[t]
+    const a = row.byInstrument.cotis_patronales.exAnte
+    const theta = leverTheta(LEVER_BY_ID.cotis_patronales, 1, P)
+    const reel = partReelle('cotis_patronales', sigmaFiscal('cotis_patronales', P).value, LEVER_BY_ID.cotis_patronales.rendement(P), P)
+    const ownRev = (P['comp.tau0.cotis'] * P['rend.cotis'] / Y0) * row.gdpBase // cotisations patronales propres, Md€, qui suivent le PIB
+    const perteTheta = a - row.byInstrument.cotis_patronales.exPost // θ non réel × statique
+    const perteGdp = -row.yS * ownRev // perte de la recette propre due au PIB d'offre (σ)
+    expect(perteTheta + perteGdp).toBeCloseTo(theta * a, 6) // total = θ, une seule fois
+    expect(Math.abs(perteTheta + perteGdp - (theta + reel) * a)).toBeGreaterThan(0.5) // et pas θ + θ_réel
+    expect(perteGdp / a).toBeCloseTo(reel, 6)
+  })
+  it('IR +1 % du produit, cas central, trente ans : effet d\'offre négatif ; recette nette à long terme finie ; avec e_L = 0,20 le gain net de la seule recette propre reste positif', () => {
+    const ref = projectScenario({ horizon: 'trenteAns' })
+    const r = projectScenario({ levers: { ir: 1 }, horizon: 'trenteAns' })
+    const t = 30
+    const row = r.total[t]
+    const dPrimary = row.primaryBalance - ref.total[t].primaryBalance // recette nette de long terme, Md€ par an, année 2056
+    expect(Number.isFinite(dPrimary)).toBe(true)
+    expect(row.yS).toBeLessThan(0)
+    // e_L = 0,20 : θ + perte du PIB sur la seule recette propre de l'IR (92,6 Md€) laissent un gain positif
+    const r2 = projectScenario({ levers: { ir: 1 }, horizon: 'trenteAns', overrides: { 'offre.e_L': 0.2 } })
+    const row2 = r2.total[t]
+    const ownLoss = -row2.yS * (P['base.ir.2025'] / Y0) * row2.gdpBase
+    const netOwn = row2.byInstrument.ir.exPost - ownLoss
+    expect(row2.yS).toBeLessThan(0)
+    expect(netOwn).toBeGreaterThan(0)
+    // Avec TOUTES les recettes qui suivent le PIB (stabilisateurs ε = 0,6, E7), la recette nette de l'IR à e_L = 0,20 est proche de zéro
+    // (voir le rapport de la PR : seuil de rentabilité vers e_L ≈ 0,18) ; on vérifie seulement qu'elle est finie et au-dessus de celle de e_L = 0,40.
+    const dPrimary2 = row2.primaryBalance - ref.total[t].primaryBalance
+    expect(Number.isFinite(dPrimary2)).toBe(true)
+    expect(dPrimary2).toBeGreaterThan(dPrimary)
+  })
+  it('aucun NaN : tous les leviers au minimum et au maximum, trois cas, trois horizons', () => {
+    const lo = Object.fromEntries(LEVERS.map((l) => [l.id, l.min]))
+    const hi = Object.fromEntries(LEVERS.map((l) => [l.id, l.max]))
+    const finiteAll = (o) => JSON.stringify(o, (k, v) => (typeof v === 'number' && !Number.isFinite(v) ? '__NF__' : v)).indexOf('__NF__') === -1
+    for (const horizon of Object.keys(HORIZONS)) for (const ysCase of ['bas', 'central', 'haut']) for (const levers of [lo, hi]) {
+      const r = projectScenario({ levers, horizon, ysCase })
+      expect(finiteAll(r.total)).toBe(true)
+      expect(finiteAll(r.decomposition.filter(Boolean))).toBe(true)
+      expect(finiteAll(r.supply)).toBe(true)
+    }
+    // un levier à la fois, y compris les leviers fiscaux seuls
+    for (const l of LEVERS) for (const x of [l.min, l.max]) for (const ysCase of ['bas', 'central', 'haut']) {
+      expect(finiteAll(projectScenario({ levers: { [l.id]: x }, horizon: 'trenteAns', ysCase }).total)).toBe(true)
+    }
   })
 })

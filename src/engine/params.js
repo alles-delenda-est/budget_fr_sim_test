@@ -1,6 +1,6 @@
 // Paramètres du moteur v2 — note de modèle v0.3 (docs/model-note.md), §1, §4 et docs/baseline-data.md.
 // Chaque paramètre : { id, value (central), low, high, unit, source, status, explanation }.
-// status : "sourcé" | "sourcé (calcul)" | "sourcé (secondaire)" | "sourcé (fourchette), centre choisi" | "de mémoire" | "à collecter" | "non validé".
+// status : "sourcé" | "calculé (estimation)" | "sourcé (calcul)" | "sourcé (secondaire)" | "sourcé (fourchette), centre choisi" | "de mémoire" | "à collecter" | "non validé".
 // Convention d'unités : chaque `unit` dit comment lire `value` (ex. "%" = 2,1 pour 2,1 %). Le moteur convertit.
 // Un paramètre « à collecter » porte une VALEUR PROVISOIRE (placeholder) : ne jamais la présenter comme sourcée.
 
@@ -207,7 +207,6 @@ const lag = (id, v, lib) => p(`offre.lag.${id}`, v, v, v, 'années', LAG_SRC, 'n
   `Nombre d'années après l'entrée en vigueur de la mesure pour atteindre l'effet d'offre complet (${lib}).`)
 const t0 = (id, v, lib) => p(`offre.t0.${id}`, v, v, v, 'années', LAG_SRC, 'non validé',
   `Délai de grâce avant que l'effet d'offre ne démarre (${lib}).`)
-const PRIOR = 'Valeur en attente de l\'accord de Patrick (décision 3 du 17 nov. : σ non nul déduit de la part « activité réelle » de θ ; les valeurs hautes de Gemini servent de plafond)'
 
 // Éducation : Gemini donne 0 / +0,8 / +2,5 % du PIB par point de PIB de dépense ; Patrick retient 0 / 0 / +0,8.
 // Conversion en % du PIB par % de la ligne : 1 % de la ligne = 149/100 Md€ (COFOG 2024, base.cofog.enseignement) ; 1 point de PIB = 2 991/100 Md€ (base.pib.2025).
@@ -217,8 +216,6 @@ const offre = [
   p('offre.sigma.enseignement', 0, 0, SIGMA_ENS_HAUT, '% du PIB (niveau) par % de la ligne', `${GEM}, n° 9 ; Bénabou, Kramarz et Prost (2009) ; DEPP 2026 (non vérifié) ; Jackson, Johnson et Persico (2016). Gemini : 0 / +0,8 / +2,5 par point de PIB de dépense ; fourchette retenue par Patrick (17 nov.) : 0 / 0 / +0,8. Conversion : 0,8 × 1,49 / 29,91 = 0,0399`, 'sourcé (fourchette), centre choisi',
     'Effet de long terme sur le niveau du PIB d\'une hausse de 1 % de la ligne « enseignement » (capital humain), symétrique pour une baisse. Le centre est nul parce que le levier n\'est pas ciblé (variation uniforme de la dépense) et que les évaluations françaises ne montrent pas d\'effet durable ; le haut suppose une dépense bien ciblée. Conversion : 1 % de la ligne = 1,49 Md€ = 0,0498 % du PIB, donc 0,8 % du PIB par point de PIB de dépense vaut 0,8 × 0,0498 = 0,040 % du PIB par % de la ligne. Effet attendu après 35 ans, à partir de 8 ans.'),
   lag('enseignement', 35, 'génération entière arrivée sur le marché du travail'), t0('enseignement', 8, 'durée de la scolarité avant les premiers effets'),
-  p('offre.sigma.tva', 0, -0.10, 0, '% du PIB (niveau) par point de taux normal', `${GEM}, n° 6 (branche « relèvement seul » de la TVA sociale : Gemini donne −0,20 à 0, centre 0 ou −0,10) ; Bozio et al. (2024) ; Carbonnier et al. (2022). Bas −0,10, centre 0, haut 0 : choix de Patrick (17 nov.)`, 'sourcé (fourchette), centre choisi',
-    'Effet de long terme sur le niveau du PIB d\'un relèvement de 1 point du taux normal de TVA, pris seul (sans la baisse de cotisations de la « TVA sociale », que le levier de cotisations compte à part). Le bas est négatif car l\'indexation et les négociations salariales effacent l\'avantage de coût ; le centre est nul. La valeur s\'applique en symétrique à une baisse. Pour le levier « tous taux », le bas est multiplié par le rapport des rendements rend.tva_tous_taux / rend.tva_normal (11,4 / 7,5 = 1,52, soit −0,152 par point).'),
   lag('tva', 5, 'érosion de l\'avantage de coût par l\'indexation'), t0('tva', 0, 'effet dès l\'entrée en vigueur'),
   p('offre.sigma.age_legal', 0.30, 0.15, 0.50, '% du PIB (niveau) par année d\'âge légal', `${GEM}, n° 1 ; Rabaté et Rochut (2020) ; Dubois et Koubi (2017) ; Hairault, Sopraseuth et Langot (2010). Gemini : +0,25 / +0,45 / +0,60. Fourchette retenue par Patrick (17 nov.) : +0,15 / +0,30 / +0,50`, 'sourcé (fourchette), centre choisi',
     'Effet de long terme sur le niveau du PIB d\'un relèvement d\'un an de l\'âge légal de départ en retraite, via l\'emploi des seniors. Le centre (+0,30) est choisi sous celui de Gemini (+0,45), qui vient de la réforme de 2010 : à l\'époque la marge était de 60 ans, alors qu\'elle est aujourd\'hui de 62 ans et 9 mois, où moins de personnes sont encore en emploi. Pas encore branché sur un levier du moteur (aucune entrée d\'âge légal) : paramètre seul.'),
@@ -229,19 +226,45 @@ const offre = [
   p('offre.sigma.assurance_chomage', -0.012, -0.005, -0.022, '% du PIB (niveau) par % de la ligne (plus de générosité)', `${GEM}, n° 10 ; Le Barbanchon, Rathelot et Roulet (2019) ; Le Bihan et Fabre (2026, non vérifié). Gemini : +0,05 / +0,12 / +0,22 par resserrement de 10 % ; divisé par 10 et de signe opposé pour 1 % de générosité en plus`, 'sourcé (fourchette), centre choisi',
     'Effet de long terme sur le niveau du PIB de 1 % de générosité en plus de l\'assurance chômage (durée ou taux de remplacement) : −0,012 au centre, donc +0,12 % du PIB pour un resserrement de 10 %. L\'effet passe par le retour plus rapide à l\'emploi, net de l\'effet d\'éviction entre demandeurs d\'emploi. Symétrique : un assouplissement réduit le PIB. Les cas bas / haut se lisent sur le résultat (le plus faible et le plus fort effet).'),
   lag('assurance_chomage', 3, 'retour à l\'emploi des chômeurs'), t0('assurance_chomage', 0, 'effet dès l\'entrée en vigueur'),
-  // Leviers fiscaux : σ = 0 en attendant l'accord de Patrick ; la forme E5 peut déjà porter leurs valeurs (surcharger le paramètre central).
-  p('offre.sigma.ir', 0, 0, 0, '% du PIB (niveau) par % du produit', `${GEM}, n° 5 (Gemini : 0 / 0 / +0,03 par point de taux marginal supérieur) ; ${PRIOR}`, 'non validé',
-    'Effet d\'offre de l\'impôt sur le revenu : nul en attendant la décision.'),
+  // Leviers fiscaux (cotisations, CSG, TVA, IR, IS) : σ calculé à partir de offre.e_L et des paramètres de la section 4ter (supply.js), plus de paramètre offre.sigma.* propre.
   lag('ir', 5, 'IR'), t0('ir', 0, 'IR'),
-  p('offre.sigma.is', 0, 0, 0, '% du PIB (niveau) par point de taux', `${GEM}, n° 4 (Gemini : 0 / 0 / +0,15 par point) ; ${PRIOR}`, 'non validé',
-    'Effet d\'offre de l\'impôt sur les sociétés : nul en attendant la décision.'),
   lag('is', 7, 'IS'), t0('is', 1, 'IS'),
-  p('offre.sigma.cotis', 0, 0, 0, '% du PIB (niveau) par point de taux', `${GEM}, n° 2 et 3 (Gemini : 0 / 0 / +0,35 par % de PIB pour toutes les rémunérations) ; ${PRIOR}`, 'non validé',
-    'Effet d\'offre des cotisations patronales : nul en attendant la décision.'),
   lag('cotis', 5, 'cotisations'), t0('cotis', 0, 'cotisations'),
-  p('offre.sigma.csg', 0, 0, 0, '% du PIB (niveau) par point de taux', `Pas de revue dédiée dans ${GEM} ; ${PRIOR}`, 'non validé',
-    'Effet d\'offre de la CSG : nul en attendant la décision.'),
   lag('csg', 5, 'CSG ; valeur par défaut empruntée aux autres impôts, sans source propre'), t0('csg', 0, 'CSG'),
+]
+
+// ---------- 4ter. Effets d'offre des impôts : élasticité e_L, coin fiscal, coût d'usage du capital (docs/sigma-fiscal.md, décisions de Patrick du 18 nov. 2026) ----------
+// σ de chaque levier fiscal est CALCULÉ dans supply.js à partir de ces paramètres (jamais écrit en dur) :
+//   travail (cotisations, CSG, TVA, IR) : σ = −e_L × |Δ ln(1 − T)|  ; IS : σ = −α × ε_K × Δc/c.
+const SF = 'docs/sigma-fiscal.md (v2, approuvé le 18 nov. 2026)'
+const offreFiscal = [
+  p('offre.e_L', 0.40, 0.20, 0.55, 'élasticité (sans unité)', `Chetty, Guren, Manoli et Weber (2011, AER Papers & Proceedings 101(3)) : élasticité hicksienne des heures agrégées 0,51 à 0,56 ; Davis et Henrekson (2004, NBER WP 10509) : 0,34 à 0,44 (calcul) ; CBO, Dynamic Scoring (substitution 0,24, revenu −0,05) ; ${SF}, section 2`, 'sourcé (fourchette), centre choisi',
+    'Élasticité compensée de l\'offre de travail au coin fiscal : une hausse de 1 % de ce que le salarié garde par euro de coût du travail (1 − T) fait varier le travail, donc le PIB de long terme, de e_L %. Fourchette : le bas reste au-dessus du chiffre du CBO (élasticité compensée) ; le haut est le chiffre hicksien de Chetty et al. Aucune estimation française retenue pour l\'instant.'),
+  p('comp.coin.part_nette', 0.57, null, null, 'part du salaire brut', 'OCDE, Taxing Wages 2026, tableau 3.7 : taux marginal IR + cotisations salariales au salaire moyen 43,0 % ; calcul : 1 − 0,430', 'sourcé (calcul)',
+    'Part de chaque euro de salaire brut qui reste au salarié moyen après l\'impôt sur le revenu et les cotisations salariales (CSG comprise). Sert de dénominateur pour convertir une variation d\'impôt en variation de ce que le salarié garde. Les cotisations patronales (comp.tau0.cotis) s\'ajoutent au coût du travail.'),
+  p('offre.is.z', 0.742, null, null, 'valeur actuelle (sans unité)', 'Tax Foundation, Capital Allowances in Europe 2025 : moyenne pondérée France (bâtiments 54,8 %, machines 88,0 %, incorporels 87,0 % ; actualisation 7,5 %)', 'sourcé',
+    'Valeur actuelle des amortissements déductibles par euro investi : plus elle est haute, moins l\'impôt sur les sociétés pèse sur le coût du capital.'),
+  p('offre.is.alpha', 0.18, 0.16, 0.21, 'part du PIB', 'Insee, comptes nationaux 2025 : 0,16 = sociétés non financières seules (taux de marge 31,4 % appliqué à leur valeur ajoutée, mon estimation) ; 0,21 = EBE et revenu mixte des sociétés et entrepreneurs non financiers, 630,4 Md€ sur un PIB de 2 991 Md€ ; 0,18 retenu', 'sourcé (fourchette), centre choisi',
+    'Part du capital productif des sociétés dans le PIB (brute) : elle transforme une variation du coût du capital en variation du PIB.'),
+  p('offre.is.eps_k', 0.5, 0.3, 1.0, 'élasticité (sans unité)', 'De mémoire ; fourchette 0,3 à 1,0 non vérifiée (docs/sigma-fiscal.md, section 3 : « à sourcer »)', 'de mémoire',
+    'Élasticité du stock de capital au coût d\'usage du capital : une hausse de 1 % de ce coût réduit le capital, donc le PIB de long terme, de ε_K × α %. À sourcer.'),
+  p('offre.is.tau_effectif', 25.8, null, null, '%', 'BOFiP, 12 août 2026 ; Legifiscal : taux normal 25 % + contribution sociale de 3,3 % (grandes entreprises) ; hors contribution exceptionnelle (temporaire). Le taux normal de 25 % reste dans comp.tau0.is', 'sourcé',
+    'Taux d\'IS pris dans le calcul du coût d\'usage du capital : taux normal et contribution sociale, hors contribution exceptionnelle des plus grandes entreprises (temporaire).'),
+  p('offre.is.plafond', 0.15, null, null, '% du PIB par point de taux', 'Revue de preuves Gemini (docs/review-supply-effects-gemini.md), n° 4 : 0,15 par point ; Gechert et Heimberger (2022)', 'sourcé',
+    'Plafond de l\'effet d\'offre de l\'IS, en valeur absolue (le cas haut du calcul, 0,09, ne l\'atteint pas). Pas de plafond équivalent pour les impôts larges sur le travail (décision du 18 nov.).'),
+  p('offre.ir.conv_brut', 0.76, null, null, 'part', 'docs/sigma-fiscal.md, section 7 : abattement de 10 % et CSG déductible (calcul)', 'calculé (estimation)',
+    'Conversion du revenu imposable en salaire brut (× 0,76 environ) : le taux marginal d\'IR sur le revenu imposable vaut 0,76 fois son poids sur le salaire brut.'),
+  p('offre.csg.part_deductible', 6.8 / 9.2, null, null, 'part', 'Code de la sécurité sociale : CSG de 9,2 % sur les revenus d\'activité, dont 6,8 points déductibles de l\'impôt sur le revenu', 'sourcé',
+    'Part de la CSG déductible de l\'assiette de l\'impôt sur le revenu (6,8 sur 9,2) : un point de CSG en plus coûte moins cher au salarié imposé.'),
+  p('offre.csg.tmi_salarie', 30, null, null, '%', 'Taux marginal de l\'impôt sur le revenu du salarié moyen (tranche de 30 %), choix de l\'implémentation indiqué dans docs/sigma-fiscal.md ; barème non relu', 'de mémoire',
+    'Taux marginal d\'impôt sur le revenu auquel est déduite la part déductible de la CSG, pour le salarié moyen.'),
+  p('offre.csg.assiette', 0.9825, null, null, 'part', 'Code de la sécurité sociale, art. L. 136-2 : abattement de 1,75 % (assiette = 98,25 % du salaire brut)', 'sourcé',
+    'Part du salaire brut qui entre dans l\'assiette de la CSG sur les revenus d\'activité.'),
+  obs('base.conso_menages', 1600, 'Md€', 'De mémoire : consommation des ménages ≈ 1 600 Md€ ; à vérifier sur les comptes nationaux de l\'Insee', 'Consommation finale des ménages en valeur : sert à convertir un point de TVA en variation du prix à la consommation (rendement du point / consommation).', 'de mémoire'),
+  obs('base.ir.2025', 92.6, 'Md€', 'DGFiP 2025 ; Vie-publique, IR 2025 (docs/sigma-fiscal.md, section 7)', 'Produit net de l\'impôt sur le revenu en 2025 : recette propre de l\'IR qui varie avec le PIB (calcul de θ non réel).'),
+  p('base.tva.2025', 190, 150, 210, 'Md€', 'Ordre de grandeur de la TVA nette, non relu sur le tome I des Voies et moyens', 'à collecter',
+    PLACEHOLDER + 'TVA nette totale (190 Md€) : recette propre qui varie avec le PIB (calcul de θ non réel). Si la valeur est supérieure à environ 120 Md€, θ non réel de la TVA est nul.'),
+  obs('base.is.produit_etat_2026', 59.0, 'Md€', 'PLF 2026, Voies et moyens, tome I, p. 6 : IS net de l\'État 59,0 Md€ en 2026', 'Produit net de l\'IS de l\'État en 2026 : recette propre qui varie avec le PIB (calcul de θ non réel).'),
 ]
 
 // ---------- 3.1 Rendements statiques (étalons) et taux avant réforme ----------
@@ -256,20 +279,20 @@ const rend = [
     PLACEHOLDER + '2,3 Md€ par point = 58,2 / 25 (proportionnel, IS de l\'État seul) ; plage 2,0–3,0 arbitraire. Aucun étalon officiel n\'a été trouvé ; ce proxy surestime sans doute, car il ignore le taux réduit des PME.'),
   // Taux avant réforme, pour évaluer θ au taux après réforme (3.2). Non fournis par la note : placeholders.
   p('comp.tau0.tva', 20, null, null, '%', 'Taux normal de TVA (de mémoire)', 'de mémoire', 'Taux de TVA avant réforme, pour évaluer θ au taux après réforme.'),
-  p('comp.tau0.ir', 30, 11, 45, '%', 'Non trouvé en impôt sur le revenu seul. OCDE, Taxing Wages 2026, tableau 3.7 (https://www.oecd.org/en/publications/taxing-wages-2026_3a5169ef-en/full-report/effective-tax-rates-on-labour-income-in-2025_b7bb1854) : taux marginal de l\'impôt sur le revenu + cotisations salariales (CSG comprise), célibataire sans enfant au salaire moyen, 2025 = 43,0 % ; taux moyen d\'impôt sur le revenu 16,7 % (tableau 3.4). Le 43,0 % mélange IR et cotisations salariales : non substituable à un taux d\'IR seul. 30 % = tranche du barème (non relue)', 'à collecter',
-    PLACEHOLDER + 'taux marginal moyen de l\'impôt sur le revenu avant réforme = 30 % (tranche médiane du barème, arbitraire).'),
+  p('comp.tau0.ir', 21, 18, 23, '%', 'Calcul docs/sigma-fiscal.md §7 (18 nov. 2026) : taux marginal moyen de l\'impôt sur le revenu pondéré par les revenus, à partir des statistiques DGFiP 2026 (impôt 2026 sur les revenus 2025 : foyers et impôt moyen par taux marginal 0 / 11 / 30 / 41 / 45 %) ; revenu par tranche estimé avec des nombres de parts supposés (1,7 à 2,5), soit ≈ 1 290 Md€ au total ; 20 % au barème, 21–22 % avec la décote (FIPECO). Point faible : les nombres de parts. À ne pas confondre avec le taux marginal IR + cotisations salariales de l\'OCDE (43,0 %, Taxing Wages 2026, tableau 3.7)', 'calculé (estimation)',
+    'Taux marginal moyen de l\'impôt sur le revenu, pondéré par les revenus, en % du revenu imposable (≈ 16 % du salaire brut après l\'abattement de 10 % et la CSG déductible). Calcul : docs/sigma-fiscal.md, section 7. Il sert à évaluer θ au taux après réforme et l\'effet d\'offre de l\'IR ; estimation à resserrer avec les tableaux de la DGFiP.'),
   p('comp.tau0.csg', 9.2, null, null, '%', 'Taux de CSG sur les revenus d\'activité (de mémoire)', 'de mémoire', 'Taux de CSG avant réforme, pour évaluer θ au taux après réforme.'),
   p('comp.tau0.cotis', 36.4, 20, 45, '%', 'OCDE, Taxing Wages 2026 (lien du tableau 3.7), célibataire sans enfant au salaire moyen, 2025 : coin fiscal marginal 58,2 % du coût du travail (tableau 3.6) ; taux marginal IR + cotisations salariales 43,0 % du salaire brut (tableau 3.7). Calcul : e = (0,582 − 0,430) / (1 − 0,582) = 36,4 % du salaire brut. Taux marginal au salaire moyen (après allègements), non un taux moyen sur l\'ensemble des salaires ; aucun taux patronal publié séparément dans le texte lu', 'sourcé (calcul)',
     'Taux de cotisations patronales marginal au salaire moyen, déduit de deux tableaux de l\'OCDE par le calcul 1 + e = (1 − 0,430) / (1 − 0,582), soit e = 36,4 % du salaire brut ; il varie fortement selon le niveau de salaire à cause des allègements.'),
   p('comp.tau0.is', 25, null, null, '%', 'PLF 2026, Voies et moyens, tome I, p. 18', 'sourcé', 'Taux normal de l\'impôt sur les sociétés avant réforme.'),
 ]
 
-export const PARAMS = [...baseMacro, ...baseBlocs, ...partsBlocs, ...COFOG, ...unedic, ...table, ...offre, ...rend, ...comparators]
+export const PARAMS = [...baseMacro, ...baseBlocs, ...partsBlocs, ...COFOG, ...unedic, ...table, ...offre, ...offreFiscal, ...rend, ...comparators]
 
 export const PARAM_BY_ID = Object.fromEntries(PARAMS.map((q) => [q.id, q]))
 if (Object.keys(PARAM_BY_ID).length !== PARAMS.length) throw new Error('params: identifiants dupliqués')
 
-export const STATUSES = ['sourcé', 'sourcé (calcul)', 'sourcé (secondaire)', 'sourcé (fourchette), centre choisi', 'de mémoire', 'à collecter', 'non validé']
+export const STATUSES = ['calculé (estimation)', 'sourcé', 'sourcé (calcul)', 'sourcé (secondaire)', 'sourcé (fourchette), centre choisi', 'de mémoire', 'à collecter', 'non validé']
 
 /** Valeurs centrales, avec remplacements éventuels { id: valeur }. Rejette les ids inconnus et les valeurs non finies. */
 export function resolveParams(overrides = {}) {

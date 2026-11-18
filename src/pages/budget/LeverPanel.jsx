@@ -1,5 +1,6 @@
 import { useId } from 'react'
 import { staticYield, STRUCTURAL_LEVERS } from '../../engine/levers.js'
+import { SUPPLY_BY_LEVER } from '../../engine/supply.js'
 import { PARAM_BY_ID } from '../../engine/params.js'
 import { fmt, groupedLevers, sliderStep } from './helpers'
 import { InfoPopover, StatusBadge, ParamInfo } from './InfoPopover'
@@ -13,6 +14,9 @@ function LeverSlider({ lever, value, onChange, P }) {
       <div className="sb-lever-head">
         <label htmlFor={id}>{lever.titre}</label>
         <StatusBadge status={lever.statut} />
+        {SUPPLY_BY_LEVER[lever.id]?.statut === 'non validé' && (
+          <span className="sb-badge sb-badge-flag">{SUPPLY_BY_LEVER[lever.id].nomCourt} : non validé — avis demandé</span>
+        )}
         <InfoPopover label={lever.titre}>
           <span className="sb-info-line">{lever.aide}</span>
           <span className="sb-info-line">Étalon par unité : {fmt(staticYield(lever, 1, P), 2, { signed: true })} Md€ par an sur le solde (avant réaction des contribuables et effets sur l'activité).</span>

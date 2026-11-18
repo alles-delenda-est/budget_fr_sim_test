@@ -9,6 +9,12 @@
 // - τ : années écoulées depuis l'entrée en vigueur de la mesure (t − année de début de la rampe).
 // - t0 : délai de grâce (défaut 0) ; L : horizon d'ajustement complet. Si L ≤ t0, l'effet est un échelon en t0.
 // Chaque σ non nul donne une ligne distincte et étiquetée (avec son cas bas / central / haut) dans le résultat du moteur.
+//
+// Leviers fiscaux (docs/sigma-fiscal.md, décisions de Patrick du 18 nov. 2026) : σ est CALCULÉ à partir des paramètres, jamais écrit en dur.
+//   Travail (cotisations patronales, CSG, TVA, IR) : σ = −100 × e_L × |Δ ln(1 − T)| par unité du levier (% du PIB), un relèvement baisse le PIB.
+//   IS : σ = −100 × α × ε_K × Δc/c, Δc/c = 0,01 × (1/(1 − τ) − z/(1 − τz)), plafonné à offre.is.plafond en valeur absolue.
+// Cas bas / central / haut : e_L bas / central / haut (IS : α × ε_K bas / central / haut).
+// Pas de double compte avec θ : levers.js ne garde dans θ que la part non réelle (voir `partReelle` ci-dessous).
 
 import { PARAM_BY_ID } from './params.js'
 
@@ -30,23 +36,73 @@ export function supplyPhase(tau, L, t0 = 0) {
 export const SUPPLY_EFFECTS = [
   { lever: 'dep_enseignement', libelle: 'Enseignement : capital humain à long terme',
     sigma: 'offre.sigma.enseignement', L: 'offre.lag.enseignement', t0: 'offre.t0.enseignement' },
-  { lever: 'tva_normal', libelle: 'TVA (taux normal) : effet d\'offre du seul relèvement',
-    sigma: 'offre.sigma.tva', L: 'offre.lag.tva', t0: 'offre.t0.tva' },
-  { lever: 'tva_tous_taux', libelle: 'TVA (tous taux) : effet d\'offre du seul relèvement',
-    sigma: 'offre.sigma.tva', L: 'offre.lag.tva', t0: 'offre.t0.tva',
-    scale: (P) => P['rend.tva_tous_taux'] / P['rend.tva_normal'] },
+  { lever: 'tva_normal', libelle: 'TVA (taux normal) : effet d\'offre (offre de travail)',
+    sigmaParams: ['offre.e_L', 'rend.tva_normal', 'base.conso_menages', 'comp.coin.part_nette'], L: 'offre.lag.tva', t0: 'offre.t0.tva',
+    sigmaFn: 'tva_normal', propre: (P) => P['base.tva.2025'] },
+  { lever: 'tva_tous_taux', libelle: 'TVA (tous taux) : effet d\'offre (offre de travail)',
+    sigmaParams: ['offre.e_L', 'rend.tva_tous_taux', 'base.conso_menages', 'comp.coin.part_nette'], L: 'offre.lag.tva', t0: 'offre.t0.tva',
+    sigmaFn: 'tva_tous_taux', propre: (P) => P['base.tva.2025'] },
   { lever: 'travail_assurance_chomage', libelle: 'Assurance chômage : retour à l\'emploi',
     sigma: 'offre.sigma.assurance_chomage', L: 'offre.lag.assurance_chomage', t0: 'offre.t0.assurance_chomage' },
   { lever: 'ir', libelle: 'Impôt sur le revenu : effet d\'offre',
-    sigma: 'offre.sigma.ir', L: 'offre.lag.ir', t0: 'offre.t0.ir' },
-  { lever: 'is', libelle: 'Impôt sur les sociétés : effet d\'offre',
-    sigma: 'offre.sigma.is', L: 'offre.lag.is', t0: 'offre.t0.is' },
+    nomCourt: 'Effet d\'offre de l\'IR', statut: 'non validé',
+    sigmaParams: ['offre.e_L', 'comp.tau0.ir', 'offre.ir.conv_brut', 'comp.coin.part_nette'], L: 'offre.lag.ir', t0: 'offre.t0.ir',
+    sigmaFn: 'ir', propre: (P) => P['base.ir.2025'] },
+  { lever: 'is', libelle: 'Impôt sur les sociétés : effet d\'offre (coût d\'usage du capital)',
+    sigmaParams: ['offre.is.alpha', 'offre.is.eps_k', 'offre.is.z', 'offre.is.tau_effectif', 'offre.is.plafond'], L: 'offre.lag.is', t0: 'offre.t0.is',
+    sigmaFn: 'is', propre: (P) => P['base.is.produit_etat_2026'] },
   { lever: 'cotis_patronales', libelle: 'Cotisations patronales : effet d\'offre',
-    sigma: 'offre.sigma.cotis', L: 'offre.lag.cotis', t0: 'offre.t0.cotis' },
+    sigmaParams: ['offre.e_L', 'comp.tau0.cotis'], L: 'offre.lag.cotis', t0: 'offre.t0.cotis',
+    sigmaFn: 'cotis_patronales', propre: (P) => (P['comp.tau0.cotis'] * P['rend.cotis']) },
   { lever: 'csg', libelle: 'CSG : effet d\'offre',
-    sigma: 'offre.sigma.csg', L: 'offre.lag.csg', t0: 'offre.t0.csg' },
+    sigmaParams: ['offre.e_L', 'offre.csg.assiette', 'offre.csg.part_deductible', 'offre.csg.tmi_salarie', 'comp.coin.part_nette'], L: 'offre.lag.csg', t0: 'offre.t0.csg',
+    sigmaFn: 'csg', propre: (P) => P['comp.tau0.csg'] * P['rend.csg'] },
 ]
 export const SUPPLY_BY_LEVER = Object.fromEntries(SUPPLY_EFFECTS.map((e) => [e.lever, e]))
+
+// ---------- σ des leviers fiscaux, calculé ----------
+const CASES = ['low', 'value', 'high']
+/** Valeur d'un paramètre dans un cas : `value` suit les remplacements éventuels, low et high le catalogue (à défaut, la valeur courante). */
+const pc = (P, id, c) => (c === 'value' ? P[id] : (PARAM_BY_ID[id][c] ?? P[id]))
+
+// Δ ln(1 − T) par unité du levier (fraction), pour les impôts sur le travail ; coin fiscal du salarié moyen : part_nette (dénominateur).
+const DLN = {
+  // cotisations patronales : 1 point de plus augmente le coût du travail de 0,01 / (1 + τ_patronal)
+  cotis_patronales: (P) => 0.01 / (1 + P['comp.tau0.cotis'] / 100),
+  // CSG : assiette 98,25 % ; part déductible (6,8 / 9,2) imposée au taux marginal d'IR du salarié moyen ; le reste coûte plein pot
+  csg: (P) => (0.01 * P['offre.csg.assiette'] * (P['offre.csg.part_deductible'] * (1 - P['offre.csg.tmi_salarie'] / 100) + (1 - P['offre.csg.part_deductible']))) / P['comp.coin.part_nette'],
+  // TVA : 1 point de taux = rendement du point / consommation des ménages, en baisse du pouvoir d'achat
+  tva_normal: (P) => P['rend.tva_normal'] / P['base.conso_menages'],
+  tva_tous_taux: (P) => P['rend.tva_tous_taux'] / P['base.conso_menages'],
+  // IR : 1 % du produit = taux marginal moyen (revenu imposable) × conversion en brut × 1 % ; rapporté à la part nette
+  ir: (P) => (0.01 * (P['comp.tau0.ir'] / 100) * P['offre.ir.conv_brut']) / P['comp.coin.part_nette'],
+}
+
+/** Variation relative du coût d'usage du capital pour 1 point d'IS : Δc/c = 0,01 × (1/(1 − τ) − z/(1 − τz)). */
+export const coutUsageParPoint = (P) => {
+  const tau = P['offre.is.tau_effectif'] / 100
+  const z = P['offre.is.z']
+  return 0.01 * (1 / (1 - tau) - z / (1 - tau * z))
+}
+
+/**
+ * σ d'un levier fiscal pour 1 unité de levier, en % du PIB (négatif : relever l'impôt baisse le PIB), pour un cas.
+ * Travail : −100 × e_L × Δ ln(1 − T). IS : −100 × α × ε_K × Δc/c, plafonné en valeur absolue.
+ * @param {'low'|'value'|'high'} c  cas : paramètres bas / centraux (avec remplacements) / hauts
+ */
+export function sigmaFiscalCase(leverId, P, c = 'value') {
+  if (leverId === 'is') {
+    const s = 100 * pc(P, 'offre.is.alpha', c) * pc(P, 'offre.is.eps_k', c) * coutUsageParPoint(P)
+    return -Math.min(P['offre.is.plafond'], s)
+  }
+  const dln = DLN[leverId]
+  return dln ? -100 * pc(P, 'offre.e_L', c) * dln(P) : 0
+}
+
+/** Triplet { low, value, high } de σ (signé) d'un levier fiscal, calculé depuis les paramètres. */
+export const sigmaFiscal = (leverId, P) => ({
+  low: sigmaFiscalCase(leverId, P, 'low'), value: sigmaFiscalCase(leverId, P, 'value'), high: sigmaFiscalCase(leverId, P, 'high'),
+})
 
 // Triplet { low, value, high } d'un paramètre : value suit les remplacements éventuels, low et high le catalogue.
 const triple = (P, id) => {
@@ -66,13 +122,43 @@ function specFor(leverId, P, explicit) {
     return { libelle: reg?.libelle ?? `Effet d'offre : ${leverId}`, hausse: flat(hausse), baisse: flat(baisse), L: e.L, t0: e.t0 ?? 0, scale: 1 }
   }
   if (!reg) return null
-  return {
-    libelle: reg.libelle,
-    hausse: triple(P, reg.sigma),
-    baisse: reg.sigmaBaisse ? triple(P, reg.sigmaBaisse) : triple(P, reg.sigma),
-    L: P[reg.L], t0: P[reg.t0] ?? 0, scale: reg.scale ? reg.scale(P) : 1,
+  const meta = { libelle: reg.libelle, statut: reg.statut, nomCourt: reg.nomCourt, L: P[reg.L], t0: P[reg.t0] ?? 0, scale: 1 }
+  if (reg.sigmaFn) {
+    const sg = sigmaFiscal(reg.sigmaFn, P) // σ calculé, symétrique hausse / baisse
+    return { ...meta, hausse: sg, baisse: sg }
   }
+  return { ...meta, hausse: triple(P, reg.sigma), baisse: reg.sigmaBaisse ? triple(P, reg.sigmaBaisse) : triple(P, reg.sigma) }
 }
+
+/**
+ * σ retenu (signé, par unité de levier, % du PIB), délais L et t0 d'un levier pour le cas `ysCase`, ou null s'il n'a pas d'effet d'offre.
+ * Même règle d'ordre que `coreSupplyLines` : « bas » = σ qui donne le PIB le plus bas, « haut » le plus haut, « central » = σ central.
+ */
+export function supplyForCase(leverId, x, P, explicit, ysCase = 'central') {
+  if (!finite(x) || x === 0) return null
+  const spec = specFor(leverId, P, explicit)
+  if (!spec || !finite(spec.scale)) return null
+  const branch = x > 0 ? spec.hausse : spec.baisse
+  const sig = [branch.low, branch.value, branch.high].map((v) => (finite(v) ? v * spec.scale : 0))
+  const pick = ysCase === 'central' ? sig[1] : (ysCase === 'bas' ? (x > 0 ? Math.min : Math.max) : (x > 0 ? Math.max : Math.min))(...sig)
+  return { sigma: pick, L: spec.L, t0: spec.t0 }
+}
+
+/**
+ * Part « réelle » de θ : perte de recette propre due à la variation du PIB, en part du rendement statique (docs/sigma-fiscal.md, décision 3).
+ *   θ_réel = max(0, −σ × recette propre / (100 × rendement par unité)), avec σ en % du PIB par unité, recette propre et rendement en Md€.
+ * La recette propre varie comme le PIB (le moteur la perd déjà par le canal des stabilisateurs E7) : on la retire de θ pour ne pas la compter deux fois.
+ * Vaut 0 si σ = 0, si σ n'est pas fini ou s'il n'y a pas de recette propre déclarée : θ reste alors inchangé.
+ */
+export function partReelle(leverId, sigma, rendementUnitaire, P) {
+  const reg = SUPPLY_BY_LEVER[leverId]
+  if (!reg?.propre || !finite(sigma) || sigma === 0 || !(rendementUnitaire > 0)) return 0
+  const r = (-sigma * reg.propre(P)) / (100 * rendementUnitaire)
+  return finite(r) ? Math.max(0, r) : 0
+}
+
+/** θ_non réel = max(0, θ − θ_réel). */
+export const thetaNonReel = (theta, thetaReel) => Math.max(0, theta - thetaReel)
 
 /**
  * Lignes d'effet d'offre des mesures natives. Chaque ligne : { id, libelle, sigma, L, t0, cas: { bas, central, haut } (séries de fraction de PIB, t = 0..N) }.
@@ -95,7 +181,7 @@ export function coreSupplyLines(instruments, P, nYears, explicit) {
       cas.bas.push(Math.min(...v)); cas.central.push(v[1]); cas.haut.push(Math.max(...v))
     }
     if (['bas', 'central', 'haut'].every((c) => cas[c].every((v) => v === 0))) continue
-    lines.push({ id: inst.id, libelle: spec.libelle, sigma: { hausse: spec.hausse, baisse: spec.baisse }, L: spec.L, t0: spec.t0, cas })
+    lines.push({ id: inst.id, libelle: spec.libelle, statut: spec.statut, nomCourt: spec.nomCourt, sigma: { hausse: spec.hausse, baisse: spec.baisse }, L: spec.L, t0: spec.t0, cas })
   }
   return lines
 }

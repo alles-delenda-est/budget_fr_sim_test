@@ -1,6 +1,6 @@
 # Effets d'offre des leviers fiscaux : méthode et chiffres proposés (v2)
 
-**Statut : approuvé par Patrick le 18 novembre 2026 (décisions en section 6). Mise en œuvre dans le moteur : en cours.** Décision de Patrick du 17 novembre : σ central non nul pour les leviers fiscaux, tiré de la part « activité réelle » de la réponse comportementale.
+**Statut : approuvé par Patrick le 18 novembre 2026 (décisions en section 6). Mis en œuvre dans le moteur (branche `engine/tax-sigma`) : σ calculé dans `src/engine/supply.js`, θ réduit à sa part non réelle dans `src/engine/levers.js`.** Décision de Patrick du 17 novembre : σ central non nul pour les leviers fiscaux, tiré de la part « activité réelle » de la réponse comportementale.
 
 **v2 (18 novembre) :** e_L relevé de 0,19 à 0,40 (preuves des économies à prélèvements élevés, section 2) ; τ, z et α vérifiés (section 3) ; section 5 sur Laffer ; plafond Gemini abandonné pour les impôts larges sur le travail, gardé pour l'IS (à décider).
 
