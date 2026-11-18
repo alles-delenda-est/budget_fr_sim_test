@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { PARAMS, PARAM_BY_ID, STATUSES, resolveParams } from '../params.js'
-import { LEVERS, LEVER_BY_ID, staticYield, thetaElasticity, leverTheta, BLOCKS } from '../levers.js'
+import { LEVERS, LEVER_BY_ID, STRUCTURAL_LEVERS, staticYield, thetaElasticity, leverTheta, BLOCKS } from '../levers.js'
 import { projectScenario, HORIZONS, issuanceRate, deepFreeze } from '../project.js'
 import { TEST_MODULE, validateModuleDefinition } from '../modules.js'
 import { supplyPhase } from '../supply.js'
@@ -22,6 +22,7 @@ const YARDSTICKS = {
   dep_affaires_eco: { x: -1, md: 1.66 },
   ondam: { x: -1, md: 2.61 },
   indexation_pensions: { x: -1, md: 4.217 },
+  travail_assurance_chomage: { x: -1, md: 0.372 },
 }
 
 describe('paramètres', () => {
@@ -511,5 +512,44 @@ describe('paramètres d\'offre décidés le 17 novembre (offre.sigma.*, offre.la
       expect(q.source.length).toBeGreaterThan(10)
       expect(q.explanation.length).toBeGreaterThan(20)
     }
+  })
+})
+
+describe('assurance chômage : levier de dépense actif', () => {
+  const yS = (r) => r.total.map((x) => x.yS)
+  it('n\'est plus un levier structurel inactif ; les trois autres restent inactifs avec σ = 0', () => {
+    expect(STRUCTURAL_LEVERS.map((l) => l.id)).toEqual(['logement_offre', 'logement_loyers', 'travail_licenciement'])
+    expect(STRUCTURAL_LEVERS.every((l) => l.actif === false)).toBe(true)
+    const l = LEVER_BY_ID.travail_assurance_chomage
+    expect([l.unite, l.min, l.max, l.type, l.signe, l.categorie]).toEqual(['% de la ligne', -30, 30, 'depense', -1, 'prestations'])
+    expect(P['base.unedic.allocations']).toBe(37.2)
+  })
+  it('plus de générosité = plus de dépense, dans le seul bloc sécurité sociale ; resserrement = économie', () => {
+    const base = projectScenario({})
+    const more = projectScenario({ levers: { travail_assurance_chomage: 10 }, overrides: { 'fisc.eps': 0 } })
+    const less = projectScenario({ levers: { travail_assurance_chomage: -10 }, overrides: { 'fisc.eps': 0 } })
+    const Yb = more.total[2].gdpBase
+    expect(more.blocks.securiteSociale[2].leversExAnte / Yb * Y0).toBeCloseTo(-3.72, 6)
+    expect(less.blocks.securiteSociale[2].leversExAnte / Yb * Y0).toBeCloseTo(3.72, 6)
+    for (const r of [more, less]) for (const b of ['centrales', 'locales']) expect(r.blocks[b][2].leversExAnte).toBe(0)
+    expect(more.total[3].balance).toBeLessThan(projectScenario({ overrides: { 'fisc.eps': 0 } }).total[3].balance)
+    expect(less.total[3].balance).toBeGreaterThan(projectScenario({ overrides: { 'fisc.eps': 0 } }).total[3].balance)
+    expect(base.supply.lignes).toEqual([])
+  })
+  it('effet d\'offre : un resserrement de 10 % donne +0,05 / +0,12 / +0,22 % du PIB après 3 ans ; plus de générosité, l\'inverse', () => {
+    const run = (x, ysCase) => projectScenario({ levers: { travail_assurance_chomage: x }, ysCase })
+    // en vigueur en 2027 (t = 1), L = 3 : plein effet à t = 4
+    expect(yS(run(-10, 'bas'))[4]).toBeCloseTo(0.0005, 10)
+    expect(yS(run(-10, 'central'))[4]).toBeCloseTo(0.0012, 10)
+    expect(yS(run(-10, 'haut'))[4]).toBeCloseTo(0.0022, 10)
+    expect(yS(run(-10, 'central'))[2]).toBeCloseTo(0.0012 / 3, 10) // τ = 1
+    expect(yS(run(-10, 'central'))[1]).toBe(0)
+    expect(yS(run(10, 'central'))[4]).toBeCloseTo(-0.0012, 10)
+    expect(yS(run(10, 'bas'))[4]).toBeCloseTo(-0.0022, 10) // « bas » = PIB le plus bas
+    expect(yS(run(10, 'haut'))[4]).toBeCloseTo(-0.0005, 10)
+    const r = run(-10, 'central')
+    expect(r.supply.lignes.map((l) => l.id)).toEqual(['travail_assurance_chomage'])
+    expect(r.supply.lignes[0].cas).toBe('central')
+    expect(r.total[6].gdp).toBeGreaterThan(r.total[6].gdpBase * (1 + r.total[6].yD))
   })
 })

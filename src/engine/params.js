@@ -1,6 +1,6 @@
 // Paramètres du moteur v2 — note de modèle v0.3 (docs/model-note.md), §1, §4 et docs/baseline-data.md.
 // Chaque paramètre : { id, value (central), low, high, unit, source, status, explanation }.
-// status : "sourcé" | "sourcé (secondaire)" | "sourcé (fourchette), centre choisi" | "de mémoire" | "à collecter" | "non validé".
+// status : "sourcé" | "sourcé (calcul)" | "sourcé (secondaire)" | "sourcé (fourchette), centre choisi" | "de mémoire" | "à collecter" | "non validé".
 // Convention d'unités : chaque `unit` dit comment lire `value` (ex. "%" = 2,1 pour 2,1 %). Le moteur convertit.
 // Un paramètre « à collecter » porte une VALEUR PROVISOIRE (placeholder) : ne jamais la présenter comme sourcée.
 
@@ -72,6 +72,12 @@ const COFOG = [
 ].map(([k, v, lib]) => obs(`base.cofog.${k}`, v, 'Md€ 2024',
   'Insee Première n° 2093, figure 2 [S19] (2024 provisoire ; le niveau 2025 paraît en décembre 2026)',
   `Dépenses publiques 2024, fonction « ${lib} ».`))
+
+// Allocations de l'Unédic (levier « assurance chômage »). Lu dans le PDF de l'Unédic par un outil de lecture : à reconfirmer sur le document.
+const unedic = [
+  obs('base.unedic.allocations', 37.2, 'Md€ 2025', 'Unédic, « Situation financière de l\'Assurance chômage à horizon 2028 », 17 juin 2026, tableau 4 p. 16, ligne « Allocations brutes et aides » (incluant notamment l\'Arce et la prime CSP) : 37,2 Md€ en 2025, 38,1 Md€ prévus en 2026 ; p. 11 : « stagné à 37,2 Md€ en 2025 ». Dépenses totales de l\'Unédic : 45,3 Md€ en 2025, 46,6 Md€ en 2026',
+    'Allocations versées par l\'Unédic en 2025 (allocations brutes et aides, qui comprennent l\'ARE mais aussi l\'Arce et la prime CSP : l\'ARE seule n\'est pas isolée dans le document). Sert d\'étalon : 1 % de cette ligne = 0,372 Md€, soit 0,012 % du PIB.'),
+]
 
 const COR = { 2025: 14.1, 2030: 14.1, 2045: 14.2, 2070: 15.3 }
 
@@ -258,12 +264,12 @@ const rend = [
   p('comp.tau0.is', 25, null, null, '%', 'PLF 2026, Voies et moyens, tome I, p. 18', 'sourcé', 'Taux normal de l\'impôt sur les sociétés avant réforme.'),
 ]
 
-export const PARAMS = [...baseMacro, ...baseBlocs, ...partsBlocs, ...COFOG, ...table, ...offre, ...rend, ...comparators]
+export const PARAMS = [...baseMacro, ...baseBlocs, ...partsBlocs, ...COFOG, ...unedic, ...table, ...offre, ...rend, ...comparators]
 
 export const PARAM_BY_ID = Object.fromEntries(PARAMS.map((q) => [q.id, q]))
 if (Object.keys(PARAM_BY_ID).length !== PARAMS.length) throw new Error('params: identifiants dupliqués')
 
-export const STATUSES = ['sourcé', 'sourcé (secondaire)', 'sourcé (fourchette), centre choisi', 'de mémoire', 'à collecter', 'non validé']
+export const STATUSES = ['sourcé', 'sourcé (calcul)', 'sourcé (secondaire)', 'sourcé (fourchette), centre choisi', 'de mémoire', 'à collecter', 'non validé']
 
 /** Valeurs centrales, avec remplacements éventuels { id: valeur }. Rejette les ids inconnus et les valeurs non finies. */
 export function resolveParams(overrides = {}) {
