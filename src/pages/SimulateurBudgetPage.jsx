@@ -1,9 +1,11 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { projectScenario, HORIZONS } from '../engine/project.js'
 import { resolveParams, PARAM_BY_ID } from '../engine/params.js'
 import LeverPanel from './budget/LeverPanel'
 import Charts from './budget/Charts'
 import { Snapshots, DecompositionTable, BlocksTable } from './budget/Results'
+import ShareButton from './budget/ShareButton'
+import { decodeScenario, queryFromHash, scenarioHash, scenarioUrl } from './budget/share'
 import { InfoPopover, ParamInfo, StatusBadge } from './budget/InfoPopover'
 import { buildSeries, snapshotAt, decomposeAtYear, hasSupplyEffect, blocksAt, paramIdsFor, extremeLevers, SUPPLY_CASES } from './budget/helpers'
 import './SimulateurBudgetPage.css'
@@ -13,9 +15,11 @@ const EPS = P['fisc.eps']
 const DEFAULT_YEAR_IDX = 5
 
 export default function SimulateurBudgetPage() {
-  const [values, setValues] = useState({})
-  const [horizon, setHorizon] = useState('dixAns')
-  const [ysCase, setYsCase] = useState('central')
+  // Scénario lu une seule fois dans l'adresse (#/budget?h=…&cas=…&levier=…), validé par decodeScenario.
+  const [initial] = useState(() => decodeScenario(queryFromHash(window.location.hash)))
+  const [values, setValues] = useState(initial.values)
+  const [horizon, setHorizon] = useState(initial.horizon)
+  const [ysCase, setYsCase] = useState(initial.ysCase)
   const [yearIdxRaw, setYearIdx] = useState(DEFAULT_YEAR_IDX)
 
   // Référence (sans levier) et scénario : recalculés seulement si leviers, horizon ou cas changent.
@@ -37,6 +41,14 @@ export default function SimulateurBudgetPage() {
 
   // Aucune ligne d'offre non nulle dans le résultat du moteur : le choix bas / central / haut ne change rien.
   const noSupplyEffect = !hasSupplyEffect(result)
+
+  // Adresse du scénario mise à jour sans entrée d'historique, avec un délai pour ne pas écrire à chaque cran de curseur.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      window.history.replaceState(window.history.state, '', scenarioHash({ values, horizon, ysCase }))
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [values, horizon, ysCase])
 
   const setLever = (id, x) => setValues((v) => ({ ...v, [id]: x }))
 
@@ -65,6 +77,14 @@ export default function SimulateurBudgetPage() {
           </div>
         </div>
         <p className="sb-help">Bas et haut désignent les résultats les moins et les plus favorables pour le PIB, et non l'ordre statistique des valeurs (σ). Au-delà de dix ans, lisez les trois cas ensemble : le modèle reste déterministe.</p>
+      </section>
+
+      <section className="sb-section" aria-labelledby="sb-partage">
+        <h2 id="sb-partage">Partager</h2>
+        <p className="sb-help">Le lien reprend les leviers, l'horizon et le cas des effets d'offre ; il rouvre exactement ce scénario.</p>
+        <div className="sb-toolbar">
+          <ShareButton getUrl={() => scenarioUrl(window.location, { values, horizon, ysCase })} />
+        </div>
       </section>
 
       <div className="sb-layout">

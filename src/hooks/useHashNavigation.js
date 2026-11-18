@@ -3,7 +3,8 @@ import { useState, useEffect, useCallback } from 'react'
 const PAGES = new Set(['intro', 'budget', 'retraites', 'hypotheses'])
 
 function parseHash(defaultPage) {
-  const hash = window.location.hash.replace(/^#\/?/, '')
+  // La requête éventuelle (#/budget?h=…) est ignorée pour le choix de la page.
+  const hash = window.location.hash.replace(/^#\/?/, '').split('?')[0]
   return PAGES.has(hash) ? hash : defaultPage
 }
 
