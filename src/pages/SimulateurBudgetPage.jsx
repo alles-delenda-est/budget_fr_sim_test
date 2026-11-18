@@ -3,7 +3,8 @@ import { projectScenario, HORIZONS } from '../engine/project.js'
 import { resolveParams, PARAM_BY_ID } from '../engine/params.js'
 import LeverPanel from './budget/LeverPanel'
 import Charts from './budget/Charts'
-import { Snapshots, DecompositionTable, BlocksTable } from './budget/Results'
+import { Snapshots, DecompositionTable, BlocksTable, WarningBanner } from './budget/Results'
+import { evaluateWarnings } from './budget/warnings'
 import ShareButton from './budget/ShareButton'
 import { buildCsv, buildExportRows, downloadCsv } from './budget/exportCsv'
 import { versionStamp } from '../version'
@@ -32,6 +33,7 @@ export default function SimulateurBudgetPage() {
   const N = result.years.length - 1
   const yearIdx = Math.min(Math.max(yearIdxRaw, 1), N)
 
+  const warnings = useMemo(() => evaluateWarnings(result), [result])
   const series = useMemo(() => buildSeries(result, reference), [result, reference])
   const snaps = useMemo(() => [
     { titre: 'Année 1', snap: snapshotAt(result, reference, 1) },
@@ -102,8 +104,9 @@ export default function SimulateurBudgetPage() {
       <div className="sb-layout">
         <LeverPanel values={values} onChange={setLever} onReset={() => setValues({})} onExtreme={(w) => setValues(extremeLevers(w))} P={P} />
         <div className="sb-results">
+          <WarningBanner warnings={warnings} />
           <Snapshots snaps={snaps} />
-          <Charts data={series} />
+          <Charts data={series} tier1={warnings.tier1} tier2={warnings.tier2} />
           <DecompositionTable decomposition={decomposition} years={result.years} yearIdx={yearIdx} onYear={setYearIdx} />
           <BlocksTable blocks={blocks} year={result.years[yearIdx]} />
           <section className="sb-section" aria-labelledby="sb-params">

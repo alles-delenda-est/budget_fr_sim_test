@@ -81,3 +81,9 @@
 .sb-share { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; min-width: 0; }
 .sb-share-status { font-size: 0.875rem; color: var(--color-ink-light, #4a4a4a); }
 .sb-share-url { flex: 1 1 100%; min-width: 0; min-height: 44px; padding: 0.4rem; font: inherit; font-size: 0.8125rem; border: 1px solid var(--color-border, #e0e0e0); border-radius: 4px; }
+
+/* Avertissements : trajectoire au-delà de l'expérience historique */
+.sb-warnings { margin: 1rem 0 0; display: grid; gap: 0.5rem; }
+.sb-warning { margin: 0; padding: 0.75rem 0.9rem; border-radius: 6px; border: 1px solid; font-size: 0.9375rem; line-height: 1.45; }
+.sb-warning-1 { border-color: var(--color-warning, #bf4000); background: #fff6f0; color: #7a2a00; }
+.sb-warning-2 { border-color: var(--color-negative, #b71c1c); background: #fdecea; color: #7f1212; }

@@ -3,7 +3,7 @@
 // Interprétations (la note est silencieuse) : voir les commentaires « INTERPRÉTATION ».
 
 import { resolveParams, interpolateSeries } from './params.js'
-import { BLOCKS, leversToInstruments } from './levers.js'
+import { BLOCKS, LEVER_BY_ID, leversToInstruments } from './levers.js'
 import { runModule } from './modules.js'
 import { coreSupplyLines } from './supply.js'
 
@@ -171,6 +171,12 @@ export function projectScenario(options = {}) {
       exAnteTot += exAnte; behavTot += behav; refTot += ref; stabTot += stab
     }
     const primary = BLOCKS.reduce((s, b) => s + blk[b].primary, 0)
+    // Recettes publiques (Md€), grandeur d'AFFICHAGE : le moteur n'a pas de série de recettes (il raisonne en solde primaire).
+    // Dérivée ainsi : recettes de référence (part de recettes APU dans le PIB de 2025 × PIB, élasticité unitaire, comme la référence)
+    // + effet ex post (après θ) des seuls leviers de recette. Les leviers de dépense et les modules n'y figurent pas.
+    // Elle sert au seul indicateur « intérêts / recettes » des avertissements ; elle n'entre jamais dans le solde ni dans la dette.
+    const revenue = (P['base.recettes.apu'] / P['base.pib.2025']) * Y
+      + Object.entries(perInstrument).reduce((sum, [id, v]) => sum + (LEVER_BY_ID[id]?.type === 'recette' ? v.exPost : 0), 0)
     const balance = primary - INT
     // E11 : dette
     const D = Dprev + INT - primary
@@ -192,7 +198,7 @@ export function projectScenario(options = {}) {
     total.push({
       year: START_YEAR + t, t, gdp: Y, gdpBase: Yb, gdpEffect: gap, yD, yS,
       balance, balanceRatio: balance / Y, primaryBalance: primary, primaryBalanceRatio: primary / Y,
-      interest: INT, interestRatio: INT / Y, avgRate: iAvg, newRate: iNew, riskPremium: premium,
+      revenue, interest: INT, interestRatio: INT / Y, avgRate: iAvg, newRate: iNew, riskPremium: premium,
       debt: D, debtRatio: ratio, unemployment: u, byInstrument: perInstrument, driftA: dA, driftB: dB, issuanceRate: iStar,
     })
 
