@@ -1,16 +1,20 @@
 .intro-page {
-  max-width: 900px;
+  max-width: 960px;
   margin: 0 auto;
+  padding: 0 var(--space-xs, 0.5rem);
+  overflow-wrap: anywhere;
 }
 
 .intro-section {
-  margin-bottom: 2.5rem;
+  margin-bottom: 2.25rem;
 }
 
 .intro-section h2 {
+  font-family: var(--font-serif);
+  font-weight: 400;
   color: var(--color-ink);
-  border-bottom: 2px solid var(--color-border);
-  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0.45rem;
   margin-bottom: 1rem;
 }
 
@@ -20,30 +24,45 @@
   margin-bottom: 0.75rem;
 }
 
-.mechanism-cards, .simulator-cards {
+.intro-section code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  background: var(--color-background);
+  padding: 0.05rem 0.25rem;
+  border-radius: 3px;
+}
+
+.mechanism-cards,
+.simulator-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 1rem;
   margin-top: 1rem;
 }
 
-.mechanism-card, .simulator-card, .demo-card {
-  background: var(--color-background);
+.mechanism-card,
+.simulator-card {
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 1.25rem;
+  border-radius: 6px;
+  padding: 1.15rem;
 }
 
-.mechanism-card h3, .simulator-card h3, .demo-card h4 {
+.mechanism-card h3,
+.simulator-card h3 {
+  font-family: var(--font-serif);
+  font-weight: 500;
   color: var(--color-accent);
   margin-bottom: 0.5rem;
-  font-size: 1rem;
+  font-size: 1.05rem;
 }
 
-.mechanism-card p, .simulator-card p {
-  color: var(--color-ink-muted);
+.mechanism-card p,
+.simulator-card p {
+  color: var(--color-ink-light);
   font-size: 0.9rem;
   line-height: 1.6;
+  margin-bottom: 0;
 }
 
 .simulator-card {
@@ -53,35 +72,38 @@
 
 .simulator-card:hover {
   border-color: var(--color-accent);
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 2px 8px rgba(92, 107, 192, 0.14);
 }
 
 .baseline-summary {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(195px, 1fr));
+  gap: 0.85rem;
   margin: 1rem 0;
 }
 
 .baseline-metric {
-  background: var(--color-background);
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 1rem;
+  border-radius: 6px;
+  padding: 1rem 0.85rem;
   text-align: center;
 }
 
 .baseline-label {
   display: block;
   color: var(--color-ink-muted);
-  font-size: 0.85rem;
-  margin-bottom: 0.5rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.4rem;
 }
 
 .baseline-value {
   display: block;
-  font-size: 1.5rem;
+  font-size: 1.375rem;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   color: var(--color-ink);
 }
 
@@ -96,18 +118,60 @@
   margin-top: 0.25rem;
 }
 
+.intro-callout {
+  margin-top: 1rem;
+  padding: 0.9rem 1.05rem;
+  border-radius: 6px;
+  border: 1px solid var(--color-warning);
+  background: #fff6f0;
+  color: #5c2200;
+}
+
+.intro-callout h3 {
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+  color: #7a2a00;
+}
+
+.intro-callout p {
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: #5c2200;
+  margin-bottom: 0;
+}
+
+.intro-callout code {
+  background: rgba(255, 255, 255, 0.7);
+}
+
 .limitations-list {
   color: var(--color-ink-light);
-  padding-left: 1.5rem;
-  line-height: 1.8;
+  padding-left: 1.4rem;
+  line-height: 1.75;
+  margin-bottom: 0.85rem;
 }
 
 .limitations-list li {
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.35rem;
 }
 
-@media (max-width: 768px) {
-  .mechanism-cards, .simulator-cards, .baseline-summary {
+.intro-inline-link {
+  color: var(--color-accent);
+  text-decoration: underline;
+  font-weight: 500;
+  padding: 0;
+}
+
+.intro-inline-link:hover {
+  color: var(--color-ink);
+}
+
+@media (max-width: 640px) {
+  .mechanism-cards,
+  .simulator-cards,
+  .baseline-summary {
     grid-template-columns: 1fr;
   }
 }
