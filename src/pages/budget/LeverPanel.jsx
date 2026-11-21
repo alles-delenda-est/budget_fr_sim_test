@@ -51,7 +51,7 @@ export default function LeverPanel({ values, onChange, onReset, onExtreme, P }) 
       <h2 id="sb-leviers">Leviers</h2>
       <p className="sb-help">Chaque curseur change une mesure à partir de 2027 (sauf l'âge légal de retraite : à partir de janvier 2028, fin du gel LFSS 2026, avec montée en charge sur 6 ans). L'étalon statique est l'effet en régime permanent sur le solde, avant toute réaction : signe positif = solde amélioré.</p>
       <div className="sb-toolbar">
-        <button type="button" className="sb-btn" onClick={onReset}>Remettre à zéro</button>
+        <button type="button" className="sb-btn" onClick={onReset}>Remettre les leviers à zéro</button>
         <button type="button" className="sb-btn" onClick={() => onExtreme('min')}>Tout au minimum</button>
         <button type="button" className="sb-btn" onClick={() => onExtreme('max')}>Tout au maximum</button>
       </div>

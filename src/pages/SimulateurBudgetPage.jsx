@@ -10,7 +10,7 @@ import { buildCsv, buildExportRows, downloadCsv } from './budget/exportCsv'
 import { versionStamp } from '../version'
 import { decodeScenario, queryFromHash, scenarioHash, scenarioUrl } from './budget/share'
 import { InfoPopover, ParamInfo, StatusBadge } from './budget/InfoPopover'
-import { buildSeries, snapshotAt, decomposeAtYear, hasSupplyEffect, blocksAt, paramIdsFor, extremeLevers, SUPPLY_CASES } from './budget/helpers'
+import { buildSeries, snapshotAt, decomposeAtYear, hasSupplyEffect, blocksAt, paramIdsFor, extremeLevers, fmt, SUPPLY_CASES } from './budget/helpers'
 import { NEUTRAL_SCENARIOS, MACRO_VARIANT_BY_ID, overridesForMacro, matchesScenario } from './budget/presets'
 import './SimulateurBudgetPage.css'
 
@@ -142,19 +142,31 @@ export default function SimulateurBudgetPage() {
           )}
           <WarningBanner warnings={warnings} />
           <Snapshots snaps={snaps} />
-          <Charts data={series} tier1={warnings.tier1} tier2={warnings.tier2} />
+          <Charts data={series} tier1={warnings.tier1} tier2={warnings.tier2} hasMacroOverride={Boolean(macroVariant)} />
           <DecompositionTable decomposition={decomposition} years={result.years} yearIdx={yearIdx} onYear={setYearIdx} />
           <BlocksTable blocks={blocks} year={result.years[yearIdx]} />
           <section className="sb-section" aria-labelledby="sb-params">
             <h2 id="sb-params">Hypothèses utilisées</h2>
             <p className="sb-help">Paramètres qui pèsent sur le scénario affiché, avec leur source et leur statut.</p>
             <ul className="sb-params">
-              {paramIds.map((id) => (
-                <li key={id}>
-                  <code>{id}</code> <StatusBadge status={PARAM_BY_ID[id].status} />
-                  <InfoPopover label={id}><ParamInfo param={PARAM_BY_ID[id]} /></InfoPopover>
-                </li>
-              ))}
+              {paramIds.map((id) => {
+                const param = PARAM_BY_ID[id]
+                const overridden = overrides && Object.hasOwn(overrides, id) ? overrides[id] : null
+                return (
+                  <li key={id}>
+                    <code>{id}</code> <StatusBadge status={param.status} />
+                    {overridden !== null && (
+                      <> <span className="sb-badge sb-badge-override">comparateur : {fmt(overridden, 1)} {param.unit}</span></>
+                    )}
+                    <InfoPopover label={id}>
+                      {overridden !== null && (
+                        <span className="sb-info-line"><strong>Valeur du comparateur actif :</strong> {fmt(overridden, 1)} {param.unit} (remplace la valeur de référence ci-dessous).</span>
+                      )}
+                      <ParamInfo param={param} />
+                    </InfoPopover>
+                  </li>
+                )
+              })}
             </ul>
           </section>
         </div>

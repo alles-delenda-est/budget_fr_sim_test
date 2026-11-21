@@ -52,12 +52,12 @@ function SimpleChart({ spec, data, tier1, tier2 }) {
   )
 }
 
-export default function Charts({ data, tier1 = null, tier2 = null }) {
+export default function Charts({ data, tier1 = null, tier2 = null, hasMacroOverride = false }) {
   const shown = splitSeriesAtYear(data, tier2?.year)
   return (
     <section className="sb-section" aria-labelledby="sb-graphiques">
       <h2 id="sb-graphiques">Trajectoires</h2>
-      <p className="sb-help">Trait plein : votre scénario. Pointillés longs : la référence, sans aucun levier.{tier2 && ' Pointillé orangé : seuil de 260 % de dette (record du Japon) et année où il est franchi. Trait gris pointillé après la ligne rouge : trajectoire hors de toute expérience historique (le modèle ne décrit plus une situation réaliste) ; l\'axe vertical l\'ignore, les valeurs restent lisibles au survol et dans l\'export CSV.'}</p>
+      <p className="sb-help">Trait plein : votre scénario. Pointillés longs : la référence, sans aucun levier.{hasMacroOverride && ' Avec un comparateur macroéconomique actif, le graphique « Écart de PIB à la référence » isole l\'effet des seuls leviers budgétaires (yD + yS, soit 0,00 % sans levier) par rapport au PIB nominal du comparateur.'}{tier2 && ' Pointillé orangé : seuil de 260 % de dette (record du Japon) et année où il est franchi. Trait gris pointillé après la ligne rouge : trajectoire hors de toute expérience historique (le modèle ne décrit plus une situation réaliste) ; l\'axe vertical l\'ignore, les valeurs restent lisibles au survol et dans l\'export CSV.'}</p>
       <div className="sb-charts">
         {CHARTS.map((c) => <SimpleChart key={c.id} spec={c} data={shown} tier1={tier1} tier2={tier2} />)}
       </div>
