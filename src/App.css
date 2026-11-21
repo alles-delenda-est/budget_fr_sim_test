@@ -498,7 +498,6 @@ body {
   gap: var(--space-lg);
 }
 
-/* SliderControl component classes */
 .control {
   display: flex;
   flex-direction: column;
