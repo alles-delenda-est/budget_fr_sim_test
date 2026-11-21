@@ -16,9 +16,9 @@ function App() {
       <ReviewBanner />
       <div className="app">
         <header className="header">
-          <h1>Simulateur Budget France <span className="version-badge">v2.0</span></h1>
+          <h1>Simulateur Budget France <span className="version-badge">moteur v2</span></h1>
           <p className="subtitle">
-            Administrations publiques : État, sécurité sociale, collectivités &bull; effets de demande et d'offre explicites &bull; charge d'intérêts selon les taux de marché
+            Administrations publiques consolidées : État et ODAC, sécurité sociale, collectivités locales &bull; effets de demande et d'offre explicites &bull; charge d'intérêts aux taux de marché
           </p>
         </header>
 
@@ -32,10 +32,12 @@ function App() {
         </main>
 
         <footer className="footer">
-          <p>Simulateur Budget France v2.0 &bull; Sources : PLF 2025, PLFSS 2026, FMI, OCDE, BCE, AFT</p>
+          <p>
+            Simulateur Budget France (moteur v2) &bull; Sources : Insee (comptes 2025), RESF 2027, AFT (2026), COR (juin 2026), Cour des comptes, Commission européenne, OCDE, Banque de France, Unédic, DG Trésor, FIPECO.
+          </p>
           <p className="footer-note footer-version">Version de relecture {versionStamp()}</p>
           <p className="footer-note">
-            Administrations publiques (État, sécurité sociale, collectivités). Effets de demande et d'offre explicites.
+            Administrations publiques consolidées : État et ODAC, sécurité sociale, collectivités locales &bull; équations E1–E12, effets de demande et d'offre explicites, avertissements hors expérience historique.
           </p>
         </footer>
       </div>

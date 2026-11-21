@@ -1,66 +1,126 @@
 import { useMemo } from 'react'
-import { getBaselineProjection, DEMOGRAPHIC_PRESSURE_PER_YEAR } from '../projection-engine-v1.8'
+import { projectScenario, issuanceRate, HORIZONS } from '../engine/project.js'
+import { resolveParams, PARAM_BY_ID } from '../engine/params.js'
+import { LEVERS, STRUCTURAL_LEVERS } from '../engine/levers.js'
+import { WARNING_THRESHOLDS as W } from '../config.js'
+import { fmt } from './budget/helpers'
+import { evaluateWarnings } from './budget/warnings'
+import './SimulateurBudgetPage.css'
 import './IntroPage.css'
 
 export default function IntroPage({ navigateTo }) {
-  // Compute baseline dynamically so numbers stay in sync with the model
-  const baseline = useMemo(() => getBaselineProjection(10), [])
-  const yr0 = baseline[0]
-  const yr10 = baseline[10]
+  const data = useMemo(() => {
+    const P = resolveParams()
+    const ref10 = projectScenario({ horizon: 'dixAns' })
+    const ref30 = projectScenario({ horizon: 'trenteAns' })
+    const betaLow = PARAM_BY_ID['dette.beta'].low
+    const betaHigh = PARAM_BY_ID['dette.beta'].high
+    const ref30Beta0 = projectScenario({ horizon: 'trenteAns', overrides: { 'dette.beta': 0 } })
+    const ref30BetaLow = projectScenario({ horizon: 'trenteAns', overrides: { 'dette.beta': betaLow } })
+    const ref30BetaHigh = projectScenario({ horizon: 'trenteAns', overrides: { 'dette.beta': betaHigh } })
+
+    const end10 = ref10.total[ref10.total.length - 1]
+    const end30 = ref30.total[ref30.total.length - 1]
+    const last = (r) => r.total[r.total.length - 1]
+
+    return {
+      P,
+      iStarPct: issuanceRate(P) * 100,
+      end10,
+      end30,
+      warnings30: evaluateWarnings(ref30),
+      betaLow,
+      betaHigh,
+      debt30Beta0: last(ref30Beta0).debtRatio * 100,
+      debt30BetaLow: last(ref30BetaLow).debtRatio * 100,
+      debt30BetaHigh: last(ref30BetaHigh).debtRatio * 100,
+    }
+  }, [])
+
+  const { P, iStarPct, end10, end30, warnings30, betaLow, betaHigh, debt30Beta0, debt30BetaLow, debt30BetaHigh } = data
+  const debt2025 = P['base.dette.2025']
+  const debtRatio2025 = P['base.dette.ratio_2025']
+  const solde2025 = P['base.solde.apu']
+  const pib2025 = P['base.pib.2025']
+  const soldeRatio2025 = (solde2025 / pib2025) * 100
+  const interets2025 = P['base.interets.apu']
+  const debt10Pct = end10.debtRatio * 100
+  const bal10Pct = end10.balanceRatio * 100
+  const int10Pct = end10.interestRatio * 100
+  const rate10Pct = end10.avgRate * 100
+
+  const handleCardKey = (page) => (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      navigateTo?.(page)
+    }
+  }
 
   return (
     <div className="intro-page">
       <section className="intro-section">
         <h2>Pourquoi ce simulateur ?</h2>
         <p>
-          La France fait face à un défi budgétaire structurel. Avec une dette publique de <strong>{yr0.debt} Md€</strong> ({yr0.debtRatio}% du PIB)
-          et un déficit de <strong>{Math.abs(yr0.deficit).toFixed(0)} Md€</strong>, le débat public est dominé par des affirmations simplistes :
-          &laquo; il suffit de couper les dépenses &raquo; ou &laquo; il suffit d'augmenter les impôts &raquo;.
+          Les finances publiques françaises abordent la période 2026–2056 avec une dette brute (Maastricht) de{' '}
+          <strong>{fmt(debt2025, 1)} Md€</strong> (<strong>{fmt(debtRatio2025, 1)} % du PIB</strong>), un solde public de{' '}
+          <strong>{fmt(solde2025, 1)} Md€</strong> ({fmt(soldeRatio2025, 1)} % du PIB) et un PIB observé de{' '}
+          <strong>{fmt(pib2025, 0)} Md€</strong> en 2025 (Insee, RESF 2027). Le débat public réduit souvent la question à
+          des affirmations rapides : &laquo; il suffit de couper les dépenses &raquo; ou &laquo; il suffit d'augmenter les impôts &raquo;.
         </p>
         <p>
-          La réalité est plus complexe. Les hausses d'impôts ne rapportent pas autant qu'annoncé (réponses comportementales),
-          les coupes de dépenses ont des effets sur la croissance (multiplicateurs fiscaux), et la dette elle-même génère
-          un cercle vicieux via les taux d'intérêt (doom loop).
+          Le moteur v2 couvre les <strong>administrations publiques consolidées (APU)</strong> en comptabilité nationale,
+          réparties en <strong>trois blocs</strong> : administrations centrales (État et ODAC), sécurité sociale (ASSO) et
+          collectivités locales (APUL). Les transferts entre blocs sont consolidés pour éviter tout double compte.
         </p>
         <p>
-          Ce simulateur permet d'explorer ces mécanismes de manière interactive et transparente.
-          Chaque paramètre est sourcé académiquement et documenté dans l'onglet <em>Hypothèses</em>.
+          L'objectif est pédagogique et transparent : montrer comment chaque mesure agit sur le solde après réaction des
+          contribuables, effets de demande, effets d'offre et charge d'intérêts. Chaque paramètre est documenté avec sa
+          source et son statut de validation dans l'onglet <em>Hypothèses &amp; Paramètres</em>.
         </p>
       </section>
 
       <section className="intro-section">
-        <h2>Comment fonctionne le modèle ?</h2>
+        <h2>Comment fonctionne le modèle (équations E1–E12) ?</h2>
         <div className="mechanism-cards">
           <div className="mechanism-card">
-            <h3>Réponse comportementale (ETI)</h3>
+            <h3>1. Trois blocs APU et dérive de référence (E1, E2, E8)</h3>
             <p>
-              Quand on augmente un impôt, une partie des recettes espérées disparaît : les contribuables ajustent
-              leur comportement (émigration fiscale, optimisation, réduction d'activité). L'impôt sur les sociétés est
-              le plus &laquo; fuyant &raquo; (55% d'efficacité), la TVA le plus efficace (92%).
+              Les comptes sont ancrés sur 2025 (dernière année observée), avec 2026 en estimation et les leviers actifs dès
+              2027 (janvier 2028 pour l'âge légal de retraite, fin du gel LFSS 2026). La croissance de référence suit la
+              médiane des prévisionnistes indépendants, et la dérive spontanée intègre le vieillissement projeté par le COR
+              (retraites) et la Commission européenne (santé).
             </p>
           </div>
           <div className="mechanism-card">
-            <h3>Boucle dette-intérêt</h3>
+            <h3>2. Demande, réaction comportementale et effets d'offre (E3–E7, D13)</h3>
             <p>
-              Une dette plus élevée fait monter les taux d'intérêt, ce qui augmente le déficit, ce qui augmente la dette.
-              Le modèle utilise un système à 4 régimes : en dessous de 60% du PIB, les marchés sont calmes.
-              Au-dessus de 120%, les primes s'accélèrent fortement (10 bps par point supplémentaire).
+              Les effets de demande jouent en niveau et s'estompent (persistance <code>λ = {fmt(P['dem.lambda'], 1)}</code>).
+              La réaction comportementale <code>θ</code> est symétrique en paramètres, évaluée au taux après réforme, et
+              réduite à sa seule part non réelle quand un effet d'offre <code>σ ≠ 0</code> existe. Les effets d'offre
+              explicites (impôts sur le travail via <code>e_L = {fmt(P['offre.e_L'], 2)}</code>, IS via le coût d'usage du
+              capital, âge légal, assurance chômage, enseignement) passent au solde par le taux de prélèvements obligatoires{' '}
+              <code>ε_offre = {fmt(P['fisc.eps_offre'] * 100, 1)} %</code>, distinct des stabilisateurs de demande{' '}
+              <code>ε = {fmt(P['fisc.eps'], 1)}</code>.
             </p>
           </div>
           <div className="mechanism-card">
-            <h3>Dérive démographique</h3>
+            <h3>3. Taux de marché, prime β et inertie du stock (E9–E11)</h3>
             <p>
-              Le vieillissement de la population ajoute automatiquement <strong>+{(10 * DEMOGRAPHIC_PRESSURE_PER_YEAR).toFixed(0)} Md€</strong> de
-              dépenses supplémentaires sur 10 ans, indépendamment de toute décision politique.
-              C'est le vent contraire que tout scénario doit surmonter avant de pouvoir améliorer les comptes.
+              Le taux à l'émission de référence est pondéré entre BTF, OAT 2–8 ans et OAT 10 ans et plus (
+              <code>i* ≈ {fmt(iStarPct, 2)} %</code>). Au-delà du ratio de dette de 2026, une prime linéaire de{' '}
+              <code>β = {fmt(P['dette.beta'], 0)} pb/pt</code> (fourchette {fmt(betaLow, 0)}–{fmt(betaHigh, 0)}) s'ajoute,
+              plafonnée à 25 %. Le stock de dette se renouvelle progressivement selon sa maturité moyenne (
+              <code>M = {fmt(P['dette.M'], 2)} ans</code>) augmentée de la dette nouvelle.
             </p>
           </div>
           <div className="mechanism-card">
-            <h3>Inertie de la dette</h3>
+            <h3>4. Trois horizons et avertissements hors expérience</h3>
             <p>
-              La France refinance environ 12,5% de sa dette chaque année (maturité moyenne 8 ans).
-              Cela signifie qu'un choc de taux met des années à se transmettre pleinement, mais aussi
-              qu'une fois les taux montés, les coûts restent élevés pendant longtemps.
+              Les projections se lisent à 10 ans ({HORIZONS.dixAns.endYear}), en {HORIZONS.jusqua2040.endYear} et à 30 ans
+              ({HORIZONS.trenteAns.endYear}). Deux paliers encadrent les trajectoires extrêmes : <strong>palier 1</strong>{' '}
+              au-delà de {W.tier1DebtPct} % du PIB (record d'une économie avancée : Japon {W.tier1ReferencePct} % en{' '}
+              {W.tier1ReferenceYear}, FMI) et <strong>palier 2</strong> au-delà de {W.tier2DebtPct} % du PIB ou quand les
+              intérêts dépassent {W.tier2InterestShareRevenuePct} % des recettes publiques.
             </p>
           </div>
         </div>
@@ -69,76 +129,125 @@ export default function IntroPage({ navigateTo }) {
       <section className="intro-section">
         <h2>Que se passe-t-il sans rien faire ?</h2>
         <p>
-          Dans le scénario de base (aucun changement de politique), le modèle projette :
+          À politique inchangée (aucun levier activé, hypothèses centrales du moteur v2), la trajectoire de référence
+          projette à <strong>10 ans ({end10.year})</strong> :
         </p>
         <div className="baseline-summary">
           <div className="baseline-metric">
-            <span className="baseline-label">Dette/PIB à 10 ans</span>
-            <span className="baseline-value warning">{yr10.debtRatio}%</span>
-            <span className="baseline-delta">+{(yr10.debtRatio - yr0.debtRatio).toFixed(1)} pp</span>
+            <span className="baseline-label">Dette / PIB ({end10.year})</span>
+            <span className="baseline-value warning">{fmt(debt10Pct, 1)} %</span>
+            <span className="baseline-delta">{fmt(debt10Pct - debtRatio2025, 1, { signed: true })} pt vs 2025</span>
           </div>
           <div className="baseline-metric">
-            <span className="baseline-label">Déficit à 10 ans</span>
-            <span className="baseline-value warning">{yr10.deficit} Md€</span>
+            <span className="baseline-label">Solde public ({end10.year})</span>
+            <span className="baseline-value warning">{fmt(bal10Pct, 2)} % du PIB</span>
+            <span className="baseline-delta">{fmt(end10.balance, 0)} Md€</span>
           </div>
           <div className="baseline-metric">
-            <span className="baseline-label">Charge d'intérêts</span>
-            <span className="baseline-value">{yr10.interest} Md€</span>
-            <span className="baseline-delta">+{(yr10.interest - yr0.interest).toFixed(0)} Md€ vs aujourd'hui</span>
+            <span className="baseline-label">Charge d'intérêts ({end10.year})</span>
+            <span className="baseline-value">{fmt(end10.interest, 1)} Md€</span>
+            <span className="baseline-delta">{fmt(int10Pct, 2)} % du PIB ({fmt(end10.interest - interets2025, 0, { signed: true })} Md€ vs 2025)</span>
           </div>
           <div className="baseline-metric">
-            <span className="baseline-label">Pression démographique cumulée</span>
-            <span className="baseline-value warning">+{yr10.demographicPressure} Md€</span>
+            <span className="baseline-label">Taux moyen du stock ({end10.year})</span>
+            <span className="baseline-value">{fmt(rate10Pct, 2)} %</span>
+            <span className="baseline-delta">contre {fmt(P['dette.i_moy_2025'], 1)} % en 2025 (i* ≈ {fmt(iStarPct, 2)} %)</span>
           </div>
         </div>
-        <p>
-          La dérive est entièrement pilotée par la démographie et les taux d'intérêt.
-          Sans réformes structurelles ni ajustements budgétaires, la trajectoire se dégrade mécaniquement.
-        </p>
+
+        <div className="intro-callout" role="note">
+          <h3>À 30 ans ({end30.year}) : ce n'est pas une prévision, mais l'effet de l'hypothèse β</h3>
+          <p>
+            Sans mesure nouvelle, la dette de référence atteint <strong>{fmt(end30.debtRatio * 100, 0)} % du PIB</strong> en{' '}
+            {end30.year} au centre (<code>β = {fmt(P['dette.beta'], 0)} pb/pt</code>)
+            {warnings30.tier1 ? `, franchissant le palier 1 (${W.tier1DebtPct} %) dès ${warnings30.tier1.year}` : ''}
+            {warnings30.tier2 ? ` puis le palier 2 en ${warnings30.tier2.year}` : ''}.
+            Cette divergence n'est pas une prévision : elle mesure la sensibilité mécanique à la pente de taux{' '}
+            <code>β</code> prolongée linéairement — en {end30.year}, la dette ressort à{' '}
+            <strong>{fmt(debt30BetaLow, 0)} %</strong> pour <code>β = {fmt(betaLow, 0)}</code>,{' '}
+            <strong>{fmt(debt30BetaHigh, 0)} %</strong> pour <code>β = {fmt(betaHigh, 0)}</code>, et{' '}
+            <strong>{fmt(debt30Beta0, 0)} %</strong> sans prime (<code>β = 0</code>).
+          </p>
+        </div>
       </section>
 
       <section className="intro-section">
         <h2>Deux simulateurs, un seul moteur</h2>
         <p>
-          Le site propose deux simulateurs complémentaires, fondés sur le même moteur de projection :
+          Les deux onglets s'appuient sur le même moteur de projection (équations E1–E12) et les mêmes paramètres :
         </p>
         <div className="simulator-cards">
-          <div className="simulator-card" role="button" tabIndex={0} aria-label="Ouvrir le simulateur budget" onClick={() => navigateTo?.('budget')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigateTo?.('budget') } }}>
+          <div
+            className="simulator-card"
+            role="button"
+            tabIndex={0}
+            aria-label="Ouvrir le simulateur budgétaire"
+            onClick={() => navigateTo?.('budget')}
+            onKeyDown={handleCardKey('budget')}
+          >
             <h3>Simulateur Budget</h3>
             <p>
-              Vue complète : impôts (IR, TVA, IS), dépenses (éducation, défense, solidarité),
-              sécurité sociale (ONDAM, cotisations, CSG), réformes structurelles, et réformes des retraites.
-              4 scénarios politiques pré-configurés (PLF 2025, Génération Libre, Knafo, NFP).
+              <strong>{LEVERS.length} leviers actifs</strong> répartis en trois groupes (recettes, dépenses par fonction
+              COFOG, prestations sociales) et <strong>{STRUCTURAL_LEVERS.length} leviers structurels</strong> affichés en
+              « non validé — avis demandé » (σ = 0). Décomposition exacte du solde par cause (statique, comportement,
+              demande, offre, intérêts), ventilation par bloc APU, liens partageables et export CSV.
             </p>
           </div>
-          <div className="simulator-card" role="button" tabIndex={0} aria-label="Ouvrir le simulateur retraites" onClick={() => navigateTo?.('retraites')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigateTo?.('retraites') } }}>
+          <div
+            className="simulator-card"
+            role="button"
+            tabIndex={0}
+            aria-label="Ouvrir le simulateur retraites"
+            onClick={() => navigateTo?.('retraites')}
+            onKeyDown={handleCardKey('retraites')}
+          >
             <h3>Simulateur Retraites</h3>
             <p>
-              Vue focalisée sur le système de retraites : âge de départ, désindexation,
-              plafonnement, comptes notionnels, scénarios COR, emploi seniors.
-              Contextualisé par la démographie et la dépendance.
+              Exploration des trajectoires du <strong>COR (juin 2026)</strong> selon la productivité (centrale, haute 1,0 %,
+              basse 0,4 %) et la dérive santé / dépendance (Commission européenne 2024). Leviers validés :{' '}
+              <strong>âge légal de départ</strong> (62 à 67 ans dès janvier 2028 avec effet d'offre emploi seniors) et{' '}
+              <strong>indexation des pensions</strong>, ainsi que les options en attente de validation (plafonnement,
+              comptes notionnels NDC).
             </p>
           </div>
         </div>
       </section>
 
       <section className="intro-section">
-        <h2>Limites du modèle</h2>
+        <h2>Limites assumées et statuts des paramètres</h2>
         <p>
-          Ce simulateur est un outil <strong>pédagogique</strong>, pas un outil de prévision.
-          Les chiffres sont directionnellement corrects et internement cohérents, mais l'incertitude
-          sur les paramètres est significative. Parmi les limites principales :
+          Ce simulateur est un outil <strong>pédagogique et de revue</strong>, non un outil de prévision. Ses limites
+          principales sont documentées et assumées :
         </p>
         <ul className="limitations-list">
-          <li>Pas de collectivités locales (État + ASSO = ~89% des dépenses publiques)</li>
-          <li>Modèle déterministe (pas de bandes d'incertitude)</li>
-          <li>Inflation fixe à 1,8% (pas de réponse endogène des prix)</li>
-          <li>Effets des réformes estimés à partir de panels OCDE (transposition France incertaine)</li>
-          <li>Pas de contagion financière (la boucle dette-intérêt est heuristique)</li>
+          <li>
+            <strong>Modèle déterministe :</strong> pas de bandes de confiance probabilistes ; l'incertitude s'explore via
+            les trois cas d'effets d'offre (bas / central / haut) et les fourchettes des paramètres.
+          </li>
+          <li>
+            <strong>Inflation exogène :</strong> trajectoire issue des prévisionnistes indépendants, sans boucle prix-salaires
+            ni réponse endogène de l'inflation.
+          </li>
+          <li>
+            <strong>Régime unique de multiplicateurs :</strong> multiplicateurs de demande d'expansion uniquement (pas de
+            basculement automatique en récession).
+          </li>
+          <li>
+            <strong>Pas de contagion financière :</strong> la boucle dette–taux prolonge linéairement <code>β</code> jusqu'au
+            plafond de 25 %, d'où les avertissements explicites au-delà de l'expérience historique.
+          </li>
+          <li>
+            <strong>Transparence des statuts :</strong> chaque paramètre « de mémoire », « à collecter », « non validé » ou
+            « calculé (estimation) » est signalé par une pastille dédiée dans toute l'interface.
+          </li>
         </ul>
-        <p>
-          Pour les détails complets de chaque paramètre et ses sources académiques,
-          consultez l'onglet <em>Hypothèses & Paramètres</em>.
+        <p className="intro-links-row">
+          Consultez l'onglet{' '}
+          <button type="button" className="intro-inline-link" onClick={() => navigateTo?.('hypotheses')}>
+            Hypothèses &amp; Paramètres
+          </button>{' '}
+          pour le détail des comptes 2025, des équations E1–E12, de la table complète des paramètres et des trois questions
+          ouvertes aux relecteurs.
         </p>
       </section>
     </div>

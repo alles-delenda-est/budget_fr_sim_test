@@ -1,207 +1,379 @@
-import { BASELINE, BEHAVIORAL_RESPONSE, FISCAL_MULTIPLIERS } from '../policy-impact'
-import { MACRO_BASELINE } from '../projection-engine-v1.8'
-import ASSUMPTIONS from '../data/assumptions'
+import { useState, useMemo } from 'react'
+import { PARAMS, PARAM_BY_ID, resolveParams } from '../engine/params.js'
+import { STRUCTURAL_LEVERS } from '../engine/levers.js'
+import { issuanceRate } from '../engine/project.js'
+import { WARNING_THRESHOLDS as W } from '../config.js'
+import { fmt, FLAGGED_STATUSES } from './budget/helpers'
+import { StatusBadge } from './budget/InfoPopover'
+import {
+  buildApu2025Accounts,
+  buildCofogRows,
+  EQUATIONS,
+  buildLeverCatalog,
+  lvtSupplyInfo,
+  formatParamValue,
+  groupParams,
+  paramStatusCounts,
+  REVIEWER_QUESTIONS,
+} from './hypotheses/helpers'
+import './SimulateurBudgetPage.css'
 import './HypothesesPage.css'
 
-const TAX_LABELS = {
-  incomeTax: "Impôt sur le revenu (IR)",
-  corporateTax: "Impôt sur les sociétés (IS)",
-  vat: "TVA",
-  csg: "CSG",
-  socialContributions: "Cotisations sociales",
-}
-
-const MULTIPLIER_LABELS = {
-  education: "Éducation",
-  defense: "Défense",
-  solidarity: "Solidarité",
-  pensions: "Retraites",
-  health: "Santé",
-}
-
-function AssumptionTable({ title, note, items, columns }) {
-  const cols = columns || [
-    { key: 'parameter', label: 'Hypothèse' },
-    { key: 'value', label: 'Valeur', className: 'value' },
-    { key: 'impact', label: 'Impact' },
-    { key: 'source', label: 'Source', render: (item) => item.link ? <a href={item.link} target="_blank" rel="noopener noreferrer">{item.source}</a> : item.source },
-  ]
-
-  return (
-    <div className="assumptions-category">
-      <h3>{title}</h3>
-      {note && <p className="assumptions-note">{note}</p>}
-      <table className="assumptions-table">
-        <thead>
-          <tr>{cols.map(c => <th key={c.key}>{c.label}</th>)}</tr>
-        </thead>
-        <tbody>
-          {items.map((item, i) => (
-            <tr key={i}>
-              {cols.map(c => (
-                <td key={c.key} className={c.className || ''}>
-                  {c.render ? c.render(item) : item[c.key]}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
+const SECTIONS = [
+  { id: 'hyp-comptes', label: 'Comptes 2025' },
+  { id: 'hyp-equations', label: 'Équations E1–E12' },
+  { id: 'hyp-leviers', label: 'Leviers & σ' },
+  { id: 'hyp-parametres', label: 'Paramètres' },
+  { id: 'hyp-questions', label: 'Questions aux relecteurs' },
+]
 
 export default function HypothesesPage() {
+  const [flaggedOnly, setFlaggedOnly] = useState(false)
+
+  const model = useMemo(() => {
+    const P = resolveParams()
+    return {
+      P,
+      apu: buildApu2025Accounts(P),
+      cofog: buildCofogRows(P),
+      levers: buildLeverCatalog(P),
+      lvt: lvtSupplyInfo(P),
+      iStarPct: issuanceRate(P) * 100,
+      counts: paramStatusCounts(PARAMS),
+    }
+  }, [])
+
+  const paramGroups = useMemo(() => groupParams(PARAMS, { flaggedOnly }), [flaggedOnly])
+  const { P, apu, cofog, levers, lvt, iStarPct, counts } = model
+
+  const jumpTo = (id) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
-    <div className="hypotheses-page">
+    <div className="hyp-page">
+      <header className="hyp-header">
+        <h1>Hypothèses et paramètres du moteur v2</h1>
+        <p className="sb-help">
+          Source unique de vérité : tous les chiffres, statuts et fourchettes de cette page sont lus directement dans le
+          catalogue du moteur (<code>src/engine/params.js</code>, <code>levers.js</code>, <code>supply.js</code>,{' '}
+          <code>config.js</code>). Les statuts à vérifier ({FLAGGED_STATUSES.join(', ')}) sont mis en évidence pour les
+          relecteurs.
+        </p>
+        <nav className="hyp-toc" aria-label="Sections de la page Hypothèses">
+          {SECTIONS.map((s) => (
+            <button key={s.id} type="button" className="hyp-toc-btn" onClick={() => jumpTo(s.id)}>
+              {s.label}
+            </button>
+          ))}
+        </nav>
+      </header>
 
-      {/* BASELINE BUDGET */}
-      <section className="baseline-section">
-        <h2>Budget de référence : PLF 2025 + PLFSS 2026</h2>
-        <p className="section-subtitle">Projet de loi de finances initial (Michel Barnier)</p>
+      {/* 1. COMPTES 2025 DES APU */}
+      <section id="hyp-comptes" className="hyp-section">
+        <h2>1. Comptes 2025 des administrations publiques (3 blocs consolidés)</h2>
+        <p className="sb-help">
+          Comptes provisoires 2025 en comptabilité nationale (Insee, solde et dette au sens de Maastricht). La somme des
+          dépenses des trois blocs ({fmt(apu.nonConsolDepenses, 1)} Md€) dépasse le total consolidé (
+          {fmt(P['base.depenses.apu'], 1)} Md€) de <strong>{fmt(apu.interBlockTransfers, 1)} Md€</strong> : ce sont les
+          transferts entre blocs, éliminés par consolidation.
+        </p>
 
-        <div className="baseline-grid">
-          {/* ÉTAT */}
-          <div className="baseline-column">
-            <h3>État (PLF 2025)</h3>
-            <table className="baseline-table">
-              <thead><tr><th>Recettes</th><th className="amount">Md€</th></tr></thead>
-              <tbody>
-                <tr><td>Impôt sur le revenu</td><td className="amount">{BASELINE.etat.incomeTax}</td></tr>
-                <tr><td>TVA</td><td className="amount">{BASELINE.etat.vat}</td></tr>
-                <tr><td>Impôt sur les sociétés</td><td className="amount">{BASELINE.etat.corporateTax}</td></tr>
-                <tr><td>Autres recettes fiscales</td><td className="amount">{BASELINE.etat.otherTax}</td></tr>
-                <tr className="total-row"><td>Total recettes</td><td className="amount">{BASELINE.etat.revenuTotal}</td></tr>
-              </tbody>
-            </table>
-            <table className="baseline-table">
-              <thead><tr><th>Dépenses</th><th className="amount">Md€</th></tr></thead>
-              <tbody>
-                <tr><td>Éducation nationale</td><td className="amount">{BASELINE.etat.education}</td></tr>
-                <tr><td>Défense</td><td className="amount">{BASELINE.etat.defense}</td></tr>
-                <tr><td>Solidarité & insertion</td><td className="amount">{BASELINE.etat.solidarity}</td></tr>
-                <tr><td>Transition écologique</td><td className="amount">{BASELINE.etat.ecological}</td></tr>
-                <tr><td>Autres missions</td><td className="amount">{BASELINE.etat.otherSpending}</td></tr>
-                <tr className="total-row"><td>Total dépenses</td><td className="amount">{BASELINE.etat.spendingTotal}</td></tr>
-              </tbody>
-            </table>
-            <div className="deficit-box etat">
-              <span>Déficit État</span>
-              <span className="deficit-value">{BASELINE.etat.deficit} Md€</span>
-            </div>
+        <div className="hyp-anchors">
+          <div className="hyp-anchor-card">
+            <span className="hyp-anchor-label">PIB 2025</span>
+            <strong>{fmt(P['base.pib.2025'], 0)} Md€</strong>
           </div>
-
-          {/* SÉCURITÉ SOCIALE */}
-          <div className="baseline-column">
-            <h3>Sécurité Sociale (PLFSS 2026)</h3>
-            <table className="baseline-table">
-              <thead><tr><th>Recettes</th><th className="amount">Md€</th></tr></thead>
-              <tbody>
-                <tr><td>Cotisations sociales</td><td className="amount">{BASELINE.securiteSociale.cotisations}</td></tr>
-                <tr><td>CSG (toutes sources)</td><td className="amount">{BASELINE.securiteSociale.csg}</td></tr>
-                <tr><td>Impôts et taxes affectés</td><td className="amount">{BASELINE.securiteSociale.impotsTaxes}</td></tr>
-                <tr><td>Compensations État</td><td className="amount">{BASELINE.securiteSociale.cotisationsEtat}</td></tr>
-                <tr><td>Transferts inter-régimes</td><td className="amount">{BASELINE.securiteSociale.transferts}</td></tr>
-                <tr><td>Autres produits</td><td className="amount">{BASELINE.securiteSociale.autresProduits}</td></tr>
-                <tr className="total-row"><td>Total recettes</td><td className="amount">{BASELINE.securiteSociale.revenuTotal}</td></tr>
-              </tbody>
-            </table>
-            <table className="baseline-table">
-              <thead><tr><th>Dépenses</th><th className="amount">Md€</th></tr></thead>
-              <tbody>
-                <tr><td>Vieillesse (retraites)</td><td className="amount">{BASELINE.securiteSociale.vieillesse}</td></tr>
-                <tr><td>Maladie</td><td className="amount">{BASELINE.securiteSociale.maladie}</td></tr>
-                <tr><td>Famille</td><td className="amount">{BASELINE.securiteSociale.famille}</td></tr>
-                <tr><td>Accidents du travail (AT-MP)</td><td className="amount">{BASELINE.securiteSociale.atmp}</td></tr>
-                <tr><td>Autonomie</td><td className="amount">{BASELINE.securiteSociale.autonomie}</td></tr>
-                <tr className="total-row"><td>Total dépenses</td><td className="amount">{BASELINE.securiteSociale.spendingTotal}</td></tr>
-              </tbody>
-            </table>
-            <div className="deficit-box ss">
-              <span>Déficit Sécurité Sociale</span>
-              <span className="deficit-value">{BASELINE.securiteSociale.deficit} Md€</span>
-            </div>
+          <div className="hyp-anchor-card">
+            <span className="hyp-anchor-label">Dette brute 2025</span>
+            <strong>{fmt(P['base.dette.2025'], 1)} Md€</strong>
+            <span className="hyp-anchor-sub">{fmt(P['base.dette.ratio_2025'], 1)} % du PIB</span>
+          </div>
+          <div className="hyp-anchor-card">
+            <span className="hyp-anchor-label">Chômage (T3 2026)</span>
+            <strong>{fmt(P['base.chomage'], 1)} %</strong>
+          </div>
+          <div className="hyp-anchor-card">
+            <span className="hyp-anchor-label">Prélèvements obligatoires</span>
+            <strong>{fmt(P['fisc.eps_offre'] * 100, 1)} % du PIB</strong>
+          </div>
+          <div className="hyp-anchor-card">
+            <span className="hyp-anchor-label">Allocations Unédic 2025</span>
+            <strong>{fmt(P['base.unedic.allocations'], 1)} Md€</strong>
           </div>
         </div>
 
-        {/* CONSOLIDATED */}
-        <div className="consolidated-box">
-          <h3>APU Consolidées (État + Sécurité Sociale)</h3>
-          <div className="consolidated-row"><span>Total recettes</span><span className="amount">{BASELINE.integrated.revenuTotal} Md€</span></div>
-          <div className="consolidated-row"><span>Total dépenses</span><span className="amount">{BASELINE.integrated.spendingTotal} Md€</span></div>
-          <div className="consolidated-row deficit"><span>Déficit total</span><span className="amount">{BASELINE.integrated.deficit} Md€</span></div>
-          <p className="consolidated-note">Soit environ {Math.abs(BASELINE.integrated.deficit / MACRO_BASELINE.gdp * 100).toFixed(1)}% du PIB</p>
-        </div>
-
-        <p className="source-note">Sources : PLF 2025 (Barnier), PLFSS 2026 Annexe 3, CCSS 2024 (structure des recettes SS)</p>
-      </section>
-
-      {/* ASSUMPTIONS */}
-      <section className="assumptions-section">
-        <h2>Hypothèses du modèle</h2>
-        <p className="section-subtitle">Paramètres économiques et sources académiques</p>
-
-        <AssumptionTable title="Paramètres macroéconomiques" items={ASSUMPTIONS.macro} />
-        <AssumptionTable title="Élasticités fiscales" items={ASSUMPTIONS.fiscal} />
-
-        {/* BEHAVIORAL RESPONSE — custom table */}
-        <div className="assumptions-category">
-          <h3>Réponse comportementale aux taxes (ETI)</h3>
-          <p className="assumptions-note">
-            increaseEfficiency = fraction du rendement statique réalisée pour une hausse.
-            decreaseEfficiency = multiplicateur pour une baisse (effet offre modéré).
-            growthDragPerPp = frein croissance par pp de hausse.
-          </p>
-          <table className="assumptions-table">
+        <div className="hyp-table-wrap">
+          <table className="hyp-table">
             <thead>
-              <tr><th>Taxe</th><th>Efficacité hausse</th><th>Efficacité baisse</th><th>Frein croissance/pp</th></tr>
+              <tr>
+                <th scope="col">Bloc (Md€ 2025)</th>
+                <th scope="col" className="hyp-num">Recettes</th>
+                <th scope="col" className="hyp-num">Dépenses</th>
+                <th scope="col" className="hyp-num">Intérêts</th>
+                <th scope="col" className="hyp-num">Solde</th>
+                <th scope="col" className="hyp-num">Solde (% PIB)</th>
+              </tr>
             </thead>
             <tbody>
-              {Object.entries(BEHAVIORAL_RESPONSE).map(([key, val]) => (
-                <tr key={key}>
-                  <td>{TAX_LABELS[key] || key}</td>
-                  <td className="value">{(val.increaseEfficiency * 100).toFixed(0)}%</td>
-                  <td className="value">{(val.decreaseEfficiency * 100).toFixed(0)}%</td>
-                  <td className="value">{(val.growthDragPerPp * 100).toFixed(2)} pp</td>
+              {apu.rows.map((r) => (
+                <tr key={r.id} className={r.isTotal ? 'hyp-total-row' : ''}>
+                  <th scope="row">{r.label}</th>
+                  <td className="hyp-num">{fmt(r.recettes, 1)}</td>
+                  <td className="hyp-num">{fmt(r.depenses, 1)}</td>
+                  <td className="hyp-num">{fmt(r.interets, 1)}</td>
+                  <td className="hyp-num">{fmt(r.solde, 1, { signed: true })}</td>
+                  <td className="hyp-num">{fmt(r.soldeRatio, 2, { signed: true })} %</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
 
-        {/* FISCAL MULTIPLIERS — custom table */}
-        <div className="assumptions-category">
-          <h3>Multiplicateurs fiscaux des dépenses</h3>
-          <p className="assumptions-note">
-            Multiplicateurs en expansion (gap de production ~ 0, France 2025).
-            Offset monétaire = 0 (BCE supranationale, pas de crowding-out national).
-          </p>
-          <table className="assumptions-table">
-            <thead><tr><th>Catégorie</th><th>Expansion (gap ~ 0)</th><th>Récession (gap &lt; 0)</th></tr></thead>
+        <h3>Dépenses publiques par fonction (COFOG 2024 provisoire)</h3>
+        <p className="sb-help">
+          Source : Insee Première n° 2093 (les chiffres 2025 paraîtront en décembre 2026). Ces masses servent d'étalon aux
+          leviers de dépense par fonction (1 % de la ligne).
+        </p>
+        <div className="hyp-table-wrap">
+          <table className="hyp-table">
+            <thead>
+              <tr>
+                <th scope="col">Fonction COFOG</th>
+                <th scope="col">Identifiant</th>
+                <th scope="col" className="hyp-num">Montant (Md€ 2024)</th>
+                <th scope="col">Statut</th>
+              </tr>
+            </thead>
             <tbody>
-              {Object.entries(FISCAL_MULTIPLIERS).map(([key, val]) => (
-                <tr key={key}>
-                  <td>{MULTIPLIER_LABELS[key] || key}</td>
-                  <td className="value">{val.expansion.toFixed(2)}</td>
-                  <td className="value">{val.recession.toFixed(2)}</td>
+              {cofog.map((c) => (
+                <tr key={c.id}>
+                  <th scope="row">{c.label}</th>
+                  <td><code>{c.id}</code></td>
+                  <td className="hyp-num">{fmt(c.value, 0)}</td>
+                  <td><StatusBadge status={c.status} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* 2. ÉQUATIONS E1-E12 & SEUILS */}
+      <section id="hyp-equations" className="hyp-section">
+        <h2>2. Équations du moteur (E1–E12) et seuils d'avertissement</h2>
+        <p className="sb-help">
+          Indices : <code>t = 0</code> pour 2026 (année en cours, estimation), <code>t ≥ 1</code> à partir de 2027. Taux à
+          l'émission de référence pondéré calculé : <strong>i* = {fmt(iStarPct, 2)} %</strong> (BTF{' '}
+          {fmt(P['dette.part_btf'] * 100, 1)} % à {fmt(P['dette.y_btf'], 2)} %, OAT 2–8 ans{' '}
+          {fmt(P['dette.part_moyen'] * 100, 1)} % à {fmt(P['dette.y_moyen'], 2)} %, OAT 10 ans+{' '}
+          {fmt(P['dette.part_long'] * 100, 1)} % à {fmt(P['dette.y_long'], 2)} %).
+        </p>
+        <div className="hyp-table-wrap">
+          <table className="hyp-table">
+            <thead>
+              <tr>
+                <th scope="col">Éq.</th>
+                <th scope="col">Mécanisme</th>
+                <th scope="col">Formule</th>
+                <th scope="col">Rôle dans le modèle</th>
+              </tr>
+            </thead>
+            <tbody>
+              {EQUATIONS.map((eq) => (
+                <tr key={eq.id}>
+                  <th scope="row"><strong>{eq.id}</strong></th>
+                  <td>{eq.titre}</td>
+                  <td><code className="hyp-formula">{eq.formule}</code></td>
+                  <td>{eq.detail}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
 
-        <AssumptionTable title="Prime de risque souverain + inertie dette" items={ASSUMPTIONS.riskPremium} />
-        <AssumptionTable title="Paramètres démographiques et structurels (francetdb.com)" items={ASSUMPTIONS.demographic}
-          note="Intégrations de données réelles : dérive démographique, prime politique OAT, plancher ONDAM, emploi seniors." />
-        <AssumptionTable title="Réforme des retraites et soutenabilité (francetdb.com/#retraites)" items={ASSUMPTIONS.pensionReform}
-          note="Paramètres du modèle de réforme des retraites et de dépendance. Source : francetdb.com, COR 2024, INSEE, DREES." />
-        <AssumptionTable title="Boost croissance des baisses d'impôts" items={ASSUMPTIONS.taxCutBoosts}
-          note="Effet symétrique (mais asymétrique en magnitude) des baisses d'impôts sur la croissance." />
-        <AssumptionTable title="Réformes structurelles" items={ASSUMPTIONS.reforms} />
+        <div className="hyp-thresholds">
+          <h3>Seuils d'avertissement « hors expérience historique » (<code>src/config.js</code>)</h3>
+          <ul>
+            <li>
+              <strong>Palier 1 (vigilance) :</strong> dette brute supérieure à{' '}
+              <strong>{W.tier1DebtPct} % du PIB</strong> — au-delà du record historique d'une économie avancée (Japon :{' '}
+              {W.tier1ReferencePct} % en {W.tier1ReferenceYear}, FMI).
+            </li>
+            <li>
+              <strong>Palier 2 (hors expérience) :</strong> dette brute supérieure à{' '}
+              <strong>{W.tier2DebtPct} % du PIB</strong>, <em>ou</em> charge d'intérêts supérieure à{' '}
+              <strong>{W.tier2InterestShareRevenuePct} % des recettes publiques</strong>, <em>ou</em> toute grandeur en %
+              du PIB dépassant {W.tier2GdpFigurePct} %. Au-delà de ce point, les courbes sont grisées et pointillées.
+            </li>
+          </ul>
+        </div>
+      </section>
 
-        <p className="methodology-note">
-          Les paramètres sont calibrés sur la littérature académique et les publications institutionnelles.
-          L'incertitude sur ces valeurs est significative ; le modèle est à visée pédagogique.
+      {/* 3. CATALOGUE DES LEVIERS ET EFFETS D'OFFRE */}
+      <section id="hyp-leviers" className="hyp-section">
+        <h2>3. Catalogue des leviers et effets d'offre (σ)</h2>
+        <p className="sb-help">
+          Les effets d'offre <code>σ</code> des impôts (cotisations, CSG, TVA, IR, IS) sont <strong>calculés</strong> dans{' '}
+          <code>supply.js</code> à partir de <code>offre.e_L</code> ({fmt(P['offre.e_L'], 2)}) et du coût d'usage du capital
+          (IS). Ceux de l'âge légal, de l'assurance chômage et de l'enseignement sont <strong>décidés</strong> d'après la
+          revue de preuves.
+        </p>
+        <div className="hyp-table-wrap">
+          <table className="hyp-table">
+            <thead>
+              <tr>
+                <th scope="col">Levier</th>
+                <th scope="col">Unité (bornes)</th>
+                <th scope="col" className="hyp-num">Étalon (+1 u.)</th>
+                <th scope="col">Bloc(s) et rampe</th>
+                <th scope="col">Effet d'offre σ (% PIB / u.)</th>
+                <th scope="col">Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              {levers.map((l) => (
+                <tr key={l.id}>
+                  <th scope="row">
+                    <div>{l.titre}</div>
+                    <code className="hyp-id">{l.id}</code>
+                  </th>
+                  <td>{l.unite} ({fmt(l.min, 0)} à {fmt(l.max, 0, { signed: true })})</td>
+                  <td className="hyp-num">{fmt(l.unitYield, 2, { signed: true })} Md€</td>
+                  <td>
+                    <div>{l.blocsLabel}</div>
+                    <div className="hyp-sub">{l.rampText}</div>
+                  </td>
+                  <td>
+                    {l.supply ? (
+                      <>
+                        <div>
+                          <strong>{fmt(l.supply.central, 3, { signed: true })} %</strong>{' '}
+                          <span className="hyp-sub">
+                            (bas {fmt(l.supply.low, 3, { signed: true })} / haut {fmt(l.supply.high, 3, { signed: true })})
+                          </span>
+                        </div>
+                        <div className="hyp-sub">
+                          σ {l.supply.mode} · L = {fmt(l.supply.L, 0)} ans{l.supply.t0 > 0 ? `, t0 = ${fmt(l.supply.t0, 0)} ans` : ''}
+                        </div>
+                        {l.supply.statut === 'non validé' && (
+                          <div className="hyp-flag-note"><StatusBadge status="non validé" /> avis demandé</div>
+                        )}
+                      </>
+                    ) : (
+                      <span className="hyp-sub">σ = 0 (aucun effet d'offre)</span>
+                    )}
+                  </td>
+                  <td><StatusBadge status={l.statut} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="hyp-subgrid">
+          <div className="hyp-note-card">
+            <h3>Module Taxe sur la valeur du sol (LVT) — paramètre σ décidé</h3>
+            <p>
+              <code>{lvt.id}</code> : <strong>{fmt(lvt.central, 2, { signed: true })} %</strong> du PIB (bas{' '}
+              {fmt(lvt.low, 2, { signed: true })} / haut {fmt(lvt.high, 2, { signed: true })}, L = {fmt(lvt.L, 0)} ans, t0 ={' '}
+              {fmt(lvt.t0, 0)} an) <StatusBadge status={lvt.status} />. Remplacement intégral de la taxe foncière hors DMTO
+              (module non encore branché en levier natif).
+            </p>
+          </div>
+          <div className="hyp-note-card">
+            <h3>Réformes structurelles désactivées (σ = 0)</h3>
+            <ul>
+              {STRUCTURAL_LEVERS.map((s) => (
+                <li key={s.id}>
+                  <strong>{s.titre}</strong> (<code>{s.id}</code>) — <StatusBadge status={s.statut} /> : avis demandé, aucun
+                  effet budgétaire à ce stade.
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* 4. TABLE COMPLÈTE DES PARAMÈTRES */}
+      <section id="hyp-parametres" className="hyp-section">
+        <h2>4. Table complète des paramètres du moteur ({counts.total})</h2>
+        <p className="sb-help">
+          <strong>{counts.sourced}</strong> paramètres sourcés ou calculés sur sources primaires ;{' '}
+          <strong>{counts.flagged}</strong> paramètres portant un statut à vérifier ({FLAGGED_STATUSES.join(', ')}).
+        </p>
+
+        <div className="hyp-filter-bar" role="group" aria-label="Filtrer les paramètres par statut">
+          <button
+            type="button"
+            className={`sb-btn ${!flaggedOnly ? 'hyp-btn-active' : ''}`}
+            aria-pressed={!flaggedOnly}
+            onClick={() => setFlaggedOnly(false)}
+          >
+            Tous les paramètres ({counts.total})
+          </button>
+          <button
+            type="button"
+            className={`sb-btn ${flaggedOnly ? 'hyp-btn-active' : ''}`}
+            aria-pressed={flaggedOnly}
+            onClick={() => setFlaggedOnly(true)}
+          >
+            À vérifier uniquement ({counts.flagged})
+          </button>
+        </div>
+
+        {paramGroups.map((g) => (
+          <div key={g.id} className="hyp-param-group">
+            <h3>
+              {g.titre} <span className="sb-muted">({g.items.length})</span>
+            </h3>
+            <div className="hyp-table-wrap">
+              <table className="hyp-table hyp-param-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Identifiant</th>
+                    <th scope="col">Valeur centrale et fourchette</th>
+                    <th scope="col">Statut</th>
+                    <th scope="col">Source et explication</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {g.items.map((q) => (
+                    <tr key={q.id}>
+                      <th scope="row"><code className="hyp-id">{q.id}</code></th>
+                      <td className="hyp-val-col">{formatParamValue(q)}</td>
+                      <td><StatusBadge status={q.status} /></td>
+                      <td>
+                        <div className="hyp-explain">{q.explanation}</div>
+                        <div className="hyp-source"><strong>Source :</strong> {q.source ?? 'non renseignée'}</div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
+      </section>
+
+      {/* 5. QUESTIONS OUVERTES AUX RELECTEURS */}
+      <section id="hyp-questions" className="hyp-section">
+        <h2>5. Questions ouvertes aux relecteurs (<code>docs/model-note.md</code> §12)</h2>
+        <p className="sb-help">
+          Trois choix de modélisation sont explicitement soumis à l'avis des économistes relecteurs avant la publication :
+        </p>
+        <div className="hyp-questions">
+          {REVIEWER_QUESTIONS.map((q) => (
+            <article key={q.numero} className="hyp-question-card">
+              <h3>{q.numero}. {q.titre}</h3>
+              <p>{q.resume}</p>
+              <p className="hyp-question-status">{q.statut}</p>
+            </article>
+          ))}
+        </div>
+        <p className="sb-help hyp-footnote">
+          Référence complète : <code>docs/model-note.md</code> (note de modèle v0.3) et <code>src/engine/params.js</code>{' '}
+          (catalogue des {Object.keys(PARAM_BY_ID).length} paramètres).
         </p>
       </section>
     </div>
