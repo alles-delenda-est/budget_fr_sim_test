@@ -11,6 +11,7 @@ Application statique React 19 + Vite 7 + Recharts 3, 100 % côté client (aucun 
 ```text
 src/
 ├── main.jsx                    # Point d'entrée React
+├── index.css                   # Variables de thème et styles globaux
 ├── App.jsx / App.css           # Coque applicative, bandeau relecture, navigation hash, pied de page versionné
 ├── config.js                   # Seuils d'avertissement (WARNING_THRESHOLDS) et URL de commentaires
 ├── version.js / version.test.js# Empreinte de version (package.json, commit court, date build)

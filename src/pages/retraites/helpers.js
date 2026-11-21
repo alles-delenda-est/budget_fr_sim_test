@@ -62,7 +62,6 @@ export const NDC_PRESET = {
   indexDelta: 0,
   ndcActive: true,
   statut: 'non validé',
-  badge: 'Forme réduite — non validé (confiance basse)',
   resume: 'Âge légal 65 ans (dès 2028) + stabilisation démographique COR sur 15 ans · indexation inchangée · sans plafonnement',
   description: 'Décision D8 : associe le levier validé « âge légal à 65 ans » (dès janv. 2028, montée en charge 6 ans, effet d\'offre emploi seniors) au module « Comptes notionnels » (forme réduite non validée, confiance basse). Ce module stabilise progressivement sur 15 cohortes (2028–2042) la dérive démographique post-2025 des dépenses de retraites du COR (juin 2026), d\'après le diviseur d\'espérance de vie et le mécanisme d\'équilibrage automatique (ABM) suédois (Pensionsmyndigheten, Orange Report 2020 ; Ministère suédois des Finances, 2025 ; Holzmann, Palmer et Robalino, Banque mondiale, 2013), avec effet d\'offre propre nul (yS = 0). En comparaison externe, le modèle publié par le Parti libéral français [S24] (éditeur déclaré : Parti libéral français ; jamais présenté comme « le » modèle NDC) est explicitement écarté tant pour son −53 % en 2070 (marge du système à coefficient d\'équilibre > 1, non une économie) que pour ses mesures de programme (taux unique de 18 %, capitalisation, garantie vieillesse, taxe sur le terrain).',
 }

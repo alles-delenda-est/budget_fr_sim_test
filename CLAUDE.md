@@ -67,6 +67,6 @@ Le moteur projette les **administrations publiques consolidées (APU)** en compt
 
 ## 6. Limites connues (alignées sur `docs/model-note.md` §10–§12)
 
-- **Paramètres à vérifier / collecter** : plusieurs paramètres portent un statut signalé (`de mémoire` pour multiplicateurs, θ, ε, κ ; `à collecter` pour `ref.derive.b_autres`, `comp.offset.prestations`, `rend.is`, `rend.cotis`, `bloc.part_hors_secu.*`, `macro.pi.long` ; `non validé` pour `macro.g/pi` 2026–2027, `dem.lambda`, délais `offre.lag/t0`, effet d'offre de l'IR, `NDC_MODULE`).
+- **Paramètres à vérifier / collecter** : plusieurs paramètres portent un statut signalé (notamment `de mémoire` pour multiplicateurs, θ, ε, κ ; `à collecter` pour `ref.derive.b_autres`, `comp.offset.prestations`, `rend.is`, `rend.cotis`, `bloc.part_hors_secu.*`, `macro.pi.long` ; `non validé` pour `macro.g/pi` 2026–2027, `dem.lambda`, délais `offre.lag/t0`, effet d'offre de l'IR, `NDC_MODULE`).
 - **Hors périmètre Day 0** : modèle déterministe (pas de distribution probabiliste), inflation exogène (pas de boucle prix-salaires), régime unique de multiplicateurs d'expansion, prolongement linéaire de `β` jusqu'au plafond de 25 % (encadré par les paliers 1 et 2).
 - **Questions ouvertes aux relecteurs (§12)** : (1) rentabilité long terme d'une hausse uniforme d'IR (`e_L = 0,40`, `τ_m = 21 %`), (2) calibrage de `ε_offre = 0,436` (D13), (3) pente dette–taux `β = 3 pb/pt` en zone euro et comportement au-delà de 200 % de dette/PIB.
