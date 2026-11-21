@@ -1,13 +1,16 @@
 import { describe, it, expect } from 'vitest'
 import { projectScenario, HORIZONS } from '../../engine/project.js'
 import { resolveParams, PARAM_BY_ID } from '../../engine/params.js'
+import { NDC_MODULE } from '../../engine/ndc-module.js'
 import { decomposeAtYear } from '../budget/helpers.js'
 import { evaluateWarnings } from '../budget/warnings.js'
 import {
   LEGAL_AGE_BASE,
   COR_VARIANTS,
   HEALTH_VARIANTS,
+  NDC_PRESET,
   UNVALIDATED_PENSION_ITEMS,
+  matchesNdcPreset,
   buildPensionOverrides,
   legalAgeFromDelta,
   buildPensionSeries,
@@ -94,8 +97,44 @@ describe('Simulateur Retraites : âge légal, indexation et décomposition exact
     }
   })
 
-  it('déclare explicitement plafonnement et comptes notionnels en « non validé »', () => {
-    expect(UNVALIDATED_PENSION_ITEMS.map((x) => x.id)).toEqual(['plafonnement_pensions', 'comptes_notionnels_ndc'])
+  it('expose le préréglage Comptes notionnels (D8) en « non validé » et garde le plafonnement désactivé', () => {
+    expect(NDC_PRESET.ageDelta).toBe(1)
+    expect(NDC_PRESET.indexDelta).toBe(0)
+    expect(NDC_PRESET.ndcActive).toBe(true)
+    expect(NDC_PRESET.statut).toBe('non validé')
+    expect(NDC_PRESET.description).toMatch(/Parti libéral français/i)
+    expect(NDC_PRESET.description).toMatch(/−53 %/)
+
+    expect(matchesNdcPreset({ ageDelta: 1, indexDelta: 0, ndcActive: true })).toBe(true)
+    expect(matchesNdcPreset({ ageDelta: 0, indexDelta: 0, ndcActive: true })).toBe(false)
+    expect(matchesNdcPreset({ ageDelta: 1, indexDelta: -1, ndcActive: true })).toBe(false)
+    expect(matchesNdcPreset({ ageDelta: 1, indexDelta: 0, ndcActive: false })).toBe(false)
+
+    expect(UNVALIDATED_PENSION_ITEMS.map((x) => x.id)).toEqual(['plafonnement_pensions'])
     UNVALIDATED_PENSION_ITEMS.forEach((x) => expect(x.statut).toBe('non validé'))
+  })
+
+  it('intègre NDC_MODULE dans les séries ASSO (pensionLeversPct) et la décomposition exacte', () => {
+    const overrides = buildPensionOverrides({ corVariant: 'central', healthVariant: 'central' })
+    const P = resolveParams(overrides)
+    const ref = projectScenario({ levers: {}, horizon: 'trenteAns', overrides })
+    const ageOnly = projectScenario({ levers: { age_legal: 1 }, horizon: 'trenteAns', overrides })
+    const ndcPreset = projectScenario({
+      levers: { age_legal: NDC_PRESET.ageDelta },
+      modules: [{ module: NDC_MODULE, levers: { actif: 1 } }],
+      horizon: 'trenteAns',
+      overrides,
+    })
+
+    const sAge = buildPensionSeries(ageOnly, ref, P)
+    const sNdc = buildPensionSeries(ndcPreset, ref, P)
+    const last = sNdc.length - 1
+    expect(sNdc[last].pensionLeversPct).toBeGreaterThan(sAge[last].pensionLeversPct)
+    // Effet d'offre identique (le module NDC n'ajoute pas d'effet d'offre propre)
+    expect(sNdc[last].supplyGdpPct).toBeCloseTo(sAge[last].supplyGdpPct, 9)
+
+    const d = decomposeAtYear(ndcPreset, ref, last, EPS, EPS_OFFRE)
+    expect(d.lines.reduce((s, l) => s + l.montant, 0)).toBeCloseTo(d.ecart, 6)
+    expect(d.lines.some((l) => l.key === `static:${NDC_MODULE.id}` && l.label === `${NDC_MODULE.titre} : effet statique`)).toBe(true)
   })
 })

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { projectScenario, HORIZONS } from '../../engine/project.js'
 import { LEVERS, STRUCTURAL_LEVERS } from '../../engine/levers.js'
 import { PARAM_BY_ID } from '../../engine/params.js'
+import { NDC_MODULE } from '../../engine/ndc-module.js'
 import {
   fmt, num, buildSeries, snapshotAt, decomposeAtYear, visibleLines, blocksAt, paramIdsFor, groupedLevers,
   extremeLevers, hasSupplyEffect, deltaTone, isFlagged, paramRange, leverGroup, sliderStep, debtMovesAgainstBalance, niceAxis, YEAR1_PARADOX_TEXT,
@@ -168,6 +169,23 @@ describe('décomposition : somme égale écart de solde (scénario − référen
         expect(d.lines.reduce((s, l) => s + l.montant, 0)).toBeCloseTo(d.ecart, 6)
       }
     }
+  })
+  it('affiche le titre français d\'un module actif (NDC_MODULE) et conserve une somme exacte', () => {
+    const ref = projectScenario({ levers: {}, horizon: 'trenteAns', ysCase: 'central' })
+    const r = projectScenario({
+      levers: { age_legal: 1 },
+      modules: [{ module: NDC_MODULE, levers: { actif: 1 } }],
+      horizon: 'trenteAns',
+      ysCase: 'central',
+    })
+    for (const t of [1, 10, 20, 30]) {
+      const d = decomposeAtYear(r, ref, t, EPS, EPS_OFFRE)
+      expect(d.lines.reduce((s, l) => s + l.montant, 0)).toBeCloseTo(d.ecart, 6)
+    }
+    const d30 = decomposeAtYear(r, ref, 30, EPS, EPS_OFFRE)
+    const staticNdc = d30.lines.find((l) => l.key === `static:${NDC_MODULE.id}`)
+    expect(staticNdc?.label).toBe(`${NDC_MODULE.titre} : effet statique`)
+    expect(staticNdc?.montant).toBeGreaterThan(0)
   })
 })
 

@@ -1,73 +1,69 @@
-# Simulateur Budget France
+# Simulateur Budget France (moteur v2)
 
-Interactive simulator for French public finances, modelling the consolidated État (PLF 2025) and Sécurité Sociale (PLFSS 2026) budgets with 10-year debt projections. Live at **https://budget-fr-sim-test.vercel.app**
+Simulateur interactif des finances publiques françaises couvrant les **administrations publiques consolidées (APU)** en comptabilité nationale (Maastricht) — **administrations centrales (État et ODAC)**, **sécurité sociale (ASSO)** et **collectivités locales (APUL)** — sur trois horizons (**10 ans / 2036**, **2040** et **30 ans / 2056**).
 
-## Features
+Version en ligne : **https://budget-fr-sim-test.vercel.app**
 
-- **Integrated baseline**: full PLF 2025 + PLFSS 2026 revenue and expenditure breakdown (État + Sécurité Sociale, APU total)
-- **Policy sliders**: adjust tax rates (IR, TVA, IS, CSG, cotisations sociales) and spending categories in both pillars
-- **Four political presets**: PLF 2025 (Barnier), Génération Libre, Knafo (RN/Reconquête), Nouveau Front Populaire
-- **ETI-calibrated behavioural response**: tax increases are haircutted by empirical revenue-efficiency factors and generate a growth drag; decreases get a modest supply-side boost
-- **Fiscal multipliers**: spending changes generate GDP effects in both directions (education 0.90, health 0.70, transfers 0.40, …)
-- **10-year projection engine** with:
-  - Endogenous sovereign risk premium (piecewise linear, France-calibrated)
-  - Deficit stress premium above 4 % GDP threshold
-  - Debt-stock inertia (12.5 % annual rollover, ~8-year full pass-through)
-  - Automatic stabilisers (tax elasticity to GDP)
-  - Structural reform growth effects (phase-in / peak / decay lifecycle)
-  - Unemployment via Okun's Law
-  - Doom-loop detection
-- **Visualisation**: 5 charts (debt/GDP, deficit/GDP, nominal growth, unemployment, cotisants/retraite) each showing scenario vs baseline; Year-1, Year-5, Year-10 metric snapshots
-- **Pension simulator tab**: dedicated pension reform sliders (retirement age, desindexation, pension cap, notional accounts) with COR scenario presets
-- **Intro page**: guided overview of the simulator's purpose and methodology
-- **Transparent assumptions tab**: all model parameters with academic sources
+## Fonctionnalités
 
-## Tech Stack
+- **Comptes 2025 consolidés (3 blocs APU)** : ancrage sur les comptes provisoires 2025 de l'Insee (`1 714,2 Md€` de dépenses consolidées, `1 561,7 Md€` de recettes, solde `−152,5 Md€`, dette brute `3 460,5 Md€` soit `115,7 %` du PIB ; transferts inter-blocs de `105,6 Md€` consolidés).
+- **Moteur v2 (équations E1–E12)** :
+  - Croissance et inflation de référence ancrées sur la médiane des prévisionnistes indépendants (les prévisions du Gouvernement figurent uniquement comme comparateur nommé, jamais comme cible).
+  - **14 leviers actifs** (6 recettes fiscales, 4 fonctions de dépense COFOG, 4 prestations sociales dont `age_legal` et `indexation_pensions`) et **3 leviers structurels** affichés en « non validé — avis demandé » (`σ = 0`).
+  - Réponse comportementale `θ` symétrique en paramètres, évaluée au taux après réforme et réduite à sa part non réelle (`θ_non_réel`) lorsqu'un effet d'offre `σ ≠ 0` existe.
+  - Effets de demande en niveau qui s'estompent (`λ = 0,7`) et effets d'offre permanents explicites (`yS` bas / central / haut) passant au solde via deux coefficients distincts (`ε = 0,6` pour la demande ; `ε_offre = 0,436` pour l'offre, taux de prélèvements obligatoires 2025).
+  - Charge d'intérêts aux taux de marché (`i*` pondéré BTF / OAT 2–8 ans / OAT 10 ans+ ≈ `4,38 %`), prime de risque `β = 3 pb/pt` (fourchette `1–5`) et inertie du stock de dette (`M = 8,45 ans`).
+  - Avertissements « hors expérience historique » : **palier 1** (`260 %` du PIB, record Japon 2020) et **palier 2** (`500 %` du PIB ou intérêts `> 50 %` des recettes publiques).
+- **Simulateur budgétaire** : 6 scénarios types **neutres** (dont le comparateur macroéconomique RESF 2027), décomposition exacte de l'écart de solde par cause, ventilation sur les 3 blocs APU, **URL partageables** et **export CSV** (séparateur `;`, protection anti-injection).
+- **Simulateur retraites** : variantes de productivité du **COR (juin 2026)** et de dérive santé/dépendance (**Commission européenne 2024**), leviers validés (`age_legal` 62–67 ans dès janvier 2028 avec effet d'offre emploi seniors, `indexation_pensions`), préréglage **Comptes notionnels (NDC, dès 2028)** (`NDC_MODULE`, forme réduite `non validé`, confiance basse, décision D8) et mesure désactivée (`plafonnement_pensions`).
+- **Onglet Hypothèses & Paramètres** : source unique de vérité lisant 100 % des 160 paramètres, statuts (`sourcé`, `de mémoire`, `à collecter`, `non validé`, etc.), fourchettes et questions ouvertes aux relecteurs directement dans le catalogue du moteur.
 
-- React 19 + Vite
-- Recharts
-- Pure CSS (no framework)
-- Vitest (~282 unit + integration tests)
+## Pile technique
 
-## Running Locally
+- React 19 + Vite 7 + Recharts 3
+- CSS pur (mobile d'abord, sans framework)
+- Vitest (13 fichiers, 256 tests) + ESLint 9
+
+## Lancer en local
 
 ```bash
-npm install
+npm ci
 npm run dev      # http://localhost:5173
-npm run test     # run full test suite
-npm run build    # production build
+npm run lint     # vérification ESLint
+npm test         # suite de tests Vitest
+npm run build    # build de production (dist/)
 ```
 
-## Project Structure
+## Structure du projet
 
-```
+```text
 src/
-  policy-impact.js           # Revenue/spending/growth impact calculation
-  projection-engine-v1.8.js  # Multi-year fiscal projection model
-  App.jsx                    # UI, charts, presets
-  App.css                    # Styling
-  main.jsx                   # Entry point
-  __tests__/
-    policy-impact.test.js      # Unit tests for policy levers
-    projection-engine.test.js  # Unit tests for projection engine
-    integration.test.js        # End-to-end preset scenarios
+├── engine/                     # Moteur de projection v2 (pur JS, sans React)
+│   ├── params.js               # Catalogue unique des 160 paramètres (PARAMS)
+│   ├── levers.js               # 14 leviers actifs + 3 leviers structurels désactivés
+│   ├── supply.js               # Effets d'offre E5 (σ calculé fiscal + σ décidé) et θ_non_réel
+│   ├── modules.js              # Contrat de module autonome
+│   ├── ndc-module.js           # Module Comptes notionnels (forme réduite, non validé, D8)
+│   ├── project.js              # Boucle de projection E1–E12 (projectScenario, HORIZONS)
+│   └── __tests__/              # engine.test.js, benchmarks.test.js, ndc-module.test.js
+├── pages/                      # IntroPage, SimulateurBudgetPage, SimulateurRetraitesPage, HypothesesPage
+├── components/                 # Navigation, ReviewBanner
+├── config.js                   # Seuils WARNING_THRESHOLDS et configuration relecture
+└── __tests__/                  # eps-offre.test.js, randomized.test.js
+docs/
+├── model-note.md               # Spécification complète du modèle (v0.3, E1–E12, D1–D13)
+├── baseline-data.md            # Données primaires collectées et comparateurs
+├── sigma-fiscal.md             # Dérivation des effets d'offre fiscaux et θ_non_réel
+├── review-comptes-notionnels.md# Revue du simulateur NDC externe
+└── review-lvt-module.md        # Revue du module taxe sur la valeur du sol (LVTShift)
 ```
 
-For a detailed description of the model's architecture, algorithms, and calibration, see [ARCHITECTURE.md](ARCHITECTURE.md).
+Pour l'architecture détaillée et les conventions de contribution, voir [ARCHITECTURE.md](ARCHITECTURE.md), [CLAUDE.md](CLAUDE.md) et [docs/model-note.md](docs/model-note.md).
 
-## Known Limitations
+## Limites assumées
 
-- Collectivités locales and other APU sub-sectors are excluded
-- The model is deterministic; no uncertainty bands or Monte Carlo
-- Structural reform effects are borrowed from cross-country OECD estimates and carry high uncertainty for France specifically
-- All levers are assumed to apply immediately (no phase-in of tax changes)
-- The fiscal multipliers use expansion-regime values throughout; recession-regime multipliers are defined but not yet switched automatically
-
-## Potential Next Steps
-
-- [ ] Sensitivity analysis / Monte Carlo on growth and interest rate assumptions
-- [ ] Scenario save / compare (store multiple configurations side-by-side)
-- [ ] Export functionality (PDF summary, CSV data)
-- [ ] Mobile-responsive layout
-- [ ] English translation (i18n)
-- [ ] Recession-regime multiplier switching based on output gap estimate
+- **Modèle déterministe** : pas de distribution probabiliste ; l'incertitude s'explore via les 3 cas d'offre (`bas` / `central` / `haut`) et les fourchettes des paramètres.
+- **Inflation exogène** : trajectoire issue des prévisionnistes indépendants, sans boucle prix-salaires.
+- **Multiplicateurs d'expansion uniquement** : pas de changement automatique de régime en récession.
+- **Prolongement linéaire de `β`** jusqu'au plafond de 25 %, encadré par les avertissements palier 1 et palier 2.
+- **Transparence de la collecte** : plusieurs paramètres restent marqués `de mémoire`, `à collecter` ou `non validé` dans toute l'interface dans l'attente de la revue des économistes (voir `docs/model-note.md` §10–§12).

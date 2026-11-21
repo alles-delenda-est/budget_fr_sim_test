@@ -14,6 +14,43 @@
   font-size: 0.85em;
 }
 
+.ret-ndc-group {
+  background: #fffdf8;
+  border-color: #e6cbb3;
+}
+
+.ret-confidence-note {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-warning, #bf4000);
+}
+
+.ret-preset-btn {
+  width: 100%;
+  margin-top: 0.45rem;
+}
+
+.ret-ndc-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 0.65rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.ret-ndc-toggle input[type='checkbox'] {
+  margin-top: 0.2rem;
+  min-width: 18px;
+  min-height: 18px;
+  accent-color: var(--color-accent, #5c6bc0);
+  cursor: pointer;
+}
+
+.ret-ndc-toggle label {
+  cursor: pointer;
+}
+
 .demographic-context {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
