@@ -15,6 +15,8 @@ const pct = (x) => x * 100
 /**
  * Module neutre (m = 0, θ = 0, yS = 0) injectant un écart de solde primaire exogène à partir de 2027.
  * Sert uniquement à isoler l'effort budgétaire (ou la dérive) propre à un comparateur sans modifier le moteur.
+ * m = 0 est délibéré : la prévision de PIB `g` du comparateur intègre déjà ses propres effets de demande,
+ * donc un multiplicateur non nul les compterait deux fois.
  */
 function primaryShiftModule(shiftPctOfGdp) {
   return {
@@ -71,7 +73,9 @@ describe('règle « comparateurs, jamais cibles » (model-note.md §5)', () => {
 describe('1. Gouvernement — RESF 2027 (octobre 2026) et PLF 2027', () => {
   // Hypothèses propres au RESF 2027 :
   // - Macro : g = 0,5 % (2026), 1,0 % (2027), 1,2 % (potentielle) ; IPC π = 2,1 % (2026), 1,8 % (2027).
-  // - Taux publiés (résumés Sénat / Covéa / PLF 2027, lecture secondaire) : BTF 3 mois ≈ 3,0 %, OAT 10 ans 4,2 %–4,3 % (4,3 % moy. 2027), β = 0.
+  // - Taux publiés (Sénat / Covéa / analyses PLF 2027 — résumé de recherche web, non relu à l'œil sur le document primaire) :
+  //   BTF 3 mois ≈ 3,0 %, OAT 10 ans 4,2 %–4,3 % (4,3 % moy. 2027), β = 0.
+  //   (Note : affecter le taux 10 ans à `dette.y_long` [OAT 10 ans et plus] sous-estime légèrement la tranche 10 ans+ sur une courbe pentue.)
   // - OAT 2–8 ans : non publié séparément dans les résumés consultés → fourchette transparente 3,7 %–3,9 % (centre 3,8 %).
   const RESF_MACRO = {
     'macro.g.2026': P['cmp.gouv.croissance.2026'],
@@ -195,8 +199,10 @@ describe('1. Gouvernement — RESF 2027 (octobre 2026) et PLF 2027', () => {
 })
 
 describe('2. Cour des comptes — La situation et les perspectives des finances publiques (juin 2026)', () => {
-  // Millésime de printemps 2026 (antérieur au RESF d'octobre) :
-  // - OAT 10 ans autour de 3,9 % fin 2026, β = 0.
+  // Millésime de printemps 2026 (antérieur au RESF d'octobre) ; les tests conservent la macro médiane nov. 2026 du moteur :
+  // - OAT 10 ans ≈ 3,9 % fin 2026 (scénarios DG Trésor / Cour juin 2026 — résumé de recherche web, non relu à l'œil sur le document primaire
+  //   et non trouvé dans les tableaux lus à l'item 6a), β = 0.
+  //   (Note : affecter le taux 10 ans à `dette.y_long` [OAT 10 ans et plus] sous-estime légèrement la tranche 10 ans+ sur une courbe pentue.)
   // - Courbe complète BTF / OAT 2–8 ans / OAT 10 ans+ 2026–2029 : non trouvée dans le texte lu.
   //   Test en fourchette transparente à taux long fixé à 3,9 % : BTF ∈ [2,3 % ; 2,7 %], OAT 2–8 ans ∈ [3,2 % ; 3,6 %] (i* ∈ [3,48 % ; 3,68 %]),
   //   plus borne haute uniforme 3,9 %.
@@ -255,7 +261,8 @@ describe('2. Cour des comptes — La situation et les perspectives des finances 
   })
 
   it('en ajoutant le solde primaire de printemps 2026 (−2,5 % = −5,0 % + 2,5 %, avant révision RESF −2,8 %), la dette 2029 rejoint « dérive » (124,1 % vs 124,3 %)', () => {
-    // Dans le rapport de juin 2026, le déficit cible 2026 de printemps était −5,0 % et les intérêts 2,5 % (baseline-data.md item 6a)
+    // Dans le rapport de juin 2026, le déficit cible 2026 de printemps était −5,0 % et les intérêts 2,5 % (baseline-data.md item 6a).
+    // À macro médiane nov. 2026 inchangée, la dette 2029 atterrit à 124,1 % (vs 124,3 % « dérive ») avec un solde 2029 de −5,78 % (vs −5,4 % Cour).
     const res = projectScenario({
       overrides: {
         'dette.beta': 0,
@@ -267,6 +274,7 @@ describe('2. Cour des comptes — La situation et les perspectives des finances 
     })
     const r29 = rowOf(res, 2029)
     expect(Math.abs(pct(r29.debtRatio) - P['cmp.cour.dette.2029_derive'])).toBeLessThan(0.5)
+    expect(pct(r29.balanceRatio)).toBeCloseTo(-5.78, 2)
     expect(r29.interest).toBeGreaterThan(P['cmp.cour.interets.2029'])
     expect(r29.interest).toBeLessThan(112)
   })
@@ -333,12 +341,13 @@ describe('3. Commission européenne — Spring 2026 Economic Forecast (21 mai 20
     const r26 = rowOf(r, 2026)
     const r27 = rowOf(r, 2027)
 
-    // Sous E1 (g + π = 3,2 % nominal avec IPCH 2,4 %) et SFA nul, même les chiffres exacts CE (115,6 % en 2025, −5,1 % en 2026) donnent 117,12 % vs 118,1 %
-    const ecZeroSfaUnderE1 = 115.6 / 1.032 + 5.1
-    expect(ecZeroSfaUnderE1).toBeCloseTo(117.12, 2)
-    expect(EC_DEBT_2026 - ecZeroSfaUnderE1).toBeCloseTo(0.98, 2)
+    // Sous E1 (g + π = 3,2 % nominal avec IPCH 2,4 %) et SFA nul, même avec le déficit CE exact (−5,1 %) et la dette 2025 Insee (115,70 %), on obtient 117,21 % vs 118,1 % (écart 0,89 pt)
+    const debtRatio2025Pct = (P['base.dette.2025'] / P['base.pib.2025']) * 100
+    const ecZeroSfaUnderE1 = debtRatio2025Pct / 1.032 + (-P['cmp.ce.solde.2026'])
+    expect(ecZeroSfaUnderE1).toBeCloseTo(117.21, 2)
+    expect(EC_DEBT_2026 - ecZeroSfaUnderE1).toBeCloseTo(0.89, 2)
 
-    // Le moteur à i* = 3,5 % donne 117,03 % en 2026 (écart −1,07 pt dominé par ce même 0,98 pt déflateur/SFA)
+    // Le moteur à i* = 3,5 % donne 117,03 % en 2026 (écart −1,07 pt dominé par ce même 0,89 pt déflateur/SFA + écart d'intérêts)
     expect(pct(r26.debtRatio) - EC_DEBT_2026).toBeCloseTo(-1.07, 1)
 
     // En 2027, l'écart de niveau reste < 1 pt (−0,86 pt) et la variation 2026→2027 suit de près +2,1 pt
@@ -448,13 +457,31 @@ describe('4. Commission européenne — Debt Sustainability Monitor 2025 (IP 332
       },
     }), 2036)
 
-    // Passer au SPB 2026 de la Commission (−2,5 %) retranche 3,41 pt et amène à 144,3 % vs 144,0 % DSM
-    expect(pct(atEcSpb.debtRatio - atMoteurSpb.debtRatio)).toBeCloseTo(-3.41, 1)
+    // Passer au SPB 2026 de la Commission (−2,5 %) retranche 3,42 pt (−3,4167) et amène à 144,3 % vs 144,0 % DSM
+    expect(pct(atEcSpb.debtRatio - atMoteurSpb.debtRatio)).toBeCloseTo(-3.42, 2)
+    expect(pct(atEcSpb.debtRatio)).toBeCloseTo(144.3, 1)
     expect(Math.abs(pct(atEcSpb.debtRatio) - P['cmp.dsm.dette.2036'])).toBeLessThan(0.5)
 
-    // De même, passer à une croissance nominale long terme proche du DSM (g = 1,1 %, π = 2,0 %) retranche 3,38 pt et amène à 144,4 %
-    expect(pct(atEcMacro.debtRatio - atMoteurSpb.debtRatio)).toBeCloseTo(-3.38, 1)
+    // De même, passer à une croissance nominale long terme proche du DSM (g = 1,1 %, π = 2,0 %) retranche 3,39 pt (−3,3859) et amène à 144,3 % (144,35 %)
+    expect(pct(atEcMacro.debtRatio - atMoteurSpb.debtRatio)).toBeCloseTo(-3.39, 2)
+    expect(pct(atEcMacro.debtRatio)).toBeCloseTo(144.3, 1)
     expect(Math.abs(pct(atEcMacro.debtRatio) - P['cmp.dsm.dette.2036'])).toBeLessThan(0.5)
+
+    // En combinant simultanément SPB CE (−2,5 %) et macro CE (g = 1,1 %, π = 2,0 %), on atterrit à 143,5 % à i* = 3,8 % (141,0 % à 3,5 %)
+    const ecMacroOv = {
+      'macro.g.2026': 0.8, 'macro.g.2027': 1.1, 'macro.g.potentielle': 1.1,
+      'macro.pi.2026': 2.4, 'macro.pi.2027': 1.8, 'macro.pi.long': 2.0,
+    }
+    const atBoth38 = rowOf(projectScenario({
+      horizon: 'dixAns',
+      overrides: { ...dsmBaseOv, ...flatYields(3.8), 'ref.spb_2026': -2.5, ...ecMacroOv },
+    }), 2036)
+    const atBoth35 = rowOf(projectScenario({
+      horizon: 'dixAns',
+      overrides: { ...dsmBaseOv, ...flatYields(3.5), 'ref.spb_2026': -2.5, ...ecMacroOv },
+    }), 2036)
+    expect(pct(atBoth38.debtRatio)).toBeCloseTo(143.5, 1)
+    expect(pct(atBoth35.debtRatio)).toBeCloseTo(141.0, 1)
   })
 })
 
