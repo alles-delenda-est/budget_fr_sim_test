@@ -230,12 +230,12 @@
   margin-bottom: 1rem;
 }
 
-.hyp-btn-active {
+.sb-btn.hyp-btn-active {
   background: var(--color-accent);
   color: #fff;
 }
 
-.hyp-btn-active:hover {
+.sb-btn.hyp-btn-active:hover {
   background: var(--color-accent);
   color: #fff;
 }

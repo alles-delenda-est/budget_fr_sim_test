@@ -54,21 +54,25 @@ export function buildCofogRows(P) {
     .sort((a, b) => b.value - a.value)
 }
 
-/** Équations E1–E12 du moteur v2 (source : docs/model-note.md §2). */
-export const EQUATIONS = [
-  { id: 'E1', titre: 'PIB de référence', formule: 'Yb(t) = Yb(t−1) × (1 + g(t) + π(t))', detail: 'Croissance réelle g = médiane des prévisionnistes indépendants (2026–2027), puis croissance potentielle ; inflation π exogène.' },
-  { id: 'E2', titre: 'Leviers en part de PIB', formule: 'a(j,t) = signe × rendement(j) × x(j) × rampe(j,t) / Y(2025)', detail: 'Chaque mesure reste indexée sur le PIB de référence ; a > 0 améliore le solde.' },
-  { id: 'E3', titre: 'Réaction comportementale (θ non réel)', formule: 'effet ex post = (1 − θ_non_réel(t)) × a(j,t) ; θ_non_réel = max(0, θ − θ_réel × phase(t))', detail: 'θ symétrique en paramètres et évalué au taux après réforme. Quand σ ≠ 0, la part réelle (déjà comptée par E5 + E7) est retirée pour éviter tout double compte. θ = 0 pour les dépenses (décalage optionnel o sur prestations, 0 par défaut).' },
-  { id: 'E4', titre: 'Demande en niveau qui s\'estompe', formule: 'yD(t) = − Σ_j m_j × Σ_{k ≤ t} Δa(j,k) × λ^(t−k)', detail: 'Un choc permanent de 1 % du PIB réduit le PIB de m % la première année, puis l\'écart se referme au rythme λ = 0,7.' },
-  { id: 'E5', titre: 'Effets d\'offre explicites (σ)', formule: 'yS_j(t) = σ_j × taille_j(t) × clamp((τ − t0_j) / (L_j − t0_j), 0, 1)', detail: 'Effet durable sur le niveau du PIB, ligne distincte par mesure (cas bas / central / haut). σ calculé pour les impôts (travail via e_L, IS via coût d\'usage) et décidé sur revue de preuves pour l\'âge légal, l\'assurance chômage et l\'enseignement.' },
-  { id: 'E6', titre: 'PIB effectif', formule: 'Y(t) = Yb(t) × (1 + yD(t) + yS(t))', detail: 'Combinaison de la trajectoire tendancielle, de l\'écart de demande et des effets d\'offre.' },
-  { id: 'E7', titre: 'Passage au solde (D13)', formule: 'Δsolde_PIB(t) = ε × yD(t) + ε_offre × yS(t)', detail: 'La demande passe par les stabilisateurs cycliques (ε = 0,6) ; l\'offre passe par le taux de prélèvements obligatoires (ε_offre = 43,6 %), sans dépense cyclique induite.' },
-  { id: 'E8', titre: 'Solde primaire par bloc', formule: 'sp(t) = spb(0) − d(t) + Σ_j (1 − θ_j) a(j,t) + ε yD(t) + ε_offre yS(t)', detail: 'Dérive de référence d(t) = dA(t) (vieillissement COR retraites + santé Commission 2024, bloc ASSO) + dB(t) (autres dépenses, 0 provisoire).' },
-  { id: 'E9', titre: 'Taux à l\'émission et prime β', formule: 'i_new(t) = clamp(i* + β × (dette/PIB(t−1) − dette/PIB(2026)), 0 %, 25 %)', detail: 'Ancre i* pondérée BTF / OAT 2–8 ans / OAT 10 ans+. Pente linéaire β = 3 pb/pt (fourchette 1–5) au-delà du ratio de 2026.' },
-  { id: 'E10', titre: 'Taux moyen du stock de dette', formule: 'i_moy(t) = (1 − φ(t)) i_moy(t−1) + φ(t) i_new(t) ; φ = min(1, 1/M + max(0, ΔD)/D)', detail: 'Inertie de la maturité moyenne M = 8,45 ans plus part de dette nouvelle émise dans l\'année.' },
-  { id: 'E11', titre: 'Charge d\'intérêts et dette', formule: 'INT(t) = i_moy(t) × D(t−1) ; D(t) = D(t−1) + INT(t) − sp(t) × Yb(t)', detail: 'Ajustements stock-flux nuls ; charge d\'intérêts répartie entre les trois blocs selon leur part observée en 2025.' },
-  { id: 'E12', titre: 'Chômage (loi d\'Okun)', formule: 'u(t) = u_ref − κ × 100 × (yD(t) + yS(t))', detail: 'Une baisse de 1 % du PIB relève le taux de chômage de κ = 0,4 point (chômage de référence maintenu à 8,2 %).' },
-]
+/** Équations E1–E12 du moteur v2 (source : docs/model-note.md §2), valeurs numériques lues dans P. */
+export function buildEquations(P) {
+  const betaLo = PARAM_BY_ID['dette.beta'].low
+  const betaHi = PARAM_BY_ID['dette.beta'].high
+  return [
+    { id: 'E1', titre: 'PIB de référence', formule: 'Yb(t) = Yb(t−1) × (1 + g(t) + π(t))', detail: 'Croissance réelle g = médiane des prévisionnistes indépendants (2026–2027), puis croissance potentielle ; inflation π exogène.' },
+    { id: 'E2', titre: 'Leviers en part de PIB', formule: 'a(j,t) = signe × rendement(j) × x(j) × rampe(j,t) / Y(2025)', detail: 'Chaque mesure reste indexée sur le PIB de référence ; a > 0 améliore le solde.' },
+    { id: 'E3', titre: 'Réaction comportementale (θ non réel)', formule: 'effet ex post = (1 − θ_non_réel(t)) × a(j,t) ; θ_non_réel = max(0, θ − θ_réel × phase(t))', detail: 'θ symétrique en paramètres et évalué au taux après réforme. Quand σ ≠ 0, la part réelle (déjà comptée par E5 + E7) est retirée pour éviter tout double compte. θ = 0 pour les dépenses (décalage optionnel o sur prestations, 0 par défaut).' },
+    { id: 'E4', titre: 'Demande en niveau qui s\'estompe', formule: 'yD(t) = − Σ_j m_j × Σ_{k ≤ t} Δa(j,k) × λ^(t−k)', detail: `Un choc permanent de 1 % du PIB réduit le PIB de m % la première année, puis l'écart se referme au rythme λ = ${fmt(P['dem.lambda'], 1)}.` },
+    { id: 'E5', titre: 'Effets d\'offre explicites (σ)', formule: 'yS_j(t) = σ_j × taille_j(t) × clamp((τ − t0_j) / (L_j − t0_j), 0, 1)', detail: 'Effet durable sur le niveau du PIB, ligne distincte par mesure (cas bas / central / haut). σ calculé pour les impôts (travail via e_L, IS via coût d\'usage) et décidé sur revue de preuves pour l\'âge légal, l\'assurance chômage et l\'enseignement.' },
+    { id: 'E6', titre: 'PIB effectif', formule: 'Y(t) = Yb(t) × (1 + yD(t) + yS(t))', detail: 'Combinaison de la trajectoire tendancielle, de l\'écart de demande et des effets d\'offre.' },
+    { id: 'E7', titre: 'Passage au solde (D13)', formule: 'Δsolde_PIB(t) = ε × yD(t) + ε_offre × yS(t)', detail: `La demande passe par les stabilisateurs cycliques (ε = ${fmt(P['fisc.eps'], 1)}) ; l'offre passe par le taux de prélèvements obligatoires (ε_offre = ${fmt(P['fisc.eps_offre'] * 100, 1)} %), sans dépense cyclique induite.` },
+    { id: 'E8', titre: 'Solde primaire par bloc', formule: 'sp(t) = spb(0) − d(t) + Σ_j (1 − θ_j) a(j,t) + ε yD(t) + ε_offre yS(t)', detail: 'Dérive de référence d(t) = dA(t) (vieillissement COR retraites + santé Commission 2024, bloc ASSO) + dB(t) (autres dépenses, 0 provisoire).' },
+    { id: 'E9', titre: 'Taux à l\'émission et prime β', formule: 'i_new(t) = clamp(i* + β × (dette/PIB(t−1) − dette/PIB(2026)), 0 %, 25 %)', detail: `Ancre i* pondérée BTF / OAT 2–8 ans / OAT 10 ans+. Pente linéaire β = ${fmt(P['dette.beta'], 0)} pb/pt (fourchette ${fmt(betaLo, 0)}–${fmt(betaHi, 0)}) au-delà du ratio de 2026.` },
+    { id: 'E10', titre: 'Taux moyen du stock de dette', formule: 'i_moy(t) = (1 − φ(t)) i_moy(t−1) + φ(t) i_new(t) ; φ = min(1, 1/M + max(0, ΔD)/D)', detail: `Inertie de la maturité moyenne M = ${fmt(P['dette.M'], 2)} ans plus part de dette nouvelle émise dans l'année.` },
+    { id: 'E11', titre: 'Charge d\'intérêts et dette', formule: 'INT(t) = i_moy(t) × D(t−1) ; D(t) = D(t−1) + INT(t) − sp(t) × Yb(t)', detail: 'Ajustements stock-flux nuls ; charge d\'intérêts répartie entre les trois blocs selon leur part observée en 2025.' },
+    { id: 'E12', titre: 'Chômage (loi d\'Okun)', formule: 'u(t) = u_ref − κ × 100 × (yD(t) + yS(t))', detail: `Une baisse de 1 % du PIB relève le taux de chômage de κ = ${fmt(P['emploi.kappa'], 1)} point (chômage de référence maintenu à ${fmt(P['base.chomage_ref'], 1)} %).` },
+  ]
+}
 
 /** Décrit la répartition par bloc d'un levier. */
 function formatBlocks(lever, P) {

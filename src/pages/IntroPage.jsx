@@ -5,7 +5,6 @@ import { LEVERS, STRUCTURAL_LEVERS } from '../engine/levers.js'
 import { WARNING_THRESHOLDS as W } from '../config.js'
 import { fmt } from './budget/helpers'
 import { evaluateWarnings } from './budget/warnings'
-import './SimulateurBudgetPage.css'
 import './IntroPage.css'
 
 export default function IntroPage({ navigateTo }) {

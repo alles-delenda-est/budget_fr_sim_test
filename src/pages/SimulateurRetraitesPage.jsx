@@ -417,7 +417,8 @@ export default function SimulateurRetraitesPage() {
             <h2 id="ret-charts">Trajectoires</h2>
             <p className="sb-help">
               Trait plein : votre scénario. Pointillés longs : la référence sans levier (pour les variantes COR et santé choisies).
-              {warnings.tier2 && ' Après la ligne rouge (palier 2), la trajectoire sort de toute expérience historique : les courbes sont grisées et l\'axe vertical les ignore.'}
+              {warnings.tier1 && ` Pointillé orangé : seuil de ${W.tier1DebtPct} % de dette (record du Japon) et année où il est franchi.`}
+              {warnings.tier2 && ' Trait gris pointillé après la ligne rouge : trajectoire hors de toute expérience historique (le modèle ne décrit plus une situation réaliste ; l\'axe vertical l\'ignore).'}
             </p>
             <div className="sb-charts">
               {/* Graphique 1 : Dérive vieillissement vs leviers retraites + effet d'offre */}
@@ -431,8 +432,8 @@ export default function SimulateurRetraitesPage() {
                     <Tooltip formatter={(v) => `${fmt(v, 2)} % du PIB`} labelFormatter={(y) => `Année ${y}`} />
                     <Legend wrapperStyle={{ fontSize: 12 }} />
                     <ReferenceLine y={0} stroke="#94a3b8" strokeDasharray="3 3" />
-                    <Line type="monotone" dataKey="ageingDriftPct" name="Dérive vieillissement (depuis 2025)" stroke="#b71c1c" strokeWidth={2} strokeDasharray="5 4" dot={false} isAnimationActive={false} />
-                    <Line type="monotone" dataKey="pensionLeversPct" name="Leviers retraites (statique ASSO)" stroke="#5c6bc0" strokeWidth={2.5} dot={false} isAnimationActive={false} />
+                    <Line type="monotone" dataKey="ageingDriftPct" name="Dérive vieillissement (+ = dépense)" stroke="#b71c1c" strokeWidth={2} strokeDasharray="5 4" dot={false} isAnimationActive={false} />
+                    <Line type="monotone" dataKey="pensionLeversPct" name="Leviers retraites ASSO (+ = économie)" stroke="#5c6bc0" strokeWidth={2.5} dot={false} isAnimationActive={false} />
                     <Line type="monotone" dataKey="supplyGdpPct" name="Effet d'offre PIB (yS seniors)" stroke="#2e7d32" strokeWidth={2} dot={false} isAnimationActive={false} />
                   </LineChart>
                 </ResponsiveContainer>

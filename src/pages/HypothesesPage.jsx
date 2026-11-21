@@ -8,7 +8,7 @@ import { StatusBadge } from './budget/InfoPopover'
 import {
   buildApu2025Accounts,
   buildCofogRows,
-  EQUATIONS,
+  buildEquations,
   buildLeverCatalog,
   lvtSupplyInfo,
   formatParamValue,
@@ -36,6 +36,7 @@ export default function HypothesesPage() {
       P,
       apu: buildApu2025Accounts(P),
       cofog: buildCofogRows(P),
+      equations: buildEquations(P),
       levers: buildLeverCatalog(P),
       lvt: lvtSupplyInfo(P),
       iStarPct: issuanceRate(P) * 100,
@@ -44,7 +45,7 @@ export default function HypothesesPage() {
   }, [])
 
   const paramGroups = useMemo(() => groupParams(PARAMS, { flaggedOnly }), [flaggedOnly])
-  const { P, apu, cofog, levers, lvt, iStarPct, counts } = model
+  const { P, apu, cofog, equations, levers, lvt, iStarPct, counts } = model
 
   const jumpTo = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -180,7 +181,7 @@ export default function HypothesesPage() {
               </tr>
             </thead>
             <tbody>
-              {EQUATIONS.map((eq) => (
+              {equations.map((eq) => (
                 <tr key={eq.id}>
                   <th scope="row"><strong>{eq.id}</strong></th>
                   <td>{eq.titre}</td>
@@ -299,7 +300,7 @@ export default function HypothesesPage() {
       <section id="hyp-parametres" className="hyp-section">
         <h2>4. Table complète des paramètres du moteur ({counts.total})</h2>
         <p className="sb-help">
-          <strong>{counts.sourced}</strong> paramètres sourcés ou calculés sur sources primaires ;{' '}
+          <strong>{counts.sourced}</strong> paramètres sourcés (dont fourchettes sourcées et sources secondaires) ;{' '}
           <strong>{counts.flagged}</strong> paramètres portant un statut à vérifier ({FLAGGED_STATUSES.join(', ')}).
         </p>
 

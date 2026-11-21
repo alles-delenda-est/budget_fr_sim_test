@@ -6,7 +6,7 @@ import { isFlagged } from '../budget/helpers.js'
 import {
   buildApu2025Accounts,
   buildCofogRows,
-  EQUATIONS,
+  buildEquations,
   buildLeverCatalog,
   lvtSupplyInfo,
   formatParamValue,
@@ -39,10 +39,15 @@ describe('Hypothèses : comptes 2025, COFOG et équations', () => {
     }
   })
 
-  it('couvre exactement E1 à E12 et les 3 questions aux relecteurs', () => {
-    expect(EQUATIONS.map((e) => e.id)).toEqual([
+  it('couvre exactement E1 à E12 (valeurs dérivées de P) et les 3 questions aux relecteurs', () => {
+    const eqs = buildEquations(P)
+    expect(eqs.map((e) => e.id)).toEqual([
       'E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8', 'E9', 'E10', 'E11', 'E12',
     ])
+    eqs.forEach((e) => expect(e.detail).not.toMatch(/NaN|undefined/))
+    const alt = buildEquations(resolveParams({ 'dette.beta': 5, 'dem.lambda': 0.8 }))
+    expect(alt.find((e) => e.id === 'E9').detail).toContain('β = 5 pb/pt')
+    expect(alt.find((e) => e.id === 'E4').detail).toContain('λ = 0,8')
     expect(REVIEWER_QUESTIONS.length).toBe(3)
   })
 })
