@@ -250,3 +250,50 @@ Rendements retenus : BTF 3 mois 2,79 % ; OAT ≈ 5 ans 4,10 % ; OAT 10 ans et pl
 | 2036 | 158,5 | −9,78 | 280,2 ; 6,88 |
 
 Encore placeholders : dérive des autres dépenses, rendements de l'IS et des cotisations, taux avant réforme de l'IR, inflation après 2027, taux moyen à l'émission 2026 de l'AFT.
+
+## Tests de comparaison à hypothèses homogènes (21 novembre 2026)
+
+Suite de tests dédiée : `src/engine/__tests__/benchmarks.test.js`. Principe appliqué (`docs/model-note.md`, §5) : **comparateurs, jamais cibles**. Aucun taux n'est rétro-ajusté pour reproduire une cible ; lorsque la courbe de taux complète d'un comparateur n'est pas publiée dans les sources lues, elle est signalée **non trouvé** et remplacée par une fourchette de sensibilité transparente correspondant au millésime de marché du document.
+
+### Hypothèses de taux et de cadrage des quatre comparateurs
+
+| Comparateur (millésime) | Macro & solde primaire propres | Hypothèses de taux retenues pour le test | Mode de lecture / statut |
+|---|---|---|---|
+| **Gouvernement — RESF 2027 / PLF 2027** (6 oct. 2026) | `g = 0,5 %` (2026), `1,0 %` (2027), `1,2 %` (pot.) ; IPC `π = 2,1 % / 1,8 %` ; SPB `−2,8 %` (2026) puis `−2,1 %` (2027, soit **+0,7 pt** d'effort primaire) | `β = 0` ; BTF 3 mois ≈ **3,0 %** ; OAT 10 ans **4,2 %–4,3 %** (4,3 % moy. 2027 ; affecter le 10 ans à `dette.y_long` [10 ans et plus] sous-estime légèrement la tranche 10 ans+ sur une courbe pentue) ; OAT 2–8 ans : **non trouvé** séparément → fourchette `3,7 %–3,9 %` (centre `3,8 %`, soit `i* = 3,99 %`) | Macro/finances publiques : primaire (PDF via résumé WebFetch, item 5). Taux BTF/OAT 10 ans (Sénat / Covéa / analyses PLF 2027) : **résumé de recherche web (non relu à l'œil sur le document primaire)**. OAT 2–8 ans : **non trouvé** (fourchette) |
+| **Cour des comptes** (*La situation et les perspectives des finances publiques*, 22 juin 2026) | Millésime de printemps (antérieur au RESF) : déficit cible 2026 `−5,0 %`, intérêts `2,5 %` (`77,4 Md€`), soit SPB printemps `−2,5 %` (les tests conservent la macro médiane nov. 2026 du moteur) | `β = 0` ; OAT 10 ans ≈ **3,9 %** fin 2026 (scénarios DG Trésor / Cour juin 2026 ; affecter le 10 ans à `dette.y_long` [10 ans et plus] sous-estime légèrement la tranche 10 ans+ sur une courbe pentue) ; courbe complète BTF / 2–8 ans / 10 ans+ 2026–2029 : **non trouvé** dans le texte lu → fourchette printemps à taux long `3,9 %` (`BTF 2,3–2,7 %`, `2–8 ans 3,2–3,6 %`, soit `i* = 3,48 %–3,68 %`) + borne haute uniforme `3,9 %` | Repères dette/intérêts : primaire (PDF via résumé WebFetch, item 6a). OAT 10 ans `3,9 %` : **résumé de recherche web (non relu à l'œil sur le document primaire ; non trouvé dans les tableaux lus à l'item 6a)**. Courbe complète : **non trouvé** (fourchette) |
+| **Commission européenne — Spring 2026 Economic Forecast** (21 mai 2026) | `g = 0,8 % / 1,1 %` ; inflation `2,4 % / 1,8 %` ; SPB `−2,5 %` (2026) puis `−2,9 %` (2027, soit **−0,4 pt** de dégradation à politique inchangée) | `β = 0` ; courbe technique de rendement de la Commission : **non trouvé** sur la page pays → fourchette de printemps mai 2026 `i* ∈ [3,3 % ; 3,8 %]` | Macro/solde/dette/intérêts : primaire (page pays CE, collecte 17 nov.). Hypothèse de taux : **non trouvé** (fourchette) |
+| **Commission européenne — Debt Sustainability Monitor 2025** (IP 332, févr. 2026) | Horizon 2025 → **2036** ; SPB constant dès 2026, **hors vieillissement** (`a_sante = 0`, retraites plates à `14,1 %`) ; recalage dette 2025 : **116,3 %** (CE automne 2025) vs 115,7 % Insee (**+0,6 pt**) | `β = 0` ; courbe annuelle des taux de marché (automne 2025) de la fiche pays France : **non trouvé** dans les 100 000 premiers caractères lus → fourchette automne 2025 `i* ∈ [3,3 % ; 3,8 %]` | Dette 2025 et 2036 : primaire (PDF partiel via résumé WebFetch, item 6b). Série annuelle de taux : **non trouvé** (fourchette) |
+
+### Tableau de réconciliation : moteur par défaut vs hypothèses homogènes vs repères publiés
+
+| Comparateur & horizon | Grandeur | Moteur par défaut (`i* = 4,38 %`, `β = 3`) | Moteur à hypothèses homogènes (fourchette) | Repère publié | Écart résiduel et explication nommée |
+|---|---|---|---|---|---|
+| **RESF 2027 — 2026** | Intérêts (`% PIB` ; `Md€`) | `2,59 %` (`79,7`) | `2,52 %–2,53 %` (`77,3–77,8`) | `2,6 %` (`≈ 79,3`) | `−0,07 pt` (structure de maturités / arrondi) |
+| **RESF 2027 — 2026** | Solde (`% PIB`) | `−5,39 %` | `−5,32 %` à `−5,33 %` | `−5,4 %` | `+0,07 pt` (idem intérêts) |
+| **RESF 2027 — 2026** | Dette (`% PIB`) | `117,8 %` | `118,1 %` (`118,08–118,10`) | `119,3 %` | `−1,21 pt` = déflateur E1 (`−0,67 pt`) + SFA nul E11 (`−0,48 pt`) + intérêts (`−0,06 pt`) |
+| **RESF 2027 — 2027** | Intérêts (`% PIB` ; `Md€`) | `3,03 %` (`95,9`) | `2,89 %–2,92 %` (`91,1–92,0`) | `2,9 %` (`≈ 90,9`) | `0,00 pt` au centre (`2,90 %`, `91,5 Md€`) |
+| **RESF 2027 — 2027** | Solde (`% PIB`) | `−5,84 %` | `−5,71 %` (sans effort) / **`−4,99 %` à `−5,02 %`** (+0,7 pt) | `−5,0 %` | `−0,01 pt` au centre une fois l'effort `+0,7 pt` isolé |
+| **RESF 2027 — 2027** | Dette (`% PIB`) | `120,5 %` | `119,9 %` (+0,7 pt) | `121,7 %` | `−1,82 pt` = déflateur 2026–2027 (`−0,72 pt`) + SFA implicites 2026–2027 (`−1,06 pt`) |
+| **Cour des comptes — 2026** | Intérêts (`Md€` ; `% PIB`) | `79,7` (`2,59 %`) | `74,7–75,8` (`2,42 %–2,46 %`) ; `77,0` (`2,50 %`) à `3,9 %` unif. | `77,4` (`2,5 %`) | Concordance à millésime de taux printemps |
+| **Cour des comptes — 2029** | Intérêts (`Md€`) | `129,2` (`3,86 %`) | **`107,9–112,2`** (`3,23 %–3,36 %`) | **`> 100 Md€`** | `−17` à `−21 Md€` vs nov. 2026 ; cohérent avec le seuil `> 100 Md€` |
+| **Cour des comptes — 2029** | Dette (`% PIB`) | `126,7 %` | `125,2 %–125,5 %` (SPB `−2,8 %`) ; **`124,1 %`** (SPB printemps `−2,5 %`, macro médiane nov. 2026) | **`124,3 %`** (« dérive ») | `−0,2 pt` avec SPB et taux de printemps (solde 2029 `−5,78 %` vs `−5,4 %` Cour ; `120,1 %` « plafonds » suppose un ajustement) |
+| **CE printemps — 2026** | Intérêts / Solde (`% PIB`) | `2,59 %` / `−5,39 %` | `2,39 %–2,48 %` / `−4,89 %` à `−4,98 %` | `2,6 %` / `−5,1 %` | `−0,12` à `−0,21 pt` (courbe technique CE non publiée) |
+| **CE printemps — 2027** | Intérêts / Solde (`% PIB`) | `3,03 %` / `−5,84 %` | `2,63 %–2,81 %` / **`−5,54 %` à `−5,71 %`** (−0,4 pt SPB) | `2,8 %` / `−5,7 %` | `±0,01 pt` à `i* = 3,8 %` une fois le décalage SPB `−0,4 pt` isolé |
+| **CE printemps — 2026 / 2027** | Dette (`% PIB`) | `117,8 %` / `120,5 %` | `117,0–117,1 %` / **`119,2–119,5 %`** | `118,1 %` / `120,2 %` | Écart 2026 (`−1,0 pt`) = déflateur/SFA (E1/E11) ; hausse 2026→2027 (`+2,3 pt` vs `+2,1 pt`) cohérente |
+| **CE DSM 2025 — 2036** | Dette (`% PIB`) | `158,5 %` (`+14,5 pt`) | `146,0 %–150,4 %` (SPB `−2,8 %`) ; **`144,3 %`** (SPB `−2,5 %`, `i* = 3,5 %`) | **`144,0 %`** | Décomposition complète ci-dessous |
+
+### Décomposition en cascade de l'écart 2036 face au DSM 2025 (`158,5 %` vs `144,0 %`)
+
+1. **Moteur par défaut** (`i* = 4,38 %`, `β = 3`, vieillissement actif, dette 2025 Insee `115,7 %`) : **`158,49 %`** (intérêts `6,88 %` du PIB), soit **`+14,49 pt`** au-dessus du DSM.
+2. **Suppression de la prime endogène `β = 3 → 0`** : `158,49 % → 155,49 %` (**`−3,00 pt`**, intérêts `5,96 %`).
+3. **Suppression du vieillissement** (`a_sante = 0`, retraites COR plates à `14,1 %`) : `155,49 % → 154,99 %` (**`−0,50 pt`** ; cumul `β` + vieillissement = **`−3,50 pt`**, soit `155,0 %`).
+4. **Recalage de la dette initiale 2025** (`115,7 % → 116,3 %`, prévision CE automne 2025) : `154,99 % → 155,71 %` (**`+0,72 pt`** composé sur 11 ans).
+5. **Millésime de taux automne 2025 (`i* ∈ [3,3 % ; 3,8 %]` vs `4,38 %` nov. 2026)** : `155,71 % → 145,99 %–150,40 %` (**`−5,31` à `−9,72 pt`**, intérêts `4,32 %–5,06 %` du PIB, taux implicite `3,11 %–3,55 %`).
+6. **Millésime de SPB 2026 ou croissance nominale long terme** : passer au SPB 2026 de la Commission (`−2,5 %` au lieu du RESF automne `−2,8 %`) retranche **`−3,42 pt`** (atterrissage **`144,3 %`** à `i* = 3,5 %`) ; alternativement, une croissance nominale de long terme `g = 1,1 %`, `π = 2,0 %` retranche **`−3,39 pt`** (`144,3 %`, exactement `144,35 %`). En combinant *simultanément* SPB CE (`−2,5 %`) et macro CE (`g = 1,1 %`, `π = 2,0 %`), la dette 2036 atterrit à **`143,5 %`** à `i* = 3,8 %` (`141,0 %` à `3,5 %`). La dynamique de dette du moteur reproduit donc celle du DSM dès que les hypothèses sont alignées.
+
+### Mécanisme structurel d'année 0 (2026) : déflateur du PIB (E1) et ajustements stock-flux (E11)
+
+Deux choix assumés du moteur expliquent systématiquement l'écart d'environ **`−1,0` à `−1,2 pt`** de dette/PIB dès la première année (2026) face au RESF (`118,1 %` vs `119,3 %`) et à la Commission (`117,0 %` vs `118,1 %`) :
+- **IPC au lieu du déflateur du PIB dans E1** : `Yb(2026) = 2 991 × (1 + g + π)` applique l'inflation à la consommation (`2,1 %` dans le RESF, `2,4 %` dans la prévision CE) au PIB nominal. Pour le RESF 2027, cela donne `3 068,8 Md€` contre `3 051 Md€` publiés (`+0,58 %`), car le déflateur implicite du PIB du RESF n'est que de `1,51 %`. Cet écart de dénominateur abaisse mécaniquement le ratio dette/PIB 2026 de **`−0,67 pt`** (et de **`−0,72 pt`** cumulés en 2027).
+- **Ajustements stock-flux nuls (`SFA = 0`) dans E11** : la comptabilité de dette du RESF implique un SFA positif d'environ **`+0,48 pt` de PIB en 2026** (`≈ +14,6 Md€`, puisque `(3 460,5 + 5,4 % × 3 051) / 3 051 = 118,82 %` contre `119,3 %` publiés) et **`+0,60 pt` en 2027** (`≈ +18,7 Md€`, puisque `(119,3 % × 3 051 + 5,0 % × 3 135) / 3 135 = 121,10 %` contre `121,7 %`). Comme E11 ne modélise pas de SFA, ces `−0,48 pt` (2026) et `−1,06 pt` cumulés (2027) s'ajoutent directement à l'écart de déflateur pour expliquer l'intégralité de l'écart de ratio dette/PIB.
+
