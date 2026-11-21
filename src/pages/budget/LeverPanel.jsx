@@ -1,5 +1,6 @@
 import { useId } from 'react'
 import { staticYield, STRUCTURAL_LEVERS } from '../../engine/levers.js'
+import { START_YEAR } from '../../engine/project.js'
 import { SUPPLY_BY_LEVER } from '../../engine/supply.js'
 import { PARAM_BY_ID } from '../../engine/params.js'
 import { fmt, groupedLevers, sliderStep } from './helpers'
@@ -8,7 +9,14 @@ import { InfoPopover, StatusBadge, ParamInfo } from './InfoPopover'
 function LeverSlider({ lever, value, onChange, P }) {
   const id = useId()
   const yieldMd = staticYield(lever, value, P)
-  const params = [lever.theta?.id, lever.categorie && `dem.m.${lever.categorie}`].filter((p) => p && PARAM_BY_ID[p])
+  const params = [`rend.${lever.id}`, lever.theta?.id, lever.categorie && `dem.m.${lever.categorie}`].filter((p) => p && PARAM_BY_ID[p])
+  const startYear = lever.defaultRamp ? START_YEAR + lever.defaultRamp.start : null
+  const fullYear = lever.defaultRamp ? startYear + lever.defaultRamp.years - 1 : null
+  const rampNote = lever.defaultRamp ? ` (entrée en vigueur en ${startYear}, plein effet en ${fullYear})` : ''
+  const rampShort = lever.defaultRamp ? ` (dès ${startYear}, plein effet ${fullYear})` : ''
+  const yieldTitle = lever.defaultRamp
+    ? `Étalon statique en régime permanent : effet ex ante sur le solde dès ${startYear}, plein effet en ${fullYear}`
+    : 'Étalon statique : effet ex ante sur le solde'
   return (
     <div className="sb-lever">
       <div className="sb-lever-head">
@@ -19,7 +27,7 @@ function LeverSlider({ lever, value, onChange, P }) {
         )}
         <InfoPopover label={lever.titre}>
           <span className="sb-info-line">{lever.aide}</span>
-          <span className="sb-info-line">Étalon par unité : {fmt(staticYield(lever, 1, P), 2, { signed: true })} Md€ par an sur le solde (avant réaction des contribuables et effets sur l'activité).</span>
+          <span className="sb-info-line">Étalon par unité : {fmt(staticYield(lever, 1, P), 2, { signed: true })} Md€ par an sur le solde{rampNote} (avant réaction des contribuables et effets sur l'activité).</span>
           {params.map((pid) => (
             <span key={pid} className="sb-info-sub"><strong>{pid}</strong><ParamInfo param={PARAM_BY_ID[pid]} /></span>
           ))}
@@ -29,8 +37,8 @@ function LeverSlider({ lever, value, onChange, P }) {
         value={value} onChange={(e) => onChange(lever.id, parseFloat(e.target.value))} />
       <div className="sb-lever-foot">
         <span className="sb-lever-value">{fmt(value, 1, { signed: true })} {lever.unite}</span>
-        <span className="sb-lever-yield" title="Étalon statique : effet ex ante sur le solde">
-          Étalon statique : <strong>{fmt(yieldMd, 1, { signed: true })} Md€</strong>/an
+        <span className="sb-lever-yield" title={yieldTitle}>
+          Étalon statique : <strong>{fmt(yieldMd, 1, { signed: true })} Md€</strong>/an{rampShort}
         </span>
       </div>
     </div>
@@ -41,7 +49,7 @@ export default function LeverPanel({ values, onChange, onReset, onExtreme, P }) 
   return (
     <section className="sb-section" aria-labelledby="sb-leviers">
       <h2 id="sb-leviers">Leviers</h2>
-      <p className="sb-help">Chaque curseur change une mesure à partir de 2027. L'étalon statique est l'effet immédiat sur le solde, avant toute réaction : signe positif = solde amélioré.</p>
+      <p className="sb-help">Chaque curseur change une mesure à partir de 2027 (sauf l'âge légal de retraite : à partir de janvier 2028, fin du gel LFSS 2026, avec montée en charge sur 6 ans). L'étalon statique est l'effet en régime permanent sur le solde, avant toute réaction : signe positif = solde amélioré.</p>
       <div className="sb-toolbar">
         <button type="button" className="sb-btn" onClick={onReset}>Remettre à zéro</button>
         <button type="button" className="sb-btn" onClick={() => onExtreme('min')}>Tout au minimum</button>
