@@ -89,3 +89,20 @@
 .sb-warning-1 { border-color: var(--color-warning, #bf4000); background: #fff6f0; color: #7a2a00; }
 .sb-warning-2 { border-color: var(--color-negative, #b71c1c); background: #fdecea; color: #7f1212; }
 .sb-warning-why { display: block; margin-top: 0.4rem; font-size: 0.8125rem; opacity: 0.9; }
+
+/* Scénarios types neutres et bandeau comparateur macroéconomique */
+.sb-presets { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.65rem; }
+@media (min-width: 640px) { .sb-presets { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1000px) { .sb-presets { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.sb-preset { display: flex; flex-direction: column; gap: 0.25rem; text-align: left; min-height: 44px; padding: 0.75rem 0.85rem; border: 1px solid var(--color-border, #e0e0e0); border-radius: 6px; background: #fff; color: var(--color-ink, #1a1a1a); cursor: pointer; transition: border-color 0.15s, background-color 0.15s; }
+.sb-preset:hover { border-color: var(--color-accent, #5c6bc0); background: var(--color-accent-light, #f3f5fc); }
+.sb-preset:focus-visible { outline: 2px solid var(--color-accent, #5c6bc0); outline-offset: 2px; }
+.sb-preset-active { border-color: var(--color-accent, #5c6bc0); border-width: 2px; background: var(--color-accent-light, #e8eaf6); }
+.sb-preset-title { font-weight: 600; font-size: 0.9375rem; color: var(--color-ink, #1a1a1a); }
+.sb-preset-meta { font-size: 0.75rem; font-weight: 500; color: var(--color-accent, #3949ab); }
+.sb-preset-desc { font-size: 0.8125rem; line-height: 1.4; color: var(--color-ink-muted, #555); }
+
+.sb-macro-banner { margin: 1rem 0 0; padding: 0.85rem 1rem; border: 1px solid var(--color-accent, #5c6bc0); border-radius: 6px; background: var(--color-accent-light, #eef0fb); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.sb-macro-banner-text { flex: 1 1 260px; min-width: 0; font-size: 0.875rem; line-height: 1.45; }
+.sb-macro-banner-text strong { display: block; margin-bottom: 0.2rem; color: var(--color-ink, #1a1a1a); }
+.sb-macro-banner-text p { margin: 0; color: var(--color-ink-light, #3a3a3a); }

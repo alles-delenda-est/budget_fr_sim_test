@@ -4,6 +4,7 @@
 import { LEVERS, LEVER_BY_ID, BLOCKS } from '../../engine/levers.js'
 import { PARAM_BY_ID } from '../../engine/params.js'
 import { SUPPLY_BY_LEVER } from '../../engine/supply.js'
+import { MACRO_VARIANT_BY_ID } from './presets.js'
 
 const NF = (d) => new Intl.NumberFormat('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d })
 const FORMATS = { 0: NF(0), 1: NF(1), 2: NF(2), 3: NF(3) }
@@ -153,6 +154,16 @@ export function deltaTone(delta, lowerIsBetter) {
 export function decomposeAtYear(result, reference, t, eps, epsOffre) {
   const tot = result.total[t]
   const lines = []
+  const refPrimaryDelta = BLOCKS.reduce((s, b) => s + (result.blocks[b][t].referencePrimary - reference.blocks[b][t].referencePrimary), 0)
+  if (Math.abs(refPrimaryDelta) > 1e-12) {
+    lines.push({
+      key: 'macro',
+      kind: 'macro',
+      label: 'Hypothèses macroéconomiques (écart de référence)',
+      detail: 'Écart de solde primaire de référence dû aux hypothèses de croissance et d\'inflation (comparateur).',
+      montant: refPrimaryDelta,
+    })
+  }
   for (const [id, v] of Object.entries(tot.byInstrument)) {
     const titre = LEVER_BY_ID[id]?.titre ?? id
     lines.push({ key: `static:${id}`, kind: 'statique', leverId: id, label: `${titre} : effet statique`, montant: v.exAnte })
@@ -194,9 +205,10 @@ export function blocksAt(result, reference, t) {
   })
 }
 
-/** Identifiants de paramètres à expliquer pour les leviers actifs et les effets d'offre affichés. */
-export function paramIdsFor(values, result) {
+/** Identifiants de paramètres à expliquer pour les leviers actifs, les effets d'offre et un éventuel comparateur macroéconomique. */
+export function paramIdsFor(values, result, macroId = null) {
   const ids = ['dem.lambda', 'fisc.eps', 'fisc.eps_offre', 'emploi.kappa', 'dette.M', 'dette.beta']
+  if (macroId && Object.hasOwn(MACRO_VARIANT_BY_ID, macroId)) ids.push(...MACRO_VARIANT_BY_ID[macroId].paramIds)
   for (const l of LEVERS) {
     if (!values?.[l.id]) continue
     if (PARAM_BY_ID[`rend.${l.id}`]) ids.push(`rend.${l.id}`)

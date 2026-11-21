@@ -11,6 +11,7 @@ import { versionStamp } from '../version'
 import { decodeScenario, queryFromHash, scenarioHash, scenarioUrl } from './budget/share'
 import { InfoPopover, ParamInfo, StatusBadge } from './budget/InfoPopover'
 import { buildSeries, snapshotAt, decomposeAtYear, hasSupplyEffect, blocksAt, paramIdsFor, extremeLevers, SUPPLY_CASES } from './budget/helpers'
+import { NEUTRAL_SCENARIOS, MACRO_VARIANT_BY_ID, overridesForMacro, matchesScenario } from './budget/presets'
 import './SimulateurBudgetPage.css'
 
 const P = resolveParams()
@@ -19,16 +20,20 @@ const EPS_OFFRE = P['fisc.eps_offre']
 const DEFAULT_YEAR_IDX = 5
 
 export default function SimulateurBudgetPage() {
-  // Scénario lu une seule fois dans l'adresse (#/budget?h=…&cas=…&levier=…), validé par decodeScenario.
+  // Scénario lu une seule fois dans l'adresse (#/budget?h=…&cas=…&m=…&levier=…), validé par decodeScenario.
   const [initial] = useState(() => decodeScenario(queryFromHash(window.location.hash)))
   const [values, setValues] = useState(initial.values)
   const [horizon, setHorizon] = useState(initial.horizon)
   const [ysCase, setYsCase] = useState(initial.ysCase)
+  const [macroId, setMacroId] = useState(initial.macroId)
   const [yearIdxRaw, setYearIdx] = useState(DEFAULT_YEAR_IDX)
 
-  // Référence (sans levier) et scénario : recalculés seulement si leviers, horizon ou cas changent.
+  const macroVariant = macroId && Object.hasOwn(MACRO_VARIANT_BY_ID, macroId) ? MACRO_VARIANT_BY_ID[macroId] : null
+  const overrides = useMemo(() => overridesForMacro(macroId), [macroId])
+
+  // Référence (médiane des prévisionnistes indépendants, sans levier) et scénario : recalculés seulement si nécessaire.
   const reference = useMemo(() => projectScenario({ levers: {}, horizon, ysCase }), [horizon, ysCase])
-  const result = useMemo(() => projectScenario({ levers: values, horizon, ysCase }), [values, horizon, ysCase])
+  const result = useMemo(() => projectScenario({ levers: values, overrides, horizon, ysCase }), [values, overrides, horizon, ysCase])
 
   const N = result.years.length - 1
   const yearIdx = Math.min(Math.max(yearIdxRaw, 1), N)
@@ -42,7 +47,7 @@ export default function SimulateurBudgetPage() {
   ], [result, reference, N])
   const decomposition = useMemo(() => decomposeAtYear(result, reference, yearIdx, EPS, EPS_OFFRE), [result, reference, yearIdx])
   const blocks = useMemo(() => blocksAt(result, reference, yearIdx), [result, reference, yearIdx])
-  const paramIds = useMemo(() => paramIdsFor(values, result), [values, result])
+  const paramIds = useMemo(() => paramIdsFor(values, result, macroId), [values, result, macroId])
 
   // Aucune ligne d'offre non nulle dans le résultat du moteur : le choix bas / central / haut ne change rien.
   const noSupplyEffect = !hasSupplyEffect(result)
@@ -50,20 +55,24 @@ export default function SimulateurBudgetPage() {
   // Adresse du scénario mise à jour sans entrée d'historique, avec un délai pour ne pas écrire à chaque cran de curseur.
   useEffect(() => {
     const timer = setTimeout(() => {
-      window.history.replaceState(window.history.state, '', scenarioHash({ values, horizon, ysCase }))
+      window.history.replaceState(window.history.state, '', scenarioHash({ values, horizon, ysCase, macroId }))
     }, 300)
     return () => clearTimeout(timer)
-  }, [values, horizon, ysCase])
+  }, [values, horizon, ysCase, macroId])
 
   const exportCsv = () => {
     const csv = buildCsv({
-      stamp: versionStamp(), url: scenarioUrl(window.location, { values, horizon, ysCase }),
-      horizonLabel: HORIZONS[horizon].label, ysCase, values, rows: buildExportRows(result, reference, EPS, EPS_OFFRE),
+      stamp: versionStamp(), url: scenarioUrl(window.location, { values, horizon, ysCase, macroId }),
+      horizonLabel: HORIZONS[horizon].label, ysCase, macroLabel: macroVariant?.label ?? null, values, rows: buildExportRows(result, reference, EPS, EPS_OFFRE),
     })
-    downloadCsv(csv, `simulateur-budget-${horizon}-${ysCase}.csv`)
+    downloadCsv(csv, `simulateur-budget-${horizon}-${ysCase}${macroId ? `-${macroId}` : ''}.csv`)
   }
 
   const setLever = (id, x) => setValues((v) => ({ ...v, [id]: x }))
+  const applyScenario = (scenario) => {
+    setValues({ ...scenario.levers })
+    setMacroId(scenario.macroId ?? null)
+  }
 
   return (
     <div className="sb-page">
@@ -94,16 +103,43 @@ export default function SimulateurBudgetPage() {
 
       <section className="sb-section" aria-labelledby="sb-partage">
         <h2 id="sb-partage">Partager et exporter</h2>
-        <p className="sb-help">Le lien reprend les leviers, l'horizon et le cas des effets d'offre ; il rouvre exactement ce scénario. L'export CSV (séparateur « ; », virgule décimale, ouverture directe dans Excel) donne, année par année, le scénario, la référence et la décomposition par cause.</p>
+        <p className="sb-help">Le lien reprend les leviers, l'horizon, le cas des effets d'offre et l'éventuel comparateur macroéconomique ; il rouvre exactement ce scénario. L'export CSV (séparateur « ; », virgule décimale, ouverture directe dans Excel) donne, année par année, le scénario, la référence et la décomposition par cause.</p>
         <div className="sb-toolbar">
-          <ShareButton getUrl={() => scenarioUrl(window.location, { values, horizon, ysCase })} />
+          <ShareButton getUrl={() => scenarioUrl(window.location, { values, horizon, ysCase, macroId })} />
           <button type="button" className="sb-btn" onClick={exportCsv}>Exporter (CSV)</button>
+        </div>
+      </section>
+
+      <section className="sb-section" aria-labelledby="sb-scenarios">
+        <h2 id="sb-scenarios">Scénarios types (neutres)</h2>
+        <p className="sb-help">Points de départ illustratifs, sans programme partisan. Cliquer un scénario règle les curseurs correspondants (ou active un comparateur macroéconomique) ; vous pouvez ensuite ajuster librement chaque levier.</p>
+        <div className="sb-presets" role="group" aria-label="Scénarios types neutres">
+          {NEUTRAL_SCENARIOS.map((sc) => {
+            const active = matchesScenario(sc, values, macroId)
+            return (
+              <button key={sc.id} type="button" className={`sb-preset${active ? ' sb-preset-active' : ''}`}
+                aria-pressed={active} onClick={() => applyScenario(sc)}>
+                <span className="sb-preset-title">{sc.titre}</span>
+                <span className="sb-preset-meta">{sc.resume}</span>
+                <span className="sb-preset-desc">{sc.description}</span>
+              </button>
+            )
+          })}
         </div>
       </section>
 
       <div className="sb-layout">
         <LeverPanel values={values} onChange={setLever} onReset={() => setValues({})} onExtreme={(w) => setValues(extremeLevers(w))} P={P} />
         <div className="sb-results">
+          {macroVariant && (
+            <div className="sb-macro-banner" role="status">
+              <div className="sb-macro-banner-text">
+                <strong>Comparateur macroéconomique actif : {macroVariant.label}</strong>
+                <p>{macroVariant.description} Vous pouvez combiner des leviers budgétaires sur cette trajectoire ou revenir à la référence indépendante.</p>
+              </div>
+              <button type="button" className="sb-btn" onClick={() => setMacroId(null)}>Revenir à la référence indépendante</button>
+            </div>
+          )}
           <WarningBanner warnings={warnings} />
           <Snapshots snaps={snaps} />
           <Charts data={series} tier1={warnings.tier1} tier2={warnings.tier2} />
