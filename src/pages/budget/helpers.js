@@ -164,8 +164,9 @@ export function decomposeAtYear(result, reference, t, eps, epsOffre) {
       montant: refPrimaryDelta,
     })
   }
+  const modById = Object.fromEntries((result.modules ?? []).map((m) => [m.id, m]))
   for (const [id, v] of Object.entries(tot.byInstrument)) {
-    const titre = LEVER_BY_ID[id]?.titre ?? id
+    const titre = LEVER_BY_ID[id]?.titre ?? modById[id]?.titre ?? id
     lines.push({ key: `static:${id}`, kind: 'statique', leverId: id, label: `${titre} : effet statique`, montant: v.exAnte })
     lines.push({ key: `behav:${id}`, kind: 'comportement', leverId: id, label: `${titre} : réaction des contribuables`, montant: v.exPost - v.exAnte })
   }

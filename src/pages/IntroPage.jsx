@@ -205,8 +205,8 @@ export default function IntroPage({ navigateTo }) {
               Exploration des trajectoires du <strong>COR (juin 2026)</strong> selon la productivité (centrale, haute 1,0 %,
               basse 0,4 %) et la dérive santé / dépendance (Commission européenne 2024). Leviers validés :{' '}
               <strong>âge légal de départ</strong> (62 à 67 ans dès janvier 2028 avec effet d'offre emploi seniors) et{' '}
-              <strong>indexation des pensions</strong>, ainsi que les options en attente de validation (plafonnement,
-              comptes notionnels NDC).
+              <strong>indexation des pensions</strong>, ainsi que le préréglage <strong>Comptes notionnels</strong> (forme
+              réduite, non validé) et le plafonnement (désactivé, non validé).
             </p>
           </div>
         </div>

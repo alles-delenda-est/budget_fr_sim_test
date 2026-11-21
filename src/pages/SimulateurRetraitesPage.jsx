@@ -14,6 +14,7 @@ import {
 import { projectScenario, HORIZONS, START_YEAR } from '../engine/project.js'
 import { resolveParams, PARAM_BY_ID } from '../engine/params.js'
 import { LEVER_BY_ID, staticYield } from '../engine/levers.js'
+import { NDC_MODULE, NDC_START_T, NDC_RAMP_YEARS } from '../engine/ndc-module.js'
 import { WARNING_THRESHOLDS as W } from '../config.js'
 import {
   fmt,
@@ -31,7 +32,9 @@ import {
   LEGAL_AGE_BASE,
   COR_VARIANTS,
   HEALTH_VARIANTS,
+  NDC_PRESET,
   UNVALIDATED_PENSION_ITEMS,
+  matchesNdcPreset,
   buildPensionOverrides,
   legalAgeFromDelta,
   buildPensionSeries,
@@ -131,10 +134,12 @@ export default function SimulateurRetraitesPage() {
   const [ysCase, setYsCase] = useState('central')
   const [ageDelta, setAgeDelta] = useState(0)
   const [indexDelta, setIndexDelta] = useState(0)
+  const [ndcActive, setNdcActive] = useState(false)
   const [yearIdxRaw, setYearIdx] = useState(10)
 
   const ageId = useId()
   const idxId = useId()
+  const ndcId = useId()
 
   const overrides = useMemo(
     () => buildPensionOverrides({ corVariant, healthVariant }),
@@ -149,13 +154,18 @@ export default function SimulateurRetraitesPage() {
     return out
   }, [ageDelta, indexDelta])
 
+  const modules = useMemo(
+    () => (ndcActive ? [{ module: NDC_MODULE, levers: { actif: 1 } }] : []),
+    [ndcActive],
+  )
+
   const reference = useMemo(
     () => projectScenario({ levers: {}, horizon, ysCase, overrides }),
     [horizon, ysCase, overrides],
   )
   const result = useMemo(
-    () => projectScenario({ levers, horizon, ysCase, overrides }),
-    [levers, horizon, ysCase, overrides],
+    () => projectScenario({ levers, modules, horizon, ysCase, overrides }),
+    [levers, modules, horizon, ysCase, overrides],
   )
 
   const N = result.years.length - 1
@@ -174,10 +184,20 @@ export default function SimulateurRetraitesPage() {
   const ageFullYear = ageStartYear + AGE_LEVER.defaultRamp.years - 1
   const ageYield = staticYield(AGE_LEVER, ageDelta, activeP)
   const idxYield = staticYield(INDEX_LEVER, indexDelta, activeP)
+  const ndcStartYear = START_YEAR + NDC_START_T
+  const ndcFullYear = ndcStartYear + NDC_RAMP_YEARS - 1
+  const isNdcPresetActive = matchesNdcPreset({ ageDelta, indexDelta, ndcActive })
+
+  const applyNdcPreset = () => {
+    setAgeDelta(NDC_PRESET.ageDelta)
+    setIndexDelta(NDC_PRESET.indexDelta)
+    setNdcActive(NDC_PRESET.ndcActive)
+  }
 
   const resetLevers = () => {
     setAgeDelta(0)
     setIndexDelta(0)
+    setNdcActive(false)
   }
 
   return (
@@ -187,8 +207,8 @@ export default function SimulateurRetraitesPage() {
         <p className="sb-help">
           Moteur v2 (équations E1–E12) appliqué au système de retraites et au vieillissement : trajectoires du{' '}
           <strong>COR (juin 2026)</strong>, dérive santé / dépendance (Commission européenne 2024), leviers validés
-          (âge légal dès janvier 2028 avec effet d'offre emploi seniors, indexation des pensions) et mesures en attente de
-          validation.
+          (âge légal dès janvier 2028 avec effet d'offre emploi seniors, indexation des pensions) et préréglage{' '}
+          <strong>Comptes notionnels</strong> (forme réduite, non validé).
         </p>
       </header>
 
@@ -242,6 +262,48 @@ export default function SimulateurRetraitesPage() {
           <div className="sb-toolbar">
             <button type="button" className="sb-btn" onClick={resetLevers}>Remettre à zéro</button>
           </div>
+
+          {/* PRÉRÉGLAGE : COMPTES NOTIONNELS (NDC, DÈS 2028) */}
+          <fieldset className="sb-group ret-ndc-group">
+            <legend>Préréglage : {NDC_PRESET.titre}</legend>
+            <div className="sb-lever-head">
+              <StatusBadge status={NDC_PRESET.statut} />
+              <span className="ret-confidence-note">Forme réduite — confiance basse</span>
+              <InfoPopover label={NDC_PRESET.titre}>
+                <span className="sb-info-line">{NDC_PRESET.description}</span>
+                <span className="sb-info-sub">
+                  <strong>Sources primaires :</strong>{' '}
+                  {NDC_MODULE.sources.join(' ; ')}
+                </span>
+              </InfoPopover>
+            </div>
+            <button
+              type="button"
+              className={`sb-preset ret-preset-btn${isNdcPresetActive ? ' sb-preset-active' : ''}`}
+              aria-pressed={isNdcPresetActive}
+              onClick={applyNdcPreset}
+            >
+              <span className="sb-preset-title">Appliquer le préréglage Comptes notionnels</span>
+              <span className="sb-preset-meta">{NDC_PRESET.resume}</span>
+            </button>
+            <div className="ret-ndc-toggle">
+              <input
+                id={ndcId}
+                type="checkbox"
+                checked={ndcActive}
+                onChange={(e) => setNdcActive(e.target.checked)}
+              />
+              <label htmlFor={ndcId}>
+                Activer le module « Comptes notionnels » (dès janv. {ndcStartYear}, plein effet {ndcFullYear})
+              </label>
+            </div>
+            <p className="ret-lever-note">
+              Stabilise la dérive démographique COR post-2025 sur {NDC_RAMP_YEARS} cohortes (<code>yS</code> propre = 0 ;
+              l'effet emploi seniors vient uniquement du levier validé âge légal). Le modèle publié par le Parti libéral
+              français [S24] est mentionné en comparaison externe : son −53 % en 2070 (marge, non économie) et ses mesures
+              de programme sont exclus.
+            </p>
+          </fieldset>
 
           <fieldset className="sb-group">
             <legend>Leviers validés (actifs)</legend>
@@ -433,7 +495,15 @@ export default function SimulateurRetraitesPage() {
                     <Legend wrapperStyle={{ fontSize: 12 }} />
                     <ReferenceLine y={0} stroke="#94a3b8" strokeDasharray="3 3" />
                     <Line type="monotone" dataKey="ageingDriftPct" name="Dérive vieillissement (+ = dépense)" stroke="#b71c1c" strokeWidth={2} strokeDasharray="5 4" dot={false} isAnimationActive={false} />
-                    <Line type="monotone" dataKey="pensionLeversPct" name="Leviers retraites ASSO (+ = économie)" stroke="#5c6bc0" strokeWidth={2.5} dot={false} isAnimationActive={false} />
+                    <Line
+                      type="monotone"
+                      dataKey="pensionLeversPct"
+                      name={ndcActive ? 'Leviers et module retraites ASSO (+ = économie)' : 'Leviers retraites ASSO (+ = économie)'}
+                      stroke="#5c6bc0"
+                      strokeWidth={2.5}
+                      dot={false}
+                      isAnimationActive={false}
+                    />
                     <Line type="monotone" dataKey="supplyGdpPct" name="Effet d'offre PIB (yS seniors)" stroke="#2e7d32" strokeWidth={2} dot={false} isAnimationActive={false} />
                   </LineChart>
                 </ResponsiveContainer>
