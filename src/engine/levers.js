@@ -2,7 +2,7 @@
 // Un levier est exprimé par son effet ex ante sur le solde, en fraction du PIB (E2) :
 //   a(j,t) = signe × rendement(j) × x(j) × rampe(j,t) / Y(base)
 // x est la variation signée de l'instrument (+1 pt de TVA, −10 % d'une ligne de dépense...).
-// signe = +1 pour une recette (hausse => solde en hausse), −1 pour une dépense (hausse => solde en baisse).
+// signe = +1 quand une hausse de x améliore le solde (recettes, âge légal de retraite), −1 quand elle le dégrade (dépenses).
 // Convention : a > 0 améliore le solde. Les blocs sont : centrales, securiteSociale, locales.
 
 import { supplyForCase, supplyPhase, partReelle, thetaNonReel } from './supply.js'
@@ -79,10 +79,15 @@ export const LEVERS = [
   { id: 'travail_assurance_chomage', titre: 'Assurance chômage (allocations)', unite: '% de la ligne', min: -30, max: 30, type: 'depense', signe: -1,
     rendement: (P) => P['base.unedic.allocations'] / 100, categorie: 'prestations', blocs: () => ALL_SECU,
     statut: 'sourcé', aide: '1 % des allocations de l\'Unédic (37,2 Md€ en 2025) : environ 0,37 Md€. Positif = plus généreux (plus de dépense) ; négatif = resserrement. L\'Unédic est classée en sécurité sociale (ASSO).' },
-  { id: 'indexation_pensions', titre: 'Indexation des pensions', unite: 'points sous l\'inflation', min: -3, max: 3, type: 'depense', signe: -1,
+  { id: 'indexation_pensions', titre: 'Indexation des pensions', unite: 'points par rapport à l\'inflation', min: -3, max: 3, type: 'depense', signe: -1,
     rendement: (P) => (P['ref.derive.a_retraites'][2025] / 100) * P['base.pib.2025'] / 100, categorie: 'prestations', blocs: () => ALL_SECU,
     offsetGroup: 'prestations', statut: 'sourcé',
-    aide: '1 point d\'écart d\'indexation : 1 % des dépenses de retraites du COR (14,1 % du PIB 2025), proxy de la ligne « vieillesse ».' },
+    aide: '−1 = 1 point sous l\'inflation (+4,2 Md€/an sur le solde) ; +1 = 1 point au-dessus (−4,2 Md€). Effet de niveau permanent (1 % des dépenses de retraites du COR, 14,1 % du PIB 2025).' },
+  { id: 'age_legal', titre: 'Âge légal de départ en retraite', unite: 'années par rapport au droit en vigueur', min: -2, max: 3, type: 'depense', signe: 1,
+    rendement: (P) => P['rend.age_legal'], categorie: 'prestations', blocs: () => ALL_SECU,
+    offsetGroup: 'prestations', defaultRamp: { start: 2, years: 6 }, rampInSupplyLag: true,
+    statut: 'sourcé (fourchette), centre choisi',
+    aide: 'Variation par rapport au droit en vigueur (64 ans ; −2 = 62 ans, +3 = 67 ans). Entrée en vigueur en janvier 2028 (fin du gel LFSS 2026) avec montée en charge linéaire sur 6 ans (plein effet en 2033). +1 an ≈ +8,4 Md€/an (5,8–10,0) sur le solde des régimes de retraite (Cour des comptes, févr. 2025), hors effet d\'offre (+0,30 % PIB, L = 6 ans).' },
 ]
 
 // Leviers de réforme du logement et du marché du travail (D5) : visibles, désactivés, sans effet budgétaire (σ = 0).
@@ -137,13 +142,15 @@ export function leversToInstruments(values, P, nYears, rampOpts, supply = {}) {
     // de montée en charge de l'effet d'offre : θ_non_réel(t) = max(0, θ − θ_réel × phase(t)). Sans σ, θ est inchangé.
     const sup = lever.type === 'recette' ? supplyForCase(lever.id, x, P, supply.sigma, supply.ysCase) : null
     const thReel = sup ? partReelle(lever.id, sup.sigma, lever.rendement(P), P) : 0
-    const start = rampOpts?.start ?? 1
+    const leverRamp = rampOpts ?? lever.defaultRamp
+    const start = leverRamp?.start ?? 1
     const thetaByYear = Array.from({ length: nYears + 1 }, (_, t) => (thReel > 0 ? thetaNonReel(theta, thReel * supplyPhase(t - start, sup.L, sup.t0)) : theta))
     const aBlocks = { centrales: [], securiteSociale: [], locales: [] }
-    for (let t = 0; t <= nYears; t++) for (const b of BLOCKS) aBlocks[b].push(total * shares[b] * ramp(t, rampOpts))
-    // x : valeur signée du levier ; start : année (t) d'entrée en vigueur ; sizeByYear : x × rampe, taille de la mesure
-    // dans l'unité du levier (sert à l'effet d'offre E5, voir supply.js).
-    const sizeByYear = Array.from({ length: nYears + 1 }, (_, t) => x * ramp(t, rampOpts))
+    for (let t = 0; t <= nYears; t++) for (const b of BLOCKS) aBlocks[b].push(total * shares[b] * ramp(t, leverRamp))
+    // x : valeur signée du levier ; start : année (t) d'entrée en vigueur ; sizeByYear : taille de la mesure
+    // dans l'unité du levier (sert à l'effet d'offre E5, voir supply.js). Quand `rampInSupplyLag` est vrai (ex. age_legal),
+    // offre.lag.* porte déjà la montée en charge des cohortes : sizeByYear passe à x dès `start` pour ne pas compter la rampe deux fois.
+    const sizeByYear = Array.from({ length: nYears + 1 }, (_, t) => (lever.rampInSupplyLag ? (t >= start ? x : 0) : x * ramp(t, leverRamp)))
     out.push({ id: lever.id, source: 'levier', categorie: lever.categorie, aBlocks, theta: thetaByYear,
       x, start, sizeByYear })
   }

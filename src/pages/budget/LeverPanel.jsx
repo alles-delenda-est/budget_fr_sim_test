@@ -8,7 +8,10 @@ import { InfoPopover, StatusBadge, ParamInfo } from './InfoPopover'
 function LeverSlider({ lever, value, onChange, P }) {
   const id = useId()
   const yieldMd = staticYield(lever, value, P)
-  const params = [lever.theta?.id, lever.categorie && `dem.m.${lever.categorie}`].filter((p) => p && PARAM_BY_ID[p])
+  const params = [`rend.${lever.id}`, lever.theta?.id, lever.categorie && `dem.m.${lever.categorie}`].filter((p) => p && PARAM_BY_ID[p])
+  const rampNote = lever.defaultRamp
+    ? ` (entrée en vigueur en ${2026 + lever.defaultRamp.start}, plein effet en ${2026 + lever.defaultRamp.start + lever.defaultRamp.years - 1})`
+    : ''
   return (
     <div className="sb-lever">
       <div className="sb-lever-head">
@@ -19,7 +22,7 @@ function LeverSlider({ lever, value, onChange, P }) {
         )}
         <InfoPopover label={lever.titre}>
           <span className="sb-info-line">{lever.aide}</span>
-          <span className="sb-info-line">Étalon par unité : {fmt(staticYield(lever, 1, P), 2, { signed: true })} Md€ par an sur le solde (avant réaction des contribuables et effets sur l'activité).</span>
+          <span className="sb-info-line">Étalon par unité : {fmt(staticYield(lever, 1, P), 2, { signed: true })} Md€ par an sur le solde{rampNote} (avant réaction des contribuables et effets sur l'activité).</span>
           {params.map((pid) => (
             <span key={pid} className="sb-info-sub"><strong>{pid}</strong><ParamInfo param={PARAM_BY_ID[pid]} /></span>
           ))}
@@ -41,7 +44,7 @@ export default function LeverPanel({ values, onChange, onReset, onExtreme, P }) 
   return (
     <section className="sb-section" aria-labelledby="sb-leviers">
       <h2 id="sb-leviers">Leviers</h2>
-      <p className="sb-help">Chaque curseur change une mesure à partir de 2027. L'étalon statique est l'effet immédiat sur le solde, avant toute réaction : signe positif = solde amélioré.</p>
+      <p className="sb-help">Chaque curseur change une mesure à partir de 2027 (sauf l'âge légal de retraite : à partir de janvier 2028, fin du gel LFSS 2026, avec montée en charge sur 6 ans). L'étalon statique est l'effet en régime permanent sur le solde, avant toute réaction : signe positif = solde amélioré.</p>
       <div className="sb-toolbar">
         <button type="button" className="sb-btn" onClick={onReset}>Remettre à zéro</button>
         <button type="button" className="sb-btn" onClick={() => onExtreme('min')}>Tout au minimum</button>

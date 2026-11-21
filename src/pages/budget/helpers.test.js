@@ -4,7 +4,7 @@ import { LEVERS, STRUCTURAL_LEVERS } from '../../engine/levers.js'
 import { PARAM_BY_ID } from '../../engine/params.js'
 import {
   fmt, num, buildSeries, snapshotAt, decomposeAtYear, visibleLines, blocksAt, paramIdsFor, groupedLevers,
-  extremeLevers, hasSupplyEffect, deltaTone, isFlagged, paramRange, leverGroup, debtMovesAgainstBalance, niceAxis, YEAR1_PARADOX_TEXT,
+  extremeLevers, hasSupplyEffect, deltaTone, isFlagged, paramRange, leverGroup, sliderStep, debtMovesAgainstBalance, niceAxis, YEAR1_PARADOX_TEXT,
 } from './helpers.js'
 
 const EPS = PARAM_BY_ID['fisc.eps'].value
@@ -43,6 +43,9 @@ describe('leviers', () => {
     expect(groups.flatMap((g) => g.leviers).length).toBe(LEVERS.length)
     groups.forEach((g) => expect(g.leviers.length).toBeGreaterThan(0))
     expect(leverGroup(LEVERS.find((l) => l.id === 'ondam'))).toBe('prestations')
+    const age = LEVERS.find((l) => l.id === 'age_legal')
+    expect(leverGroup(age)).toBe('prestations')
+    expect(sliderStep(age)).toBe(0.5)
   })
   it('les leviers structurels restent inactifs', () => {
     STRUCTURAL_LEVERS.forEach((l) => expect(l.actif).toBe(false))
@@ -185,6 +188,14 @@ describe('blocs et paramètres', () => {
       expect(PARAM_BY_ID[id].status).toBeTruthy()
       expect(PARAM_BY_ID[id].explanation).toBeTruthy()
     }
+    const { r: rAge, ref: refAge } = run({ age_legal: 1 }, 'central')
+    const ageIds = paramIdsFor({ age_legal: 1 }, rAge)
+    expect(ageIds).toContain('rend.age_legal')
+    expect(ageIds).toContain('offre.sigma.age_legal')
+    expect(ageIds).toContain('offre.lag.age_legal')
+    const dAge = decomposeAtYear(rAge, refAge, 8, EPS, EPS_OFFRE)
+    expect(dAge.lines.reduce((s, l) => s + l.montant, 0)).toBeCloseTo(dAge.ecart, 6)
+    expect(visibleLines(dAge.lines).some((l) => l.key === 'offre:age_legal' && l.montant > 0)).toBe(true)
   })
 })
 

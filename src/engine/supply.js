@@ -44,6 +44,8 @@ export const SUPPLY_EFFECTS = [
     sigmaFn: 'tva_tous_taux', propre: (P) => P['base.tva.2025'] },
   { lever: 'travail_assurance_chomage', libelle: 'Assurance chômage : retour à l\'emploi',
     sigma: 'offre.sigma.assurance_chomage', L: 'offre.lag.assurance_chomage', t0: 'offre.t0.assurance_chomage' },
+  { lever: 'age_legal', libelle: 'Âge légal de départ en retraite : emploi des seniors',
+    sigma: 'offre.sigma.age_legal', L: 'offre.lag.age_legal', t0: 'offre.t0.age_legal' },
   { lever: 'ir', libelle: 'Impôt sur le revenu : effet d\'offre',
     nomCourt: 'Effet d\'offre de l\'IR', statut: 'non validé',
     sigmaParams: ['offre.e_L', 'comp.tau0.ir', 'offre.ir.conv_brut', 'comp.coin.part_nette'], L: 'offre.lag.ir', t0: 'offre.t0.ir',

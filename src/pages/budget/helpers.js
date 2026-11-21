@@ -199,6 +199,7 @@ export function paramIdsFor(values, result) {
   const ids = ['dem.lambda', 'fisc.eps', 'fisc.eps_offre', 'emploi.kappa', 'dette.M', 'dette.beta']
   for (const l of LEVERS) {
     if (!values?.[l.id]) continue
+    if (PARAM_BY_ID[`rend.${l.id}`]) ids.push(`rend.${l.id}`)
     if (l.theta) ids.push(l.theta.id, l.theta.tau0)
     if (l.categorie) ids.push(`dem.m.${l.categorie}`)
     const reg = SUPPLY_BY_LEVER[l.id]
