@@ -148,9 +148,11 @@ export function leversToInstruments(values, P, nYears, rampOpts, supply = {}) {
     const aBlocks = { centrales: [], securiteSociale: [], locales: [] }
     for (let t = 0; t <= nYears; t++) for (const b of BLOCKS) aBlocks[b].push(total * shares[b] * ramp(t, leverRamp))
     // x : valeur signée du levier ; start : année (t) d'entrée en vigueur ; sizeByYear : taille de la mesure
-    // dans l'unité du levier (sert à l'effet d'offre E5, voir supply.js). Quand `rampInSupplyLag` est vrai (ex. age_legal),
-    // offre.lag.* porte déjà la montée en charge des cohortes : sizeByYear passe à x dès `start` pour ne pas compter la rampe deux fois.
-    const sizeByYear = Array.from({ length: nYears + 1 }, (_, t) => (lever.rampInSupplyLag ? (t >= start ? x : 0) : x * ramp(t, leverRamp)))
+    // dans l'unité du levier (sert à l'effet d'offre E5, voir supply.js). Quand `rampInSupplyLag` est vrai et qu'aucun
+    // `rampOpts` explicite ne remplace `defaultRamp`, offre.lag.* porte déjà la montée en charge des cohortes :
+    // sizeByYear passe à x dès `start` pour ne pas compter la rampe deux fois. Un `rampOpts` explicite reste honoré.
+    const useSupplyLagOnly = Boolean(lever.rampInSupplyLag && !rampOpts)
+    const sizeByYear = Array.from({ length: nYears + 1 }, (_, t) => (useSupplyLagOnly ? (t >= start ? x : 0) : x * ramp(t, leverRamp)))
     out.push({ id: lever.id, source: 'levier', categorie: lever.categorie, aBlocks, theta: thetaByYear,
       x, start, sizeByYear })
   }

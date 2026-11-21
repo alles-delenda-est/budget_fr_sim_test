@@ -60,7 +60,7 @@ export function buildCsv({ stamp, url, horizonLabel, ysCase, values, rows }) {
     ['Lien du scénario', url],
     ['Horizon', horizonLabel],
     ['Cas des effets d\'offre', ysCase],
-    ['Leviers (variation à partir de 2027)'],
+    ['Leviers (dès 2027, âge légal dès 2028 avec montée en charge sur 6 ans)'],
   ].map((cells) => cells.map(csvText).join(SEP))
   const active = LEVERS.filter((l) => typeof values?.[l.id] === 'number' && Number.isFinite(values[l.id]) && values[l.id] !== 0)
   if (active.length === 0) lines.push(csvText('Aucun levier actif (scénario identique à la référence)'))

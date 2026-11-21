@@ -61,7 +61,7 @@ export function DecompositionTable({ decomposition, years, yearIdx, onYear }) {
         <label htmlFor="sb-year">Année : <strong>{decomposition.year}</strong></label>
         <input id="sb-year" type="range" className="sb-slider" min={1} max={years.length - 1} step={1} value={yearIdx} aria-valuetext={`Année ${decomposition.year}`} onChange={(e) => onYear(parseInt(e.target.value, 10))} />
       </div>
-      {lines.length === 0 ? <p className="sb-empty">Aucun levier actif : le scénario est identique à la référence.</p> : (
+      {lines.length === 0 ? <p className="sb-empty">Aucun effet sur le solde cette année (aucun levier actif, ou mesure pas encore entrée en vigueur).</p> : (
         <table className="sb-table">
           <caption className="visually-hidden">Décomposition de l'écart de solde en {decomposition.year}</caption>
           <thead><tr><th scope="col">Cause</th><th scope="col" className="sb-num">Md€</th></tr></thead>

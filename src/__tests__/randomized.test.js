@@ -77,7 +77,8 @@ const TOTAL_FIELDS = ['gdp', 'debt', 'debtRatio', 'balanceRatio', 'interest', 'a
 const isFiniteOrNull = (v) => v === null || (typeof v === 'number' && Number.isFinite(v))
 const near = (a, b, tol) => Math.abs(a - b) <= tol * Math.max(1, Math.abs(a), Math.abs(b))
 const revenueLevers = LEVERS.filter((l) => l.type === 'recette')
-const spendingLevers = LEVERS.filter((l) => l.type !== 'recette')
+const balanceUpLevers = LEVERS.filter((l) => l.signe > 0)
+const balanceDownLevers = LEVERS.filter((l) => l.signe < 0)
 
 describe(`tests aléatoires (graine de base ${BASE_SEED})`, () => {
   // ================= Valeurs extrêmes =================
@@ -304,21 +305,23 @@ describe(`tests aléatoires (graine de base ${BASE_SEED})`, () => {
     }
   })
 
-  const balance1 = (levers) => projectScenario({ levers }).total[1].balance
+  const balanceAt = (levers, t) => projectScenario({ levers }).total[t].balance
+  const balance1 = (levers) => balanceAt(levers, 1)
 
-  it('10 [seed +10] monotonie du solde de 2027 : hausse d\'un impôt jamais en baisse du solde, hausse d\'une dépense jamais en hausse', () => {
+  it('10 [seed +10] monotonie du solde à l\'entrée en vigueur : hausse d\'un levier à signe positif jamais en baisse du solde, hausse d\'un levier à signe négatif jamais en hausse', () => {
     forCases('10', BASE_SEED + 10, 150, (rng, c) => {
       const base = randomLevers(rng, { density: 0.4 })
-      const isRev = rng() < 0.5
-      const l = pick(rng, isRev ? revenueLevers : spendingLevers)
+      const isUp = rng() < 0.5
+      const l = pick(rng, isUp ? balanceUpLevers : balanceDownLevers)
       const x0 = clampLever(l, base[l.id] ?? uniform(rng, l.min, l.max))
       const step = uniform(rng, 0.2, 2) * 1e-2 * (l.max - l.min)
       const x1 = x0 + step <= l.max ? x0 + step : null
       if (x1 === null) return
-      c.info = { base, lever: l.id, type: l.type, x0, x1 }
-      const b0 = balance1({ ...base, [l.id]: x0 })
-      const b1 = balance1({ ...base, [l.id]: x1 })
-      if (isRev) expect(b1 - b0, `solde ${b0} -> ${b1}`).toBeGreaterThanOrEqual(-1e-9)
+      const t = l.defaultRamp?.start ?? 1
+      c.info = { base, lever: l.id, signe: l.signe, t, x0, x1 }
+      const b0 = balanceAt({ ...base, [l.id]: x0 }, t)
+      const b1 = balanceAt({ ...base, [l.id]: x1 }, t)
+      if (isUp) expect(b1 - b0, `solde ${b0} -> ${b1}`).toBeGreaterThanOrEqual(-1e-9)
       else expect(b1 - b0, `solde ${b0} -> ${b1}`).toBeLessThanOrEqual(1e-9)
     })
   })

@@ -796,9 +796,22 @@ describe('âge légal de départ en retraite (levier validé le 21 nov. 2026)', 
     expect(leverTheta(LEVER_BY_ID.age_legal, 1, resolveParams({ 'comp.offset.prestations': 0.2 }))).toBe(0.2)
     const rOff = projectScenario({ levers: { age_legal: 1 }, overrides: { ...o, 'comp.offset.prestations': 0.2 } })
     expect(rOff.total[7].byInstrument.age_legal.exPost / rOff.total[7].byInstrument.age_legal.exAnte).toBeCloseTo(0.8, 10)
-    // une option ramp explicite remplace defaultRamp
+    // une option ramp explicite remplace defaultRamp (y compris pour sizeByYear)
     const rCustom = projectScenario({ levers: { age_legal: 1 }, overrides: o, ramp: { start: 1, years: 1 } })
     expect(rCustom.blocks.securiteSociale[1].leversExAnte / rCustom.total[1].gdpBase * Y0).toBeCloseTo(8.4, 8)
+    const rCustomMulti = projectScenario({ levers: { age_legal: 1 }, ramp: { start: 1, years: 4 } })
+    expect(rCustomMulti.total[2].yS).toBeCloseTo(0.003 * (2 / 4) * (1 / 6), 10) // t=2: ramp=2/4, tau=1 -> 1/6
+    // demande E4 : nulle en 2026–2027 (gel LFSS 2026), puis négative pendant la montée en charge 2028–2033
+    const rFull = projectScenario({ levers: { age_legal: 1 } })
+    const refFull = projectScenario({})
+    expect(rFull.total[0].yD).toBe(0)
+    expect(rFull.total[1].yD).toBe(0)
+    for (let t = 2; t <= 7; t++) expect(rFull.total[t].yD).toBeLessThan(0)
+    // recettes d'affichage : excluent age_legal.exPost (levier de dépense), ne varient qu'avec le PIB
+    const revShare = P['base.recettes.apu'] / Y0
+    for (const t of [2, 5, 8]) {
+      expect(rFull.total[t].revenue - refFull.total[t].revenue).toBeCloseTo(revShare * (rFull.total[t].gdp - refFull.total[t].gdp), 8)
+    }
   })
   it('effet d\'offre yS : +0,15 / +0,30 / +0,50 % PIB par année, rampe linéaire sur L = 6 ans dès 2028 sans double comptage, symétrique pour x < 0', () => {
     const run = (x, ysCase, horizon = 'dixAns') => projectScenario({ levers: { age_legal: x }, ysCase, horizon })

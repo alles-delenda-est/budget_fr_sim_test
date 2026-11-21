@@ -1,5 +1,6 @@
 import { useId } from 'react'
 import { staticYield, STRUCTURAL_LEVERS } from '../../engine/levers.js'
+import { START_YEAR } from '../../engine/project.js'
 import { SUPPLY_BY_LEVER } from '../../engine/supply.js'
 import { PARAM_BY_ID } from '../../engine/params.js'
 import { fmt, groupedLevers, sliderStep } from './helpers'
@@ -9,9 +10,13 @@ function LeverSlider({ lever, value, onChange, P }) {
   const id = useId()
   const yieldMd = staticYield(lever, value, P)
   const params = [`rend.${lever.id}`, lever.theta?.id, lever.categorie && `dem.m.${lever.categorie}`].filter((p) => p && PARAM_BY_ID[p])
-  const rampNote = lever.defaultRamp
-    ? ` (entrée en vigueur en ${2026 + lever.defaultRamp.start}, plein effet en ${2026 + lever.defaultRamp.start + lever.defaultRamp.years - 1})`
-    : ''
+  const startYear = lever.defaultRamp ? START_YEAR + lever.defaultRamp.start : null
+  const fullYear = lever.defaultRamp ? startYear + lever.defaultRamp.years - 1 : null
+  const rampNote = lever.defaultRamp ? ` (entrée en vigueur en ${startYear}, plein effet en ${fullYear})` : ''
+  const rampShort = lever.defaultRamp ? ` (dès ${startYear}, plein effet ${fullYear})` : ''
+  const yieldTitle = lever.defaultRamp
+    ? `Étalon statique en régime permanent : effet ex ante sur le solde dès ${startYear}, plein effet en ${fullYear}`
+    : 'Étalon statique : effet ex ante sur le solde'
   return (
     <div className="sb-lever">
       <div className="sb-lever-head">
@@ -32,8 +37,8 @@ function LeverSlider({ lever, value, onChange, P }) {
         value={value} onChange={(e) => onChange(lever.id, parseFloat(e.target.value))} />
       <div className="sb-lever-foot">
         <span className="sb-lever-value">{fmt(value, 1, { signed: true })} {lever.unite}</span>
-        <span className="sb-lever-yield" title="Étalon statique : effet ex ante sur le solde">
-          Étalon statique : <strong>{fmt(yieldMd, 1, { signed: true })} Md€</strong>/an
+        <span className="sb-lever-yield" title={yieldTitle}>
+          Étalon statique : <strong>{fmt(yieldMd, 1, { signed: true })} Md€</strong>/an{rampShort}
         </span>
       </div>
     </div>

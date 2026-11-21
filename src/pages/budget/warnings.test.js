@@ -131,7 +131,7 @@ describe('moteur : recettes et paliers de bout en bout', () => {
   })
   it('référence 10 ans : aucun avertissement ; scénario extrême 30 ans : palier 1 puis palier 2 ; la dette en 2056 reste dans le résultat', () => {
     expect(evaluateWarnings(projectScenario({ horizon: 'dixAns' }))).toEqual({ tier1: null, tier2: null })
-    const worst = Object.fromEntries(LEVERS.map((l) => [l.id, l.type === 'recette' ? l.min : l.max]))
+    const worst = Object.fromEntries(LEVERS.map((l) => [l.id, l.signe > 0 ? l.min : l.max]))
     const r = projectScenario({ horizon: 'trenteAns', levers: worst })
     const w = evaluateWarnings(r)
     expect(w.tier1.year).toBeLessThan(w.tier2.year)
@@ -140,7 +140,7 @@ describe('moteur : recettes et paliers de bout en bout', () => {
     for (const row2 of r.total) expect(Number.isFinite(row2.revenue)).toBe(true)
   })
   it('30 ans, dette > 500 % : X calculé par le moteur et formulation adaptée à X', () => {
-    const worst = Object.fromEntries(LEVERS.map((l) => [l.id, l.type === 'recette' ? l.min : l.max]))
+    const worst = Object.fromEntries(LEVERS.map((l) => [l.id, l.signe > 0 ? l.min : l.max]))
     const r = projectScenario({ horizon: 'trenteAns', levers: worst })
     const w = evaluateWarnings(r)
     const row2 = r.total[w.tier2.t]
