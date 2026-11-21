@@ -6,6 +6,7 @@ import {
   fmt, num, buildSeries, snapshotAt, decomposeAtYear, visibleLines, blocksAt, paramIdsFor, groupedLevers,
   extremeLevers, hasSupplyEffect, deltaTone, isFlagged, paramRange, leverGroup, sliderStep, debtMovesAgainstBalance, niceAxis, YEAR1_PARADOX_TEXT,
 } from './helpers.js'
+import { overridesForMacro } from './presets.js'
 
 const EPS = PARAM_BY_ID['fisc.eps'].value
 const EPS_OFFRE = PARAM_BY_ID['fisc.eps_offre'].value
@@ -154,6 +155,18 @@ describe('décomposition : somme égale écart de solde (scénario − référen
     for (const t of [1, 10, 20, r.years.length - 1]) {
       const d = decomposeAtYear(r, ref, t, EPS, EPS_OFFRE)
       expect(d.lines.reduce((s, l) => s + l.montant, 0)).toBeCloseTo(r.total[t].balance - ref.total[t].balance, 6)
+    }
+  })
+  it('reste exacte quand un comparateur macroéconomique est actif (seul ou avec leviers)', () => {
+    const overrides = overridesForMacro('gouv_resf_2027')
+    for (const levers of [{}, { tva_normal: 2, ondam: -2, age_legal: 1 }]) {
+      const ref = projectScenario({ levers: {}, horizon: 'trenteAns', ysCase: 'central' })
+      const r = projectScenario({ levers, overrides, horizon: 'trenteAns', ysCase: 'central' })
+      for (const t of [0, 1, 5, 10, 20, 30]) {
+        const d = decomposeAtYear(r, ref, t, EPS, EPS_OFFRE)
+        expect(d.lines.some((l) => l.kind === 'macro')).toBe(true)
+        expect(d.lines.reduce((s, l) => s + l.montant, 0)).toBeCloseTo(d.ecart, 6)
+      }
     }
   })
 })

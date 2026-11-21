@@ -5,17 +5,19 @@
 
 import { LEVERS, LEVER_BY_ID } from '../../engine/levers.js'
 import { HORIZONS } from '../../engine/project.js'
+import { MACRO_VARIANT_BY_ID } from './presets.js'
 
 export const DEFAULT_HORIZON = 'dixAns'
 export const DEFAULT_CASE = 'central'
 const CASES = ['bas', 'central', 'haut']
-const RESERVED = new Set(['h', 'cas'])
+const RESERVED = new Set(['h', 'cas', 'm'])
 
-/** Chaîne de requête (sans « ? ») d'un scénario. Seuls les leviers non nuls sont écrits, dans l'ordre du catalogue. */
-export function encodeScenario({ values = {}, horizon = DEFAULT_HORIZON, ysCase = DEFAULT_CASE } = {}) {
+/** Chaîne de requête (sans « ? ») d'un scénario. Seuls les leviers non nuls (et une éventuelle variante macroéconomique valide) sont écrits. */
+export function encodeScenario({ values = {}, horizon = DEFAULT_HORIZON, ysCase = DEFAULT_CASE, macroId = null } = {}) {
   const q = new URLSearchParams()
   q.set('h', horizon)
   q.set('cas', ysCase)
+  if (macroId && Object.hasOwn(MACRO_VARIANT_BY_ID, macroId)) q.set('m', macroId)
   for (const l of LEVERS) {
     const v = values[l.id]
     if (typeof v === 'number' && Number.isFinite(v) && v !== 0) q.set(l.id, String(v))
@@ -24,12 +26,12 @@ export function encodeScenario({ values = {}, horizon = DEFAULT_HORIZON, ysCase 
 }
 
 /**
- * Lit une chaîne de requête et renvoie un scénario valide. Clés inconnues ignorées ; horizon et cas inconnus remplacés
- * par les valeurs par défaut ; valeurs non numériques ou non finies ignorées ; valeurs bornées au min / max du levier.
+ * Lit une chaîne de requête et renvoie un scénario valide. Clés inconnues ignorées ; horizon, cas et variante macroéconomique
+ * inconnus remplacés par les valeurs par défaut ; valeurs non numériques ou non finies ignorées ; valeurs bornées au min / max du levier.
  * Ne lève jamais d'exception.
  */
 export function decodeScenario(query) {
-  const out = { values: {}, horizon: DEFAULT_HORIZON, ysCase: DEFAULT_CASE }
+  const out = { values: {}, horizon: DEFAULT_HORIZON, ysCase: DEFAULT_CASE, macroId: null }
   let q
   try {
     q = new URLSearchParams(typeof query === 'string' ? query.replace(/^\?/, '') : '')
@@ -40,6 +42,8 @@ export function decodeScenario(query) {
   if (h && Object.hasOwn(HORIZONS, h)) out.horizon = h
   const cas = q.get('cas')
   if (cas && CASES.includes(cas)) out.ysCase = cas
+  const m = q.get('m')
+  if (m && Object.hasOwn(MACRO_VARIANT_BY_ID, m)) out.macroId = m
   for (const [key, raw] of q.entries()) {
     if (RESERVED.has(key) || !Object.hasOwn(LEVER_BY_ID, key) || raw.trim() === '') continue
     const x = Number(raw)

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { projectScenario } from '../../engine/project.js'
 import { PARAM_BY_ID } from '../../engine/params.js'
 import { csvNumber, csvText, buildExportRows, buildCsv, COLUMNS } from './exportCsv.js'
+import { overridesForMacro, MACRO_VARIANT_BY_ID } from './presets.js'
 
 const EPS = PARAM_BY_ID['fisc.eps'].value
 const EPS_OFFRE = PARAM_BY_ID['fisc.eps_offre'].value
@@ -74,5 +75,19 @@ describe('buildCsv', () => {
       const out = buildCsv({ stamp: 's', url: 'u', horizonLabel: 'h', ysCase, values: {}, rows: buildExportRows(a, b, EPS, EPS_OFFRE) })
       expect(out).not.toMatch(/NaN|Infinity/)
     }
+  })
+  it('inclut le comparateur macroéconomique dans l\'en-tête et conserve l\'identité exacte des causes', () => {
+    const ref0 = projectScenario({ levers: {}, horizon: 'dixAns', ysCase: 'central' })
+    const rGov = projectScenario({ levers: {}, overrides: overridesForMacro('gouv_resf_2027'), horizon: 'dixAns', ysCase: 'central' })
+    const govRows = buildExportRows(rGov, ref0, EPS, EPS_OFFRE)
+    for (const row of govRows) {
+      const causes = row.slice(12).reduce((s, v) => s + v, 0)
+      expect(causes).toBeCloseTo(row[11], 6)
+    }
+    const label = MACRO_VARIANT_BY_ID.gouv_resf_2027.label
+    const out = buildCsv({ stamp: 's', url: 'u', horizonLabel: '10 ans', ysCase: 'central', macroLabel: label, values: {}, rows: govRows })
+    expect(out).toContain(`Hypothèses macroéconomiques;${label}`)
+    expect(out).toContain('Aucun levier actif (comparateur macroéconomique seul)')
+    expect(out).not.toMatch(/NaN|Infinity|undefined/)
   })
 })

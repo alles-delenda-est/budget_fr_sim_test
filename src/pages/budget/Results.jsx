@@ -44,8 +44,9 @@ export function Snapshots({ snaps }) {
   )
 }
 
-const KIND_ORDER = ['statique', 'comportement', 'demande', 'offre', 'interets']
+const KIND_ORDER = ['macro', 'statique', 'comportement', 'demande', 'offre', 'interets']
 const KIND_TITLES = {
+  macro: 'Hypothèses macroéconomiques',
   statique: 'Mesures : effet statique', comportement: 'Réaction des contribuables', demande: 'Demande',
   offre: 'Effets d\'offre', interets: 'Intérêts',
 }

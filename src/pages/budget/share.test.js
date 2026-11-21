@@ -8,16 +8,16 @@ describe('liens de scénario', () => {
     expect(q).toBe('h=dixAns&cas=central&tva_normal=3&ir=-10')
   })
   it('décode ce qui a été encodé (aller-retour)', () => {
-    const s = { values: { tva_normal: 2.5, ir: -10, is: 4 }, horizon: 'trenteAns', ysCase: 'haut' }
+    const s = { values: { tva_normal: 2.5, ir: -10, is: 4 }, horizon: 'trenteAns', ysCase: 'haut', macroId: null }
     expect(decodeScenario(encodeScenario(s))).toEqual(s)
   })
   it('aller-retour sur tous les leviers au maximum', () => {
     const values = Object.fromEntries(LEVERS.map((l) => [l.id, l.max]))
-    const s = { values, horizon: 'jusqua2040', ysCase: 'bas' }
+    const s = { values, horizon: 'jusqua2040', ysCase: 'bas', macroId: null }
     expect(decodeScenario(encodeScenario(s))).toEqual(s)
   })
   it('valeurs par défaut si la requête est vide ou absente', () => {
-    const d = { values: {}, horizon: 'dixAns', ysCase: 'central' }
+    const d = { values: {}, horizon: 'dixAns', ysCase: 'central', macroId: null }
     expect(decodeScenario('')).toEqual(d)
     expect(decodeScenario(undefined)).toEqual(d)
     expect(decodeScenario(null)).toEqual(d)
@@ -25,7 +25,20 @@ describe('liens de scénario', () => {
   it('ignore les clés inconnues, y compris celles du prototype', () => {
     const r = decodeScenario('foo=3&__proto__=1&constructor=2&toString=4&tva_normal=1')
     expect(r.values).toEqual({ tva_normal: 1 })
-    expect(Object.keys(r)).toEqual(['values', 'horizon', 'ysCase'])
+    expect(Object.keys(r)).toEqual(['values', 'horizon', 'ysCase', 'macroId'])
+  })
+  it('encode et décode la variante macroéconomique (m) et rejette les valeurs invalides', () => {
+    const q = encodeScenario({ values: {}, horizon: 'dixAns', ysCase: 'central', macroId: 'gouv_resf_2027' })
+    expect(q).toBe('h=dixAns&cas=central&m=gouv_resf_2027')
+    expect(decodeScenario(q)).toEqual({ values: {}, horizon: 'dixAns', ysCase: 'central', macroId: 'gouv_resf_2027' })
+    const combined = { values: { tva_normal: 1.5 }, horizon: 'jusqua2040', ysCase: 'bas', macroId: 'gouv_resf_2027' }
+    expect(decodeScenario(encodeScenario(combined))).toEqual(combined)
+    // m est omis quand macroId est null ou inconnu (rétrocompatibilité des liens)
+    expect(encodeScenario({ values: { ir: 5 }, macroId: null })).toBe('h=dixAns&cas=central&ir=5')
+    expect(encodeScenario({ values: { ir: 5 }, macroId: 'inconnu' })).toBe('h=dixAns&cas=central&ir=5')
+    expect(decodeScenario('m=inconnu&m=__proto__&tva_normal=1').macroId).toBeNull()
+    expect(decodeScenario('m=constructor').macroId).toBeNull()
+    expect(decodeScenario('m=toString').macroId).toBeNull()
   })
   it('rejette horizon et cas inconnus', () => {
     const r = decodeScenario('h=constructor&cas=extreme')

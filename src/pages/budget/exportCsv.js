@@ -22,13 +22,14 @@ export function csvText(s) {
   return /[;"\r\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t
 }
 
-const KIND_SUM = ['statique', 'comportement', 'demande', 'offre', 'interets']
+const KIND_SUM = ['macro', 'statique', 'comportement', 'demande', 'offre', 'interets']
 
 export const COLUMNS = [
   'Année',
   'PIB scénario (Md€)', 'Solde scénario (% du PIB)', 'Dette scénario (% du PIB)', 'Intérêts scénario (Md€)', 'Chômage scénario (%)',
   'PIB référence (Md€)', 'Solde référence (% du PIB)', 'Dette référence (% du PIB)', 'Intérêts référence (Md€)', 'Chômage référence (%)',
   'Écart de solde total (Md€)',
+  'Cause : hypothèses macroéconomiques (Md€)',
   'Cause : mesures, effet statique (Md€)', 'Cause : réaction des contribuables (Md€)', 'Cause : demande (Md€)',
   'Cause : effets d\'offre (Md€)', 'Cause : intérêts (Md€)',
 ]
@@ -44,26 +45,30 @@ export function buildExportRows(result, reference, eps, epsOffre) {
       r.gdp, r.balanceRatio * 100, r.debtRatio * 100, r.interest, r.unemployment,
       b.gdp, b.balanceRatio * 100, b.debtRatio * 100, b.interest, b.unemployment,
       d.ecart,
-      byKind.statique, byKind.comportement, byKind.demande, byKind.offre, byKind.interets,
+      byKind.macro, byKind.statique, byKind.comportement, byKind.demande, byKind.offre, byKind.interets,
     ]
   })
 }
 
 /**
- * Contenu complet du CSV (avec BOM) : bloc d'en-tête (version, lien, horizon, cas, leviers), ligne vide, tableau.
- * @param {{stamp: string, url: string, horizonLabel: string, ysCase: string, values: object, rows: number[][]}} o
+ * Contenu complet du CSV (avec BOM) : bloc d'en-tête (version, lien, horizon, cas, variante macro éventuelle, leviers), ligne vide, tableau.
+ * @param {{stamp: string, url: string, horizonLabel: string, ysCase: string, macroLabel?: string | null, values: object, rows: number[][]}} o
  */
-export function buildCsv({ stamp, url, horizonLabel, ysCase, values, rows }) {
-  const lines = [
+export function buildCsv({ stamp, url, horizonLabel, ysCase, macroLabel = null, values, rows }) {
+  const headerRows = [
     ['Simulateur Budget France : export du scénario'],
     ['Version', stamp],
     ['Lien du scénario', url],
     ['Horizon', horizonLabel],
     ['Cas des effets d\'offre', ysCase],
-    ['Leviers (dès 2027, âge légal dès 2028 avec montée en charge sur 6 ans)'],
-  ].map((cells) => cells.map(csvText).join(SEP))
+  ]
+  if (macroLabel) headerRows.push(['Hypothèses macroéconomiques', macroLabel])
+  headerRows.push(['Leviers (dès 2027, âge légal dès 2028 avec montée en charge sur 6 ans)'])
+  const lines = headerRows.map((cells) => cells.map(csvText).join(SEP))
   const active = LEVERS.filter((l) => typeof values?.[l.id] === 'number' && Number.isFinite(values[l.id]) && values[l.id] !== 0)
-  if (active.length === 0) lines.push(csvText('Aucun levier actif (scénario identique à la référence)'))
+  if (active.length === 0) {
+    lines.push(csvText(macroLabel ? 'Aucun levier actif (comparateur macroéconomique seul)' : 'Aucun levier actif (scénario identique à la référence)'))
+  }
   for (const l of active) lines.push([csvText(l.titre), csvNumber(values[l.id], 2), csvText(l.unite)].join(SEP))
   lines.push('')
   lines.push(COLUMNS.map(csvText).join(SEP))
