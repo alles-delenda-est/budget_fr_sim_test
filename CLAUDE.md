@@ -81,7 +81,7 @@ Le moteur projette les **administrations publiques consolidées (APU)** en compt
 
 ### Review Scope
 
-1. **Security-by-design:** No injection vulnerabilities, proper input validation at system boundaries (URL parameters in `share.js`, CSV export)
+1. **Security-by-design:** No injection vulnerabilities, proper input validation at system boundaries (URL parameters in `src/pages/budget/share.js`, CSV export in `src/pages/budget/exportCsv.js`)
 2. **Coding excellence:** Clean code, no dead code, consistent patterns, proper error handling
 3. **Robustness:** Edge cases handled (NaN, undefined, extreme lever values, 30-year horizon, debt-warning tiers)
 
