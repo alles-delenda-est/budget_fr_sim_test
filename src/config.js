@@ -1,4 +1,4 @@
-// Configuration de la version de relecture.
+// Configuration de la version 0.9.
 
 /** Lien vers le canal de commentaires des relecteurs (formulaire, courriel « mailto: », etc.). Vide : le lien est masqué. */
 export const COMMENT_URL = ''
