@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { PARAMS, resolveParams } from '../../engine/params.js'
+import { PARAMS, PARAM_BY_ID, resolveParams } from '../../engine/params.js'
+import { projectScenario, RATE_MAX } from '../../engine/project.js'
+import { sigmaFiscalCase } from '../../engine/supply.js'
 import { LEVERS } from '../../engine/levers.js'
-import { isFlagged } from '../budget/helpers.js'
+import { isFlagged, fmt } from '../budget/helpers.js'
 import {
   buildApu2025Accounts,
   buildCofogRows,
@@ -12,7 +14,10 @@ import {
   formatParamValue,
   groupParams,
   paramStatusCounts,
-  REVIEWER_QUESTIONS,
+  buildReviewerQuestions,
+  irPrimaryGap30,
+  irBreakEvenEL,
+  macroGrowthSourceLabel,
 } from './helpers.js'
 
 const P = resolveParams()
@@ -48,7 +53,52 @@ describe('Hypothèses : comptes 2025, COFOG et équations', () => {
     const alt = buildEquations(resolveParams({ 'dette.beta': 5, 'dem.lambda': 0.8 }))
     expect(alt.find((e) => e.id === 'E9').detail).toContain('β = 5 pb/pt')
     expect(alt.find((e) => e.id === 'E4').detail).toContain('λ = 0,8')
-    expect(REVIEWER_QUESTIONS.length).toBe(3)
+    expect(buildReviewerQuestions().length).toBe(3)
+    expect(eqs.find((e) => e.id === 'E9').formule).toContain(`${fmt(RATE_MAX * 100, 0)} %)`)
+    expect(eqs.find((e) => e.id === 'E1').detail).toContain(macroGrowthSourceLabel())
+  })
+})
+
+describe('Hypothèses : questions aux relecteurs construites depuis PARAMS et le moteur', () => {
+  const [q1, q2, q3] = buildReviewerQuestions()
+  const q = (id) => PARAM_BY_ID[id]
+  const pctTxt = (v) => `${fmt(v * 100, 1)} %`
+
+  it('question 1 : e_L, taux marginal de l\'IR, σ calculé, ε_offre et seuil de rentabilité', () => {
+    const eL = q('offre.e_L')
+    const tau = q('comp.tau0.ir')
+    expect(q1.resume).toContain(`e_L = ${fmt(eL.value, 2)}`)
+    expect(q1.resume).toContain(`${fmt(tau.value, 0)} % (fourchette ${fmt(tau.low, 0)}–${fmt(tau.high, 0)} %)`)
+    const sigma = sigmaFiscalCase('ir', P, 'value')
+    expect(q1.resume).toContain(`σ = ${fmt(sigma, 3).replace('-', '−')} % du PIB`)
+    expect(q1.resume).toContain(`ε_offre = ${pctTxt(q('fisc.eps_offre').value)}`)
+    expect(q1.resume).toContain(`(e_L = ${fmt(eL.low, 2)})`)
+    expect(q1.resume).toContain(`au haut (${fmt(eL.high, 2)})`)
+    const be = irBreakEvenEL()
+    expect(Math.abs(irPrimaryGap30(be))).toBeLessThan(1e-3)
+    expect(q1.resume).toContain(`e_L ≈ ${fmt(be, 2)}`)
+  })
+
+  it('question 2 : ε_offre (central et haut) et ε lus dans PARAMS', () => {
+    const e = q('fisc.eps_offre')
+    expect(q2.titre).toContain(`ε_offre = ${pctTxt(e.value)}`)
+    expect(q2.resume).toContain(`haut ${pctTxt(e.high)}`)
+    expect(q2.resume).toContain(`ε = ${fmt(q('fisc.eps').value, 1)}`)
+  })
+
+  it('question 3 : β et dette à 30 ans recalculée par le moteur pour β bas / central / haut / 0', () => {
+    const b = q('dette.beta')
+    expect(q3.titre).toContain(`β = ${fmt(b.value, 0)} pb/pt (fourchette ${fmt(b.low, 0)}–${fmt(b.high, 0)})`)
+    for (const beta of [b.low, b.value, b.high, 0]) {
+      const r = projectScenario({ horizon: 'trenteAns', overrides: { 'dette.beta': beta } })
+      const d = r.total[r.total.length - 1].debtRatio * 100
+      expect(q3.resume).toContain(`${fmt(d, 0)} % à β = ${fmt(beta, 0)}`)
+    }
+    expect(q3.statut).toContain(b.status)
+  })
+
+  it('aucun NaN ni « undefined » dans les textes', () => {
+    for (const x of [q1, q2, q3]) expect(`${x.titre} ${x.resume} ${x.statut}`).not.toMatch(/NaN|undefined|= —|— %/)
   })
 })
 

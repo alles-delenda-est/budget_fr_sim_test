@@ -4,6 +4,7 @@
 import { WARNING_THRESHOLDS as W } from '../../config.js'
 import { fmt } from './helpers.js'
 import { PARAM_BY_ID } from '../../engine/params.js'
+import { RATE_MAX } from '../../engine/project.js'
 
 const above = (v, threshold) => Number.isFinite(v) && v > threshold
 
@@ -49,13 +50,13 @@ export const tier1Text = (w) =>
 const TIER2_SUITE = 'Bien avant ce point, un défaut, une forte inflation ou une restructuration de la dette interviendraient ; le modèle ne décrit plus une situation réaliste.'
 
 /**
- * Explication du palier 2 : pourquoi les intérêts dépassent les recettes à ces niveaux de dette (E9 : pente `dette.beta`, plafond du taux 25 %).
+ * Explication du palier 2 : pourquoi les intérêts dépassent les recettes à ces niveaux de dette (E9 : pente `dette.beta`, plafond RATE_MAX du taux à l'émission).
  * Présentée comme une hypothèse du modèle, jamais comme un fait ; β vient des paramètres (pb par point de dette), pas d'un littéral.
  * @param {number} [betaPb] pente β en points de base par point de dette (défaut : paramètre `dette.beta`)
  */
 export function tier2Explanation(betaPb = PARAM_BY_ID['dette.beta'].value) {
   const b = Number.isFinite(betaPb) ? fmt(betaPb, Number.isInteger(betaPb) ? 0 : 1) : '—'
-  return `Hypothèse du modèle : le taux d'intérêt monte de ${b} point${betaPb > 1 ? 's' : ''} de base par point de dette au-delà de la référence (plafonné à 25 %). `
+  return `Hypothèse du modèle : le taux d'intérêt monte de ${b} point${betaPb > 1 ? 's' : ''} de base par point de dette au-delà de la référence (taux à l'émission plafonné à ${fmt(RATE_MAX * 100, 0)} %). `
     + 'Cette pente est une hypothèse, non un fait (voir « Hypothèses utilisées », paramètre dette.beta) : c\'est elle qui fait dépasser les recettes par les intérêts à ces niveaux.'
 }
 

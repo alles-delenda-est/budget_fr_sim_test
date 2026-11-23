@@ -1,7 +1,12 @@
-// Tests de comparaison à hypothèses homogènes (« like-for-like ») face aux quatre repères officiels.
-// Règle impérative (docs/model-note.md §5) : « comparateurs, jamais cibles ».
-// Aucun taux n'est rétro-ajusté pour coller à une cible : chaque hypothèse est soit sourcée
-// (avec mention du mode de lecture), soit explicitement signalée « non trouvé » et testée en fourchette.
+// Contrôles de plausibilité de la décomposition face aux quatre repères officiels (« comparateurs, jamais cibles »,
+// docs/model-note.md §5). CE NE SONT PAS DES TESTS DE VALIDATION du moteur :
+//  (a) primaryShiftModule injecte la trajectoire de solde primaire propre au comparateur : l'accord sur le solde est
+//      donc obtenu par construction ; seules la dynamique des intérêts et celle de la dette sont réellement testées ;
+//  (b) les hypothèses de taux que le comparateur ne publie pas (OAT 2–8 ans du RESF, bande BTF / OAT 2–8 ans de la Cour,
+//      fourchette de i* pour la Commission) sont déduites de ses propres chiffres d'intérêts et de dette : l'accord sur les
+//      intérêts vérifie la cohérence de la décomposition, il ne valide pas le taux.
+// Les instantanés de non-régression (valeurs du moteur sans chiffre de comparateur) sont regroupés dans le dernier bloc.
+// Aucune tolérance n'est ajustée pour coller à une cible.
 
 import { describe, it, expect } from 'vitest'
 import { resolveParams } from '../params.js'
@@ -45,22 +50,13 @@ const flatYields = (iPct) => ({
 
 const FLAT_COR = { 2025: 14.1, 2030: 14.1, 2045: 14.1, 2070: 14.1 }
 
-describe('règle « comparateurs, jamais cibles » (model-note.md §5)', () => {
+describe('règle « comparateurs, jamais cibles » (model-note.md §5) : écarts de la référence par défaut', () => {
   it('la référence par défaut du moteur (nov. 2026 : i* ≈ 4,38 %, β = 3) n\'est forcée sur aucun comparateur', () => {
     const def = projectScenario({ horizon: 'dixAns' })
     const r2026 = rowOf(def, 2026)
     const r2027 = rowOf(def, 2027)
     const r2029 = rowOf(def, 2029)
     const r2036 = rowOf(def, 2036)
-
-    expect(pct(issuanceRate(P))).toBeCloseTo(4.38, 2)
-    expect(P['dette.beta']).toBe(3)
-
-    // Valeurs de référence documentées dans docs/baseline-data.md
-    expect(pct(r2026.debtRatio)).toBeCloseTo(117.8, 1)
-    expect(pct(r2027.debtRatio)).toBeCloseTo(120.5, 1)
-    expect(pct(r2029.debtRatio)).toBeCloseTo(126.7, 1)
-    expect(pct(r2036.debtRatio)).toBeCloseTo(158.5, 1)
 
     // Écarts délibérés (non gommés) par rapport aux comparateurs officiels
     expect(pct(r2026.debtRatio)).toBeLessThan(P['cmp.gouv.dette.2026'] - 1.0)
@@ -70,7 +66,7 @@ describe('règle « comparateurs, jamais cibles » (model-note.md §5)', () => {
   })
 })
 
-describe('1. Gouvernement — RESF 2027 (octobre 2026) et PLF 2027', () => {
+describe('1. Gouvernement — RESF 2027 et PLF 2027 : plausibilité de la décomposition (solde primaire du RESF injecté, OAT 2–8 ans inférée)', () => {
   // Hypothèses propres au RESF 2027 :
   // - Macro : g = 0,5 % (2026), 1,0 % (2027), 1,2 % (potentielle) ; IPC π = 2,1 % (2026), 1,8 % (2027).
   // - Taux publiés (Sénat / Covéa / analyses PLF 2027 — résumé de recherche web, non relu à l'œil sur le document primaire) :
@@ -131,7 +127,7 @@ describe('1. Gouvernement — RESF 2027 (octobre 2026) et PLF 2027', () => {
     expect(deflatorGapPp - resfImpliedSfa2026 + interestGapPp).toBeCloseTo(totalGap2026, 2)
   })
 
-  it('2027 sans effort (+0 pt) vs avec effort primaire RESF (+0,7 pt) : intérêts et solde concordent à 0,03 pt près', () => {
+  it('2027 sans effort (+0 pt) vs avec effort primaire RESF injecté (+0,7 pt) : intérêts à 0,03 pt près (solde : par construction)', () => {
     const spb2026Resf = P['cmp.gouv.solde.2026'] + P['cmp.gouv.interets.2026'] // −2,8
     const spb2027Resf = P['cmp.gouv.solde.2027'] + P['cmp.gouv.interets.2027'] // −2,1
     const effort2027 = spb2027Resf - spb2026Resf
@@ -198,7 +194,7 @@ describe('1. Gouvernement — RESF 2027 (octobre 2026) et PLF 2027', () => {
   })
 })
 
-describe('2. Cour des comptes — La situation et les perspectives des finances publiques (juin 2026)', () => {
+describe('2. Cour des comptes (juin 2026) : plausibilité de la décomposition (bande BTF / OAT 2–8 ans inférée des intérêts de la Cour)', () => {
   // Millésime de printemps 2026 (antérieur au RESF d'octobre) ; les tests conservent la macro médiane nov. 2026 du moteur :
   // - OAT 10 ans ≈ 3,9 % fin 2026 (scénarios DG Trésor / Cour juin 2026 — résumé de recherche web, non relu à l'œil sur le document primaire
   //   et non trouvé dans les tableaux lus à l'item 6a), β = 0.
@@ -212,11 +208,8 @@ describe('2. Cour des comptes — La situation et les perspectives des finances 
     { label: 'haut', yBtf: 2.7, yMid: 3.6, yLong: 3.9 },
   ]
 
-  it('aux taux par défaut de novembre 2026 (i* = 4,38 %, β = 3), les intérêts 2029 atteignent 129,2 Md€ et la dette 126,7 %', () => {
-    const def = projectScenario({})
-    const r29 = rowOf(def, 2029)
-    expect(r29.interest).toBeCloseTo(129.2, 1)
-    expect(pct(r29.debtRatio)).toBeCloseTo(126.7, 1)
+  it('aux taux par défaut de novembre 2026 (i* = 4,38 %, β = 3), la dette 2029 dépasse de 2,4 pt le scénario « dérive »', () => {
+    const r29 = rowOf(projectScenario({}), 2029)
     expect(pct(r29.debtRatio) - P['cmp.cour.dette.2029_derive']).toBeCloseTo(2.4, 1)
   })
 
@@ -280,7 +273,7 @@ describe('2. Cour des comptes — La situation et les perspectives des finances 
   })
 })
 
-describe('3. Commission européenne — Spring 2026 Economic Forecast (21 mai 2026)', () => {
+describe('3. Commission européenne — prévisions du printemps 2026 : plausibilité de la décomposition (solde primaire injecté, i* inféré)', () => {
   // Hypothèses propres à la page pays France (docs/baseline-data.md, Collecte du 17 nov., Point 1) :
   // - Macro : g = 0,8 % (2026), 1,1 % (2027) ; inflation « headline » π = 2,4 % (2026), 1,8 % (2027).
   // - Solde primaire : −2,5 % en 2026 (−5,1 + 2,6), puis −2,9 % en 2027 (−5,7 + 2,8), soit −0,4 pt de dégradation en 2027.
@@ -358,7 +351,7 @@ describe('3. Commission européenne — Spring 2026 Economic Forecast (21 mai 20
   })
 })
 
-describe('4. Commission européenne — Debt Sustainability Monitor 2025 (IP 332, février 2026)', () => {
+describe('4. Commission européenne — Debt Sustainability Monitor 2025 : plausibilité de la décomposition de l\'écart (i* inféré)', () => {
   // Spécification DSM 2025 (docs/baseline-data.md item 6b) :
   // - Horizon 10 ans : 2025 → 2036 (dette de base 144,0 % du PIB).
   // - Solde primaire structurel constant à partir de 2026, HORS coût du vieillissement (a_sante = 0, retraites plates à 14,1 %).
@@ -409,13 +402,6 @@ describe('4. Commission européenne — Debt Sustainability Monitor 2025 (IP 332
         'base.dette.2025': DSM_DEBT_2025_MD, ...flatYields(3.3),
       },
     }), 2036)
-    const s4Mid = rowOf(projectScenario({
-      horizon: 'dixAns',
-      overrides: {
-        'dette.beta': 0, 'ref.derive.a_sante': 0, 'ref.derive.a_retraites': FLAT_COR,
-        'base.dette.2025': DSM_DEBT_2025_MD, ...flatYields(3.5),
-      },
-    }), 2036)
     const s4Hi = rowOf(projectScenario({
       horizon: 'dixAns',
       overrides: {
@@ -430,10 +416,7 @@ describe('4. Commission européenne — Debt Sustainability Monitor 2025 (IP 332
     expect(dRatesLo).toBeCloseTo(-9.72, 1)
     expect(dRatesHi).toBeCloseTo(-5.31, 1)
 
-    // À SPB moteur (−2,8 %) et macro moteur, la dette 2036 atterrit entre 146,0 % et 150,4 % et les intérêts entre 4,3 % et 5,1 % du PIB
-    expect(pct(s4Lo.debtRatio)).toBeCloseTo(146.0, 1)
-    expect(pct(s4Mid.debtRatio)).toBeCloseTo(147.7, 1)
-    expect(pct(s4Hi.debtRatio)).toBeCloseTo(150.4, 1)
+    // À SPB moteur (−2,8 %) et macro moteur, les intérêts 2036 restent entre 4,3 % et 5,1 % du PIB (niveaux de dette : instantanés ci-dessous)
     expect(pct(s4Lo.interestRatio)).toBeGreaterThan(4.2)
     expect(pct(s4Hi.interestRatio)).toBeLessThan(5.3)
   })
@@ -485,7 +468,7 @@ describe('4. Commission européenne — Debt Sustainability Monitor 2025 (IP 332
   })
 })
 
-describe('5. Synthèse : tout écart aux repères est expliqué par une hypothèse nommée (model-note.md §5)', () => {
+describe('5. Synthèse (plausibilité, non validation) : chaque écart aux repères est rattaché à une hypothèse nommée', () => {
   it('à hypothèses homogènes, chaque comparateur est rejoint à l\'ordre de grandeur attendu et la somme des facteurs nommés boucle', () => {
     const def = projectScenario({ horizon: 'dixAns' })
 
@@ -529,5 +512,34 @@ describe('5. Synthèse : tout écart aux repères est expliqué par une hypothè
     })
     expect(Math.abs(pct(rowOf(dsmLike, 2036).debtRatio) - P['cmp.dsm.dette.2036']))
       .toBeLessThan(Math.abs(pct(rowOf(def, 2036).debtRatio) - P['cmp.dsm.dette.2036']) / 20)
+  })
+})
+
+describe('instantanés de non-régression (valeurs actuelles du moteur, sans chiffre de comparateur)', () => {
+  // Ces valeurs figent la sortie du moteur (docs/baseline-data.md) ; elles détectent un changement, elles ne valident rien.
+  it('référence par défaut : i*, β et dette/PIB 2026, 2027, 2029, 2036', () => {
+    const def = projectScenario({ horizon: 'dixAns' })
+    expect(pct(issuanceRate(P))).toBeCloseTo(4.38, 2)
+    expect(P['dette.beta']).toBe(3)
+    expect(pct(rowOf(def, 2026).debtRatio)).toBeCloseTo(117.8, 1)
+    expect(pct(rowOf(def, 2027).debtRatio)).toBeCloseTo(120.5, 1)
+    expect(pct(rowOf(def, 2029).debtRatio)).toBeCloseTo(126.7, 1)
+    expect(pct(rowOf(def, 2036).debtRatio)).toBeCloseTo(158.5, 1)
+  })
+
+  it('référence par défaut : intérêts 2029 (129,2 Md€) et dette 2029 (126,7 %)', () => {
+    const r29 = rowOf(projectScenario({}), 2029)
+    expect(r29.interest).toBeCloseTo(129.2, 1)
+    expect(pct(r29.debtRatio)).toBeCloseTo(126.7, 1)
+  })
+
+  it('cascade DSM, étape 4 : dette 2036 à i* uniforme 3,3 / 3,5 / 3,8 % (146,0 / 147,7 / 150,4 %)', () => {
+    const ov = (iPct) => ({
+      'dette.beta': 0, 'ref.derive.a_sante': 0, 'ref.derive.a_retraites': FLAT_COR,
+      'base.dette.2025': P['base.pib.2025'] * (P['cmp.dsm.dette.2025'] / 100), ...flatYields(iPct),
+    })
+    expect(pct(rowOf(projectScenario({ horizon: 'dixAns', overrides: ov(3.3) }), 2036).debtRatio)).toBeCloseTo(146.0, 1)
+    expect(pct(rowOf(projectScenario({ horizon: 'dixAns', overrides: ov(3.5) }), 2036).debtRatio)).toBeCloseTo(147.7, 1)
+    expect(pct(rowOf(projectScenario({ horizon: 'dixAns', overrides: ov(3.8) }), 2036).debtRatio)).toBeCloseTo(150.4, 1)
   })
 })

@@ -35,7 +35,7 @@
 .mechanism-cards,
 .simulator-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
   gap: 1rem;
   margin-top: 1rem;
 }
@@ -105,10 +105,6 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--color-ink);
-}
-
-.baseline-value.warning {
-  color: var(--color-negative);
 }
 
 .baseline-delta {

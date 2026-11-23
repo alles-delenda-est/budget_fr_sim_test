@@ -10,7 +10,7 @@
 //     de 2025 (14,1 %). L'effet ex ante suit donc automatiquement la variante de productivité COR
 //     sélectionnée (1,0 % / 0,7 % / 0,4 %).
 //   - Effet d'offre propre nul (yS = 0, D2) : l'effet emploi des seniors provient exclusivement du
-//     levier validé `age_legal` (65 ans dans le préréglage D8).
+//     levier `age_legal`, retenu pour la version de relecture (65 ans dans le préréglage D8).
 //   - Respecte `comp.offset.prestations` (0 par défaut).
 
 import { interpolateSeries } from './params.js'
@@ -72,7 +72,7 @@ export const NDC_MODULE = {
   },
   explications: [
     'Forme réduite, statut « non validé » (confiance basse, décision D8) : modélise la stabilisation progressive sur 15 cohortes (2028–2042) de la dérive démographique des dépenses de retraites du COR au-delà de leur niveau 2025 (14,1 % du PIB), d\'après le diviseur d\'espérance de vie et le mécanisme d\'équilibrage automatique (ABM) du système suédois.',
-    'Aucun effet d\'offre propre (yS = 0, décision D2) : l\'effet d\'offre sur le PIB via l\'emploi des seniors provient exclusivement du levier validé « Âge légal de départ en retraite » (65 ans dans le préréglage).',
+    'Aucun effet d\'offre propre (yS = 0, décision D2) : l\'effet d\'offre sur le PIB via l\'emploi des seniors provient exclusivement du levier « Âge légal de départ en retraite », retenu pour la version de relecture (65 ans dans le préréglage).',
     'Comparaison externe [S24] : le modèle publié par le Parti libéral français (éditeur déclaré : Parti libéral français ; jamais présenté comme « le » modèle des comptes notionnels) n\'est repris ni pour son chiffre de −53 % de dépense en 2070 (marge du système à coefficient d\'équilibre > 1, non une économie budgétaire selon la revue [S25]) ni pour ses éléments de programme (taux unique de 18 %, capitalisation, garantie vieillesse, taxe sur le terrain).',
   ],
 }

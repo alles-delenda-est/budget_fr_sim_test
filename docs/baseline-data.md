@@ -251,9 +251,11 @@ Rendements retenus : BTF 3 mois 2,79 % ; OAT ≈ 5 ans 4,10 % ; OAT 10 ans et pl
 
 Encore placeholders : dérive des autres dépenses, rendements de l'IS et des cotisations, taux avant réforme de l'IR, inflation après 2027, taux moyen à l'émission 2026 de l'AFT.
 
-## Tests de comparaison à hypothèses homogènes (21 novembre 2026)
+## Tests de comparaison à hypothèses homogènes (21 novembre 2026) : contrôles de plausibilité, non validation
 
 Suite de tests dédiée : `src/engine/__tests__/benchmarks.test.js`. Principe appliqué (`docs/model-note.md`, §5) : **comparateurs, jamais cibles**. Aucun taux n'est rétro-ajusté pour reproduire une cible ; lorsque la courbe de taux complète d'un comparateur n'est pas publiée dans les sources lues, elle est signalée **non trouvé** et remplacée par une fourchette de sensibilité transparente correspondant au millésime de marché du document.
+
+**Portée de ces tests (lecture honnête).** Ce sont des contrôles de plausibilité de la décomposition, non une validation du moteur. (a) Le module de test `primaryShiftModule` injecte la trajectoire de solde primaire propre au comparateur (effort RESF de +0,7 pt en 2027, dégradation de −0,4 pt de la Commission) : l'accord sur le solde est donc obtenu par construction, et seules la dynamique des intérêts et celle de la dette sont réellement testées. (b) Les hypothèses de taux que le comparateur ne publie pas (OAT 2–8 ans du RESF, bande BTF / OAT 2–8 ans de la Cour, fourchette de `i*` pour la Commission et le DSM) sont déduites des chiffres d'intérêts et de dette du comparateur lui-même : un accord sur les intérêts montre que la décomposition est cohérente, il ne valide pas le taux. Les valeurs du moteur figées sans chiffre de comparateur (dette de référence 2026–2036, intérêts 2029, étape 4 de la cascade DSM) sont regroupées dans le bloc « instantanés de non-régression » de `benchmarks.test.js` : elles détectent un changement du moteur, elles ne valident rien.
 
 ### Hypothèses de taux et de cadrage des quatre comparateurs
 
@@ -274,7 +276,7 @@ Suite de tests dédiée : `src/engine/__tests__/benchmarks.test.js`. Principe ap
 | **RESF 2027 — 2027** | Intérêts (`% PIB` ; `Md€`) | `3,03 %` (`95,9`) | `2,89 %–2,92 %` (`91,1–92,0`) | `2,9 %` (`≈ 90,9`) | `0,00 pt` au centre (`2,90 %`, `91,5 Md€`) |
 | **RESF 2027 — 2027** | Solde (`% PIB`) | `−5,84 %` | `−5,71 %` (sans effort) / **`−4,99 %` à `−5,02 %`** (+0,7 pt) | `−5,0 %` | `−0,01 pt` au centre une fois l'effort `+0,7 pt` isolé |
 | **RESF 2027 — 2027** | Dette (`% PIB`) | `120,5 %` | `119,9 %` (+0,7 pt) | `121,7 %` | `−1,82 pt` = déflateur 2026–2027 (`−0,72 pt`) + SFA implicites 2026–2027 (`−1,06 pt`) |
-| **Cour des comptes — 2026** | Intérêts (`Md€` ; `% PIB`) | `79,7` (`2,59 %`) | `74,7–75,8` (`2,42 %–2,46 %`) ; `77,0` (`2,50 %`) à `3,9 %` unif. | `77,4` (`2,5 %`) | Concordance à millésime de taux printemps |
+| **Cour des comptes — 2026** | Intérêts (`Md€` ; `% PIB`) | `79,7` (`2,59 %`) | `74,7–75,8` (`2,42 %–2,46 %`) ; `77,0` (`2,50 %`) à `3,9 %` unif. | `77,4` (`2,5 %`) | Proche au millésime de taux printemps (bande de taux inférée) |
 | **Cour des comptes — 2029** | Intérêts (`Md€`) | `129,2` (`3,86 %`) | **`107,9–112,2`** (`3,23 %–3,36 %`) | **`> 100 Md€`** | `−17` à `−21 Md€` vs nov. 2026 ; cohérent avec le seuil `> 100 Md€` |
 | **Cour des comptes — 2029** | Dette (`% PIB`) | `126,7 %` | `125,2 %–125,5 %` (SPB `−2,8 %`) ; **`124,1 %`** (SPB printemps `−2,5 %`, macro médiane nov. 2026) | **`124,3 %`** (« dérive ») | `−0,2 pt` avec SPB et taux de printemps (solde 2029 `−5,78 %` vs `−5,4 %` Cour ; `120,1 %` « plafonds » suppose un ajustement) |
 | **CE printemps — 2026** | Intérêts / Solde (`% PIB`) | `2,59 %` / `−5,39 %` | `2,39 %–2,48 %` / `−4,89 %` à `−4,98 %` | `2,6 %` / `−5,1 %` | `−0,12` à `−0,21 pt` (courbe technique CE non publiée) |
@@ -289,7 +291,7 @@ Suite de tests dédiée : `src/engine/__tests__/benchmarks.test.js`. Principe ap
 3. **Suppression du vieillissement** (`a_sante = 0`, retraites COR plates à `14,1 %`) : `155,49 % → 154,99 %` (**`−0,50 pt`** ; cumul `β` + vieillissement = **`−3,50 pt`**, soit `155,0 %`).
 4. **Recalage de la dette initiale 2025** (`115,7 % → 116,3 %`, prévision CE automne 2025) : `154,99 % → 155,71 %` (**`+0,72 pt`** composé sur 11 ans).
 5. **Millésime de taux automne 2025 (`i* ∈ [3,3 % ; 3,8 %]` vs `4,38 %` nov. 2026)** : `155,71 % → 145,99 %–150,40 %` (**`−5,31` à `−9,72 pt`**, intérêts `4,32 %–5,06 %` du PIB, taux implicite `3,11 %–3,55 %`).
-6. **Millésime de SPB 2026 ou croissance nominale long terme** : passer au SPB 2026 de la Commission (`−2,5 %` au lieu du RESF automne `−2,8 %`) retranche **`−3,42 pt`** (atterrissage **`144,3 %`** à `i* = 3,5 %`) ; alternativement, une croissance nominale de long terme `g = 1,1 %`, `π = 2,0 %` retranche **`−3,39 pt`** (`144,3 %`, exactement `144,35 %`). En combinant *simultanément* SPB CE (`−2,5 %`) et macro CE (`g = 1,1 %`, `π = 2,0 %`), la dette 2036 atterrit à **`143,5 %`** à `i* = 3,8 %` (`141,0 %` à `3,5 %`). La dynamique de dette du moteur reproduit donc celle du DSM dès que les hypothèses sont alignées.
+6. **Millésime de SPB 2026 ou croissance nominale long terme** : passer au SPB 2026 de la Commission (`−2,5 %` au lieu du RESF automne `−2,8 %`) retranche **`−3,42 pt`** (atterrissage **`144,3 %`** à `i* = 3,5 %`) ; alternativement, une croissance nominale de long terme `g = 1,1 %`, `π = 2,0 %` retranche **`−3,39 pt`** (`144,3 %`, exactement `144,35 %`). En combinant *simultanément* SPB CE (`−2,5 %`) et macro CE (`g = 1,1 %`, `π = 2,0 %`), la dette 2036 atterrit à **`143,5 %`** à `i* = 3,8 %` (`141,0 %` à `3,5 %`). Une fois les hypothèses alignées, l'écart de dette au DSM se ramène à des hypothèses nommées ; c'est un contrôle de plausibilité, non une validation (voir « Portée de ces tests » ci-dessus).
 
 ### Mécanisme structurel d'année 0 (2026) : déflateur du PIB (E1) et ajustements stock-flux (E11)
 
