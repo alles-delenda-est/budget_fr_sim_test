@@ -30,6 +30,12 @@ import { WarningBanner, DecompositionTable, BlocksTable } from './budget/Results
 import { InfoPopover, ParamInfo, StatusBadge } from './budget/InfoPopover'
 import {
   LEGAL_AGE_BASE,
+  SOURCE_LINKS,
+  splitCitations,
+  paramStatuses,
+  LEVER_STATUS_PARAMS,
+  AGEING_REPORT_YEARS,
+  healthRiseOverSpan,
   COR_VARIANTS,
   HEALTH_VARIANTS,
   NDC_PRESET,
@@ -48,6 +54,23 @@ const EPS = BASE_P['fisc.eps']
 const EPS_OFFRE = BASE_P['fisc.eps_offre']
 const AGE_LEVER = LEVER_BY_ID['age_legal']
 const INDEX_LEVER = LEVER_BY_ID['indexation_pensions']
+const AGE_SIGMA = PARAM_BY_ID['offre.sigma.age_legal']
+const COR_PARAM = PARAM_BY_ID['ref.derive.a_retraites']
+const SANTE_PARAM = PARAM_BY_ID['ref.derive.a_sante']
+const COR_LAST_YEAR = Math.max(...Object.keys(COR_PARAM.value).map(Number))
+const INDEX_START_YEAR = START_YEAR + (INDEX_LEVER.defaultRamp?.start ?? 1)
+
+/** Texte dont les balises [Sxx] connues deviennent des liens vers la source (docs/model-note.md §9). */
+function CitedText({ text }) {
+  return splitCitations(text).map((part, i) => (part.ref
+    ? <a key={i} href={SOURCE_LINKS[part.ref].url} target="_blank" rel="noopener noreferrer" title={SOURCE_LINKS[part.ref].label}>[{part.ref}]</a>
+    : <span key={i}>{part.text}</span>))
+}
+
+/** Pastilles de statut lues dans PARAM_BY_ID pour un levier retraites. */
+function LeverStatus({ leverId }) {
+  return paramStatuses(LEVER_STATUS_PARAMS[leverId] ?? []).map((st) => <StatusBadge key={st} status={st} />)
+}
 
 function DeltaLine({ value, unit, lowerIsBetter }) {
   const tone = deltaTone(value, lowerIsBetter)
@@ -206,8 +229,9 @@ export default function SimulateurRetraitesPage() {
         <h1 className="sb-title">Simulateur Retraites</h1>
         <p className="sb-help">
           Moteur v2 (équations E1–E12) appliqué au système de retraites et au vieillissement : trajectoires du{' '}
-          <strong>COR (juin 2026)</strong>, dérive santé / dépendance (Commission européenne 2024), leviers validés
-          (âge légal dès janvier 2028 avec effet d'offre emploi seniors, indexation des pensions) et préréglage{' '}
+          <strong>COR (juin 2026)</strong>, dérive santé / dépendance (Commission européenne 2024), leviers retenus pour
+          la version de relecture (âge légal dès janvier {START_YEAR + AGE_LEVER.defaultRamp.start} avec effet d'offre
+          emploi seniors, indexation des pensions) et préréglage{' '}
           <strong>Comptes notionnels</strong> (forme réduite, non validé).
         </p>
       </header>
@@ -270,7 +294,7 @@ export default function SimulateurRetraitesPage() {
               <StatusBadge status={NDC_PRESET.statut} />
               <span className="ret-confidence-note">Forme réduite — confiance basse</span>
               <InfoPopover label={NDC_PRESET.titre}>
-                <span className="sb-info-line">{NDC_PRESET.description}</span>
+                <span className="sb-info-line"><CitedText text={NDC_PRESET.description} /></span>
                 <span className="sb-info-sub">
                   <strong>Sources primaires :</strong>{' '}
                   {NDC_MODULE.sources.join(' ; ')}
@@ -286,27 +310,26 @@ export default function SimulateurRetraitesPage() {
               <span className="sb-preset-title">Appliquer le préréglage Comptes notionnels</span>
               <span className="sb-preset-meta">{NDC_PRESET.resume}</span>
             </button>
-            <div className="ret-ndc-toggle">
+            <label className="ret-ndc-toggle" htmlFor={ndcId}>
               <input
                 id={ndcId}
                 type="checkbox"
                 checked={ndcActive}
                 onChange={(e) => setNdcActive(e.target.checked)}
               />
-              <label htmlFor={ndcId}>
-                Activer le module « Comptes notionnels » (dès janv. {ndcStartYear}, plein effet {ndcFullYear})
-              </label>
-            </div>
+              <span>Activer le module « Comptes notionnels » (dès janv. {ndcStartYear}, plein effet {ndcFullYear})</span>
+            </label>
             <p className="ret-lever-note">
               Stabilise la dérive démographique COR post-2025 sur {NDC_RAMP_YEARS} cohortes (<code>yS</code> propre = 0 ;
-              l'effet emploi seniors vient uniquement du levier validé âge légal). Le modèle publié par le Parti libéral
-              français [S24] est mentionné en comparaison externe : son −53 % en 2070 (marge, non économie) et ses mesures
-              de programme sont exclus.
+              l'effet emploi seniors vient uniquement du levier âge légal).{' '}
+              <CitedText text={NDC_PRESET.hypothese} /> Le modèle publié par le Parti libéral français{' '}
+              <CitedText text="[S24]" /> est mentionné en comparaison externe : son −53 % en 2070 (marge, non économie) et
+              ses mesures de programme sont exclus.
             </p>
           </fieldset>
 
           <fieldset className="sb-group">
-            <legend>Leviers validés (actifs)</legend>
+            <legend>Leviers retenus pour la version de relecture (actifs)</legend>
             <p className="sb-help">
               Effet sur le bloc sécurité sociale (ASSO) et, pour l'âge légal, effet d'offre sur le PIB via l'emploi des
               seniors (<code>ε_offre = {fmt(EPS_OFFRE * 100, 1)} %</code>).
@@ -316,7 +339,7 @@ export default function SimulateurRetraitesPage() {
             <div className="sb-lever">
               <div className="sb-lever-head">
                 <label htmlFor={ageId}>{AGE_LEVER.titre}</label>
-                <StatusBadge status={AGE_LEVER.statut} />
+                <LeverStatus leverId="age_legal" />
                 <InfoPopover label={AGE_LEVER.titre}>
                   <span className="sb-info-line">{AGE_LEVER.aide}</span>
                   <span className="sb-info-sub">
@@ -349,9 +372,10 @@ export default function SimulateurRetraitesPage() {
                 </span>
               </div>
               <p className="ret-lever-note">
-                Calendrier LFSS 2026 : entrée en vigueur en janvier {ageStartYear}, montée en charge sur 6 ans. Effet
-                d'offre emploi seniors : <strong>{fmt(PARAM_BY_ID['offre.sigma.age_legal'].value, 2, { signed: true })} %</strong>{' '}
-                du PIB par année au centre (+0,15 / +0,50 %).
+                Calendrier LFSS 2026 : entrée en vigueur en janvier {ageStartYear}, montée en charge sur{' '}
+                {AGE_LEVER.defaultRamp.years} ans. Effet d'offre emploi seniors :{' '}
+                <strong>{fmt(AGE_SIGMA.value, 2, { signed: true })} %</strong> du PIB par année au centre (
+                {fmt(AGE_SIGMA.low, 2, { signed: true })} / {fmt(AGE_SIGMA.high, 2, { signed: true })} %).
               </p>
             </div>
 
@@ -359,7 +383,7 @@ export default function SimulateurRetraitesPage() {
             <div className="sb-lever">
               <div className="sb-lever-head">
                 <label htmlFor={idxId}>{INDEX_LEVER.titre}</label>
-                <StatusBadge status={INDEX_LEVER.statut} />
+                <LeverStatus leverId="indexation_pensions" />
                 <InfoPopover label={INDEX_LEVER.titre}>
                   <span className="sb-info-line">{INDEX_LEVER.aide}</span>
                   <span className="sb-info-sub">
@@ -384,7 +408,7 @@ export default function SimulateurRetraitesPage() {
                   <strong>{fmt(indexDelta, 1, { signed: true })} pt</strong> vs inflation
                 </span>
                 <span className="sb-lever-yield">
-                  Étalon : <strong>{fmt(idxYield, 1, { signed: true })} Md€</strong>/an (dès 2027)
+                  Étalon : <strong>{fmt(idxYield, 1, { signed: true })} Md€</strong>/an (dès {INDEX_START_YEAR})
                 </span>
               </div>
               <p className="ret-lever-note">
@@ -563,24 +587,32 @@ export default function SimulateurRetraitesPage() {
                 <h3>Droit en vigueur (LFSS 2026)</h3>
                 <p>
                   La LFSS 2026 gèle l'âge légal à <strong>62 ans et 9 mois</strong> et la durée d'assurance à 170 trimestres
-                  jusqu'en <strong>janvier 2028</strong>, avant reprise de la montée vers 64 ans. Le levier âge légal du
-                  simulateur démarre donc en janvier 2028 sur une rampe de 6 ans (plein effet en 2033).
+                  jusqu'en <strong>janvier {ageStartYear}</strong> <CitedText text="[S15][S16]" />, avant reprise de la
+                  montée vers {LEGAL_AGE_BASE} ans. Le levier âge légal du simulateur démarre donc en janvier{' '}
+                  {ageStartYear} sur une rampe de {AGE_LEVER.defaultRamp.years} ans (plein effet en {ageFullYear}).
                 </p>
               </div>
               <div className="ret-demo-card">
                 <h3>Trajectoire COR (juin 2026)</h3>
                 <p>
-                  Dépenses de retraites à droit en vigueur (scénario central) : <strong>14,1 %</strong> du PIB en 2025 et
-                  2030, <strong>14,2 %</strong> en 2045, <strong>15,3 %</strong> en 2070 (14,5 % à productivité haute 1,0 % ;
-                  16,1 % à productivité basse 0,4 %). Solde du système : −0,2 % en 2025, −0,9 pt en 2045, −2,4 pts en 2070.
+                  Dépenses de retraites à droit en vigueur (scénario central) :{' '}
+                  {Object.entries(COR_PARAM.value).map(([y, v], i, arr) => (
+                    <span key={y}><strong>{fmt(v, 1)} %</strong>{i === 0 ? ' du PIB' : ''} en {y}{i < arr.length - 1 ? ', ' : ''}</span>
+                  ))}{' '}
+                  ({fmt(COR_PARAM.low[COR_LAST_YEAR], 1)} % à productivité haute 1,0 % ; {fmt(COR_PARAM.high[COR_LAST_YEAR], 1)} %
+                  à productivité basse 0,4 % <CitedText text="[S23]" />). Solde du système : −0,2 % en 2025, −0,9 pt en
+                  2045, −2,4 pts en 2070 <CitedText text="[S23]" />.
                 </p>
               </div>
               <div className="ret-demo-card">
                 <h3>Santé et soins de longue durée</h3>
                 <p>
-                  Commission européenne (<em>2024 Ageing Report</em>) : dépense publique de santé de 8,8 % du PIB en 2022,
-                  en hausse de <strong>+0,3 pt</strong> d'ici 2070 hors dépendance, et de <strong>+1,0 pt</strong> en
-                  incluant les soins de longue durée (+0,7 pt).
+                  Commission européenne (<em>2024 Ageing Report</em>, tableau 5) : dépense publique de santé de 8,8 % du PIB
+                  en {AGEING_REPORT_YEARS.from}, en hausse de{' '}
+                  <strong>{fmt(healthRiseOverSpan(SANTE_PARAM.value), 1, { signed: true })} pt</strong> d'ici{' '}
+                  {AGEING_REPORT_YEARS.to} hors dépendance, et de{' '}
+                  <strong>{fmt(healthRiseOverSpan(SANTE_PARAM.high), 1, { signed: true })} pt</strong> en incluant les soins
+                  de longue durée ({fmt(healthRiseOverSpan(SANTE_PARAM.high - SANTE_PARAM.value), 1, { signed: true })} pt).
                 </p>
               </div>
             </div>

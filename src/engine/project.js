@@ -16,7 +16,8 @@ export const HORIZONS = {
 }
 
 const SECU = { centrales: 'centrales', securiteSociale: 'secu', locales: 'locales' } // clé de bloc -> suffixe de paramètre
-const RATE_MAX = 0.25
+/** Plafond du taux à l'émission i_new (fraction) dans E9 : s'applique au taux total (i* + prime β), non à la seule prime. */
+export const RATE_MAX = 0.25
 
 /** Gèle récursivement un objet (tableaux et objets imbriqués compris). */
 export function deepFreeze(o) {

@@ -494,7 +494,7 @@ body {
 
 .controls-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: var(--space-lg);
 }
 
@@ -633,7 +633,7 @@ body {
 
 .results-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
   gap: var(--space-lg);
   margin-bottom: var(--space-lg);
 }
@@ -864,7 +864,7 @@ body {
 
 .method-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: var(--space-md);
   margin-bottom: var(--space-md);
 }
@@ -938,7 +938,7 @@ body {
 
 .preset-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
   gap: var(--space-md);
   margin-top: var(--space-md);
 }

@@ -1,11 +1,17 @@
 import { useMemo } from 'react'
-import { projectScenario, issuanceRate, HORIZONS } from '../engine/project.js'
+import { projectScenario, issuanceRate, HORIZONS, RATE_MAX, START_YEAR } from '../engine/project.js'
 import { resolveParams, PARAM_BY_ID } from '../engine/params.js'
-import { LEVERS, STRUCTURAL_LEVERS } from '../engine/levers.js'
+import { LEVERS, STRUCTURAL_LEVERS, LEVER_BY_ID } from '../engine/levers.js'
 import { WARNING_THRESHOLDS as W } from '../config.js'
 import { fmt } from './budget/helpers'
 import { evaluateWarnings } from './budget/warnings'
+import { macroGrowthSourceLabel } from './hypotheses/helpers'
+import { LEGAL_AGE_BASE } from './retraites/helpers'
 import './IntroPage.css'
+
+const AGE_LEVER = LEVER_BY_ID['age_legal']
+/** Statuts distincts d'une liste de paramètres, joints par « / » (lus dans PARAM_BY_ID). */
+const statusOf = (...ids) => [...new Set(ids.map((id) => PARAM_BY_ID[id].status))].join(' / ')
 
 export default function IntroPage({ navigateTo }) {
   const data = useMemo(() => {
@@ -85,8 +91,8 @@ export default function IntroPage({ navigateTo }) {
             <h3>1. Trois blocs APU et dérive de référence (E1, E2, E8)</h3>
             <p>
               Les comptes sont ancrés sur 2025 (dernière année observée), avec 2026 en estimation et les leviers actifs dès
-              2027 (janvier 2028 pour l'âge légal de retraite, fin du gel LFSS 2026). La croissance de référence suit la
-              médiane des prévisionnistes indépendants, et la dérive spontanée intègre le vieillissement projeté par le COR
+              2027 (janvier 2028 pour l'âge légal de retraite, fin du gel LFSS 2026). La croissance de référence 2026–2027 est
+              la {macroGrowthSourceLabel()}, et la dérive spontanée intègre le vieillissement projeté par le COR
               (retraites) et la Commission européenne (santé).
             </p>
           </div>
@@ -107,8 +113,8 @@ export default function IntroPage({ navigateTo }) {
             <p>
               Le taux à l'émission de référence est pondéré entre BTF, OAT 2–8 ans et OAT 10 ans et plus (
               <code>i* ≈ {fmt(iStarPct, 2)} %</code>). Au-delà du ratio de dette de 2026, une prime linéaire de{' '}
-              <code>β = {fmt(P['dette.beta'], 0)} pb/pt</code> (fourchette {fmt(betaLow, 0)}–{fmt(betaHigh, 0)}) s'ajoute,
-              plafonnée à 25 %. Le stock de dette se renouvelle progressivement selon sa maturité moyenne (
+              <code>β = {fmt(P['dette.beta'], 0)} pb/pt</code> (fourchette {fmt(betaLow, 0)}–{fmt(betaHigh, 0)}) s'ajoute ; le
+              taux à l'émission (i* + prime) est plafonné à {fmt(RATE_MAX * 100, 0)} %. Le stock de dette se renouvelle progressivement selon sa maturité moyenne (
               <code>M = {fmt(P['dette.M'], 2)} ans</code>) augmentée de la dette nouvelle.
             </p>
           </div>
@@ -119,27 +125,28 @@ export default function IntroPage({ navigateTo }) {
               ({HORIZONS.trenteAns.endYear}). Deux paliers encadrent les trajectoires extrêmes : <strong>palier 1</strong>{' '}
               au-delà de {W.tier1DebtPct} % du PIB (record d'une économie avancée : Japon {W.tier1ReferencePct} % en{' '}
               {W.tier1ReferenceYear}, FMI) et <strong>palier 2</strong> au-delà de {W.tier2DebtPct} % du PIB ou quand les
-              intérêts dépassent {W.tier2InterestShareRevenuePct} % des recettes publiques.
+              intérêts dépassent {W.tier2InterestShareRevenuePct} % des recettes publiques. Le palier 2 est une convention
+              du simulateur : {fmt(W.tier2DebtPct / 100, 0)} fois le PIB, choisi très au-delà de tout cas enregistré.
             </p>
           </div>
         </div>
       </section>
 
       <section className="intro-section">
-        <h2>Que se passe-t-il sans rien faire ?</h2>
+        <h2>Trajectoire de référence (hypothèses centrales)</h2>
         <p>
-          À politique inchangée (aucun levier activé, hypothèses centrales du moteur v2), la trajectoire de référence
-          projette à <strong>10 ans ({end10.year})</strong> :
+          Sans levier activé et avec les hypothèses centrales du moteur v2, la trajectoire de référence projette à{' '}
+          <strong>10 ans ({end10.year})</strong> :
         </p>
         <div className="baseline-summary">
           <div className="baseline-metric">
             <span className="baseline-label">Dette / PIB ({end10.year})</span>
-            <span className="baseline-value warning">{fmt(debt10Pct, 1)} %</span>
+            <span className="baseline-value">{fmt(debt10Pct, 1)} %</span>
             <span className="baseline-delta">{fmt(debt10Pct - debtRatio2025, 1, { signed: true })} pt vs 2025</span>
           </div>
           <div className="baseline-metric">
             <span className="baseline-label">Solde public ({end10.year})</span>
-            <span className="baseline-value warning">{fmt(bal10Pct, 2)} % du PIB</span>
+            <span className="baseline-value">{fmt(bal10Pct, 2)} % du PIB</span>
             <span className="baseline-delta">{fmt(end10.balance, 0)} Md€</span>
           </div>
           <div className="baseline-metric">
@@ -203,9 +210,11 @@ export default function IntroPage({ navigateTo }) {
             <h3>Simulateur Retraites</h3>
             <p>
               Exploration des trajectoires du <strong>COR (juin 2026)</strong> selon la productivité (centrale, haute 1,0 %,
-              basse 0,4 %) et la dérive santé / dépendance (Commission européenne 2024). Leviers validés :{' '}
-              <strong>âge légal de départ</strong> (62 à 67 ans dès janvier 2028 avec effet d'offre emploi seniors) et{' '}
-              <strong>indexation des pensions</strong>, ainsi que le préréglage <strong>Comptes notionnels</strong> (forme
+              basse 0,4 %) et la dérive santé / dépendance (Commission européenne 2024). Leviers retenus pour la version
+              de relecture : <strong>âge légal de départ</strong> ({LEGAL_AGE_BASE + AGE_LEVER.min} à{' '}
+              {LEGAL_AGE_BASE + AGE_LEVER.max} ans dès janvier {START_YEAR + AGE_LEVER.defaultRamp.start} avec effet d'offre emploi seniors ; statut
+              « {statusOf('rend.age_legal', 'offre.sigma.age_legal')} ») et <strong>indexation des pensions</strong> (statut
+              « {statusOf('ref.derive.a_retraites')} »), ainsi que le préréglage <strong>Comptes notionnels</strong> (forme
               réduite, non validé) et le plafonnement (désactivé, non validé).
             </p>
           </div>
@@ -224,16 +233,23 @@ export default function IntroPage({ navigateTo }) {
             les trois cas d'effets d'offre (bas / central / haut) et les fourchettes des paramètres.
           </li>
           <li>
-            <strong>Inflation exogène :</strong> trajectoire issue des prévisionnistes indépendants, sans boucle prix-salaires
-            ni réponse endogène de l'inflation.
+            <strong>Inflation exogène :</strong> trajectoire tirée d'un petit nombre de prévisions publiées pour 2026–2027
+            (statut « {statusOf('macro.pi.2026', 'macro.pi.2027')} »), sans boucle prix-salaires ni réponse endogène de
+            l'inflation.
+          </li>
+          <li>
+            <strong>Hypothèses de référence provisoires :</strong> la référence fixe la dérive des autres dépenses{' '}
+            <code>ref.derive.b_autres</code> à {fmt(P['ref.derive.b_autres'], 1)} point de PIB par an{' '}
+            (statut « {statusOf('ref.derive.b_autres')} »), ce qui la rend plus favorable que la règle prévue par la note de modèle ;
+            la croissance et l'inflation 2026–2027 ont le statut « {statusOf('macro.g.2026', 'macro.g.2027', 'macro.pi.2026', 'macro.pi.2027')} ».
           </li>
           <li>
             <strong>Régime unique de multiplicateurs :</strong> multiplicateurs de demande d'expansion uniquement (pas de
             basculement automatique en récession).
           </li>
           <li>
-            <strong>Pas de contagion financière :</strong> la boucle dette–taux prolonge linéairement <code>β</code> jusqu'au
-            plafond de 25 %, d'où les avertissements explicites au-delà de l'expérience historique.
+            <strong>Pas de contagion financière :</strong> la boucle dette–taux prolonge linéairement <code>β</code>, le
+            taux à l'émission étant plafonné à {fmt(RATE_MAX * 100, 0)} %, d'où les avertissements explicites au-delà de l'expérience historique.
           </li>
           <li>
             <strong>Transparence des statuts :</strong> chaque paramètre « de mémoire », « à collecter », « non validé » ou

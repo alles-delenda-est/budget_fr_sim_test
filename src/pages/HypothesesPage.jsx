@@ -14,7 +14,7 @@ import {
   formatParamValue,
   groupParams,
   paramStatusCounts,
-  REVIEWER_QUESTIONS,
+  buildReviewerQuestions,
 } from './hypotheses/helpers'
 import './SimulateurBudgetPage.css'
 import './HypothesesPage.css'
@@ -41,11 +41,12 @@ export default function HypothesesPage() {
       lvt: lvtSupplyInfo(P),
       iStarPct: issuanceRate(P) * 100,
       counts: paramStatusCounts(PARAMS),
+      questions: buildReviewerQuestions(),
     }
   }, [])
 
   const paramGroups = useMemo(() => groupParams(PARAMS, { flaggedOnly }), [flaggedOnly])
-  const { P, apu, cofog, equations, levers, lvt, iStarPct, counts } = model
+  const { P, apu, cofog, equations, levers, lvt, iStarPct, counts, questions } = model
 
   const jumpTo = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -206,6 +207,10 @@ export default function HypothesesPage() {
               <strong>{W.tier2DebtPct} % du PIB</strong>, <em>ou</em> charge d'intérêts supérieure à{' '}
               <strong>{W.tier2InterestShareRevenuePct} % des recettes publiques</strong>, <em>ou</em> toute grandeur en %
               du PIB dépassant {W.tier2GdpFigurePct} %. Au-delà de ce point, les courbes sont grisées et pointillées.
+              Ces seuils sont une <strong>convention du simulateur</strong>, sans source empirique :{' '}
+              {fmt(W.tier2DebtPct / 100, 0)} fois le PIB est choisi très au-delà de tout cas enregistré (le palier 1
+              repose, lui, sur le record observé du Japon) ; la part de {W.tier2InterestShareRevenuePct} % des recettes est
+              un repère lisible, non un seuil estimé.
             </li>
           </ul>
         </div>
@@ -364,7 +369,7 @@ export default function HypothesesPage() {
           Trois choix de modélisation sont explicitement soumis à l'avis des économistes relecteurs avant la publication :
         </p>
         <div className="hyp-questions">
-          {REVIEWER_QUESTIONS.map((q) => (
+          {questions.map((q) => (
             <article key={q.numero} className="hyp-question-card">
               <h3>{q.numero}. {q.titre}</h3>
               <p>{q.resume}</p>

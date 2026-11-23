@@ -31,23 +31,24 @@
 }
 
 .ret-ndc-toggle {
+  /* Toute la ligne (case + texte) est la zone cliquable : au moins 44 px de haut (WCAG 2.5.5). */
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.5rem;
+  min-height: 44px;
   margin-top: 0.65rem;
+  padding: 0.25rem 0;
   font-size: 0.875rem;
   line-height: 1.4;
-}
-
-.ret-ndc-toggle input[type='checkbox'] {
-  margin-top: 0.2rem;
-  min-width: 18px;
-  min-height: 18px;
-  accent-color: var(--color-accent, #5c6bc0);
   cursor: pointer;
 }
 
-.ret-ndc-toggle label {
+.ret-ndc-toggle input[type='checkbox'] {
+  flex-shrink: 0;
+  margin: 0;
+  min-width: 20px;
+  min-height: 20px;
+  accent-color: var(--color-accent, #5c6bc0);
   cursor: pointer;
 }
 

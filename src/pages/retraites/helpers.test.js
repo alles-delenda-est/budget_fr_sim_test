@@ -6,6 +6,11 @@ import { decomposeAtYear } from '../budget/helpers.js'
 import { evaluateWarnings } from '../budget/warnings.js'
 import {
   LEGAL_AGE_BASE,
+  SOURCE_LINKS,
+  splitCitations,
+  paramStatuses,
+  LEVER_STATUS_PARAMS,
+  COR_SHARE_2025,
   COR_VARIANTS,
   HEALTH_VARIANTS,
   NDC_PRESET,
@@ -136,5 +141,44 @@ describe('Simulateur Retraites : âge légal, indexation et décomposition exact
     const d = decomposeAtYear(ndcPreset, ref, last, EPS, EPS_OFFRE)
     expect(d.lines.reduce((s, l) => s + l.montant, 0)).toBeCloseTo(d.ecart, 6)
     expect(d.lines.some((l) => l.key === `static:${NDC_MODULE.id}` && l.label === `${NDC_MODULE.titre} : effet statique`)).toBe(true)
+  })
+})
+
+describe('Simulateur Retraites : textes lus dans les paramètres et sources liées', () => {
+  const COR = PARAM_BY_ID['ref.derive.a_retraites']
+
+  it('les libellés COR et santé reprennent les valeurs des paramètres (aucun « favorable / défavorable »)', () => {
+    expect(COR_VARIANTS[0].label).toContain(`${COR.value[2070].toFixed(1).replace('.', ',')} % en 2070`)
+    expect(COR_VARIANTS[1].label).toContain(`${COR.low[2070].toFixed(1).replace('.', ',')} % en 2070`)
+    expect(COR_VARIANTS[2].label).toContain(`${COR.high[2070].toFixed(1).replace('.', ',')} % en 2070`)
+    for (const v of COR_VARIANTS) expect(v.description).not.toMatch(/favorable/)
+    expect(HEALTH_VARIANTS.every((v) => !/NaN|undefined/.test(v.label + v.description))).toBe(true)
+  })
+
+  it('préréglage NDC : économie posée par hypothèse (part 2025 lue dans les paramètres) et risque de double compte', () => {
+    expect(COR_SHARE_2025).toBe(COR.value[2025])
+    const share = `${COR_SHARE_2025.toFixed(1).replace('.', ',')} %`
+    for (const txt of [NDC_PRESET.description, NDC_PRESET.hypothese]) {
+      expect(txt).toContain(share)
+      expect(txt).toMatch(/par hypothèse/)
+      expect(txt).toMatch(/deux fois/)
+      expect(txt).toMatch(/diviseur de rente/)
+    }
+    expect(NDC_PRESET.description).not.toMatch(/levier validé/)
+    expect(NDC_PRESET.description).toContain('éditeur déclaré : Parti libéral français')
+  })
+
+  it('les balises [S23] et [S24] deviennent des liens (adresses de docs/model-note.md §9)', () => {
+    expect(SOURCE_LINKS.S23.url).toMatch(/^https:\/\/www\.cor-retraites\.fr\//)
+    expect(SOURCE_LINKS.S24.url).toBe('https://g-pliberal.github.io/retraitecomptenotionelle/')
+    const refs = splitCitations(NDC_PRESET.description).filter((p) => p.ref).map((p) => p.ref)
+    expect(refs).toEqual(['S23', 'S24'])
+    expect(splitCitations('a [S99] b')).toEqual([{ text: 'a [S99] b' }])
+    expect(splitCitations('[S15][S16]')).toEqual([{ ref: 'S15' }, { ref: 'S16' }])
+  })
+
+  it('les pastilles des leviers affichent le statut réel des paramètres', () => {
+    expect(paramStatuses(LEVER_STATUS_PARAMS.age_legal)).toEqual([PARAM_BY_ID['rend.age_legal'].status])
+    expect(paramStatuses(LEVER_STATUS_PARAMS.indexation_pensions)).toEqual([COR.status])
   })
 })
