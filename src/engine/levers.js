@@ -84,10 +84,18 @@ export const LEVERS = [
     offsetGroup: 'prestations', statut: 'sourcé',
     aide: '−1 = 1 point sous l\'inflation (+4,2 Md€/an sur le solde) ; +1 = 1 point au-dessus (−4,2 Md€). Effet de niveau permanent (1 % des dépenses de retraites du COR, 14,1 % du PIB 2025).' },
   { id: 'age_legal', titre: 'Âge légal de départ en retraite', unite: 'années par rapport au droit en vigueur', min: -2, max: 3, type: 'depense', signe: 1,
-    rendement: (P) => P['rend.age_legal'], categorie: 'prestations', blocs: () => ALL_SECU,
-    offsetGroup: 'prestations', defaultRamp: { start: 2, years: 6 }, rampInSupplyLag: true,
+    asymmetric: true, rendParams: ['rend.age_legal.hausse', 'rend.age_legal.baisse'],
+    rendement: (P, x = 1) => (x < 0 ? P['rend.age_legal.baisse'] : P['rend.age_legal.hausse']),
+    categorie: 'prestations', blocs: () => ALL_SECU,
+    offsetParam: 'comp.offset.age_legal',
+    // Profils mensuels de chevauchement de cohortes sous calendrier LFSS 2026 (docs/review-age-legal.md) :
+    // - Hausse (+6 mois/gén. accéléré dès janv. 2028, gén. 1965 T2–1969) : 2028–2034 (7 ans, plein effet en 2034).
+    // - Baisse (plafond 63 ans dès gén. 1966, car gén. 1965 T2–T4 est déjà à 63 ans 0 mois) : 2029–2033 (5 ans, plein effet en 2033).
+    defaultRamp: { start: 2, years: 7, profile: [0.156, 0.281, 0.375, 0.625, 0.719, 0.781, 1] },
+    defaultRampDown: { start: 3, years: 5, profile: [0.219, 0.406, 0.594, 0.781, 1] },
+    rampInSupplyLag: true,
     statut: 'sourcé (fourchette), centre choisi',
-    aide: 'Variation par rapport au droit en vigueur (64 ans ; −2 = 62 ans, +3 = 67 ans). Entrée en vigueur en janvier 2028 (fin du gel LFSS 2026) avec montée en charge linéaire sur 6 ans (plein effet en 2033). +1 an ≈ +8,4 Md€/an (5,8–10,0) sur le solde des régimes de retraite (Cour des comptes, févr. 2025), hors effet d\'offre (+0,30 % PIB, L = 6 ans).' },
+    aide: 'Variation par rapport au droit en vigueur (64 ans, atteint pour la gén. 1969 en 2033 après gel LFSS 2026). Pensions brutes seules (hors cotisations retraites déjà comptées dans E7) : +4,95 Md€/an en hausse (dès 2028 accéléré, plein effet 2034) et −2,61 Md€/an en baisse (dès 2029, plein effet 2033), corrigées de 20 % d\'effets de report sociaux (Unédic, IJ maladie, minima — DREES/DARES) et couplées à l\'effet d\'offre emploi seniors (+0,30 % PIB, L = 6 ans).' },
 ]
 
 // Leviers de réforme du logement et du marché du travail (D5) : visibles, désactivés, sans effet budgétaire (σ = 0).
@@ -102,9 +110,23 @@ export const LEVER_BY_ID = Object.fromEntries(LEVERS.map((l) => [l.id, l]))
 
 const sane = (x, lo, hi) => (Number.isFinite(x) ? Math.min(hi, Math.max(lo, x)) : 0)
 
-/** Rampe : part de l'effet en vigueur l'année t (t = 0 pour 2026). Défaut : plein effet dès t = 1 (2027). */
-export function ramp(t, { start = 1, years = 1 } = {}) {
+/** Rampe par défaut d'un levier selon le signe de `x` (supporte `defaultRampDown` si asymétrique en calendrier). */
+export function defaultRampFor(lever, x = 1) {
+  if (x < 0 && lever?.defaultRampDown) return lever.defaultRampDown
+  return lever?.defaultRamp
+}
+
+/**
+ * Rampe : part de l'effet en vigueur l'année t (t = 0 pour 2026). Défaut : plein effet dès t = 1 (2027).
+ * Accepte soit une rampe linéaire `{ start, years }`, soit un profil annuel explicite `{ start, profile }`
+ * (ex. chevauchement mensuel de cohortes pour l'âge légal ; plateau sur la dernière valeur au-delà).
+ */
+export function ramp(t, { start = 1, years = 1, profile = null } = {}) {
   if (t < start) return 0
+  if (Array.isArray(profile) && profile.length > 0) {
+    const idx = t - start
+    return idx < profile.length ? profile[idx] : profile[profile.length - 1]
+  }
   return Math.min(1, (t - start + 1) / Math.max(1, years))
 }
 
@@ -114,17 +136,18 @@ export function postReformRate(lever, x, P) {
   return clampTau(lever.theta.mode === 'proportionnel' ? tau0 * (1 + x / 100) : tau0 + x / 100)
 }
 
-/** θ d'un levier au taux après réforme (recettes), ou décalage o pour les dépenses de prestations ; 0 sinon. */
+/** θ d'un levier au taux après réforme (recettes), ou décalage / reports sociaux o (prestations) ; 0 sinon. */
 export function leverTheta(lever, x, P) {
   if (lever.type === 'recette') {
     const t = lever.theta
     return thetaAtRate(P[t.id], P[t.tau0] / 100, postReformRate(lever, x, P), t.form)
   }
+  if (lever.offsetParam) return P[lever.offsetParam]
   return lever.offsetGroup === 'prestations' ? P['comp.offset.prestations'] : 0
 }
 
-/** Étalon statique en Md€ (ex ante) pour x unités : signe × rendement × x. */
-export const staticYield = (lever, x, P) => lever.signe * lever.rendement(P) * x
+/** Étalon statique en Md€ (ex ante) pour x unités : signe × rendement(P, x) × x. */
+export const staticYield = (lever, x, P) => lever.signe * lever.rendement(P, x) * x
 
 /**
  * Convertit des valeurs de leviers { id: x } en instruments du moteur.
@@ -141,8 +164,8 @@ export function leversToInstruments(values, P, nYears, rampOpts, supply = {}) {
     // θ ne garde que sa part non réelle quand le levier porte un effet d'offre σ ≠ 0 (pas de double compte avec E5 + E7), au rythme
     // de montée en charge de l'effet d'offre : θ_non_réel(t) = max(0, θ − θ_réel × phase(t)). Sans σ, θ est inchangé.
     const sup = lever.type === 'recette' ? supplyForCase(lever.id, x, P, supply.sigma, supply.ysCase) : null
-    const thReel = sup ? partReelle(lever.id, sup.sigma, lever.rendement(P), P) : 0
-    const leverRamp = rampOpts ?? lever.defaultRamp
+    const thReel = sup ? partReelle(lever.id, sup.sigma, lever.rendement(P, x), P) : 0
+    const leverRamp = rampOpts ?? defaultRampFor(lever, x)
     const start = leverRamp?.start ?? 1
     const thetaByYear = Array.from({ length: nYears + 1 }, (_, t) => (thReel > 0 ? thetaNonReel(theta, thReel * supplyPhase(t - start, sup.L, sup.t0)) : theta))
     const aBlocks = { centrales: [], securiteSociale: [], locales: [] }

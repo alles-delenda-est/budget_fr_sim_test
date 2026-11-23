@@ -168,17 +168,21 @@ describe('Simulateur Retraites : textes lus dans les paramètres et sources lié
     expect(NDC_PRESET.description).toContain('éditeur déclaré : Parti libéral français')
   })
 
-  it('les balises [S23] et [S24] deviennent des liens (adresses de docs/model-note.md §9)', () => {
+  it('les balises [S23], [S24] et [S27] deviennent des liens (adresses de docs/model-note.md §9)', () => {
     expect(SOURCE_LINKS.S23.url).toMatch(/^https:\/\/www\.cor-retraites\.fr\//)
     expect(SOURCE_LINKS.S24.url).toBe('https://g-pliberal.github.io/retraitecomptenotionelle/')
+    expect(SOURCE_LINKS.S27.url).toBe('https://www.vie-publique.fr/files/rapport/pdf/297428.pdf')
     const refs = splitCitations(NDC_PRESET.description).filter((p) => p.ref).map((p) => p.ref)
     expect(refs).toEqual(['S23', 'S24'])
     expect(splitCitations('a [S99] b')).toEqual([{ text: 'a [S99] b' }])
-    expect(splitCitations('[S15][S16]')).toEqual([{ ref: 'S15' }, { ref: 'S16' }])
+    expect(splitCitations('[S15][S16][S27]')).toEqual([{ ref: 'S15' }, { ref: 'S16' }, { ref: 'S27' }])
   })
 
   it('les pastilles des leviers affichent le statut réel des paramètres', () => {
-    expect(paramStatuses(LEVER_STATUS_PARAMS.age_legal)).toEqual([PARAM_BY_ID['rend.age_legal'].status])
+    expect(paramStatuses(LEVER_STATUS_PARAMS.age_legal)).toEqual([
+      PARAM_BY_ID['rend.age_legal.hausse'].status,
+      PARAM_BY_ID['comp.offset.age_legal'].status,
+    ])
     expect(paramStatuses(LEVER_STATUS_PARAMS.indexation_pensions)).toEqual([COR.status])
   })
 })

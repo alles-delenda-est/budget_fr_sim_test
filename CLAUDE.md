@@ -5,8 +5,8 @@ Instructions de travail pour les agents et contributeurs sur **Simulateur Budget
 ## 1. Sources de vérité
 
 - **Spécification du modèle** : `docs/model-note.md` (note de modèle v0.3, équations E1–E12, décisions D1–D13, limites §10–§12).
-- **Données et collecte** : `docs/baseline-data.md`, `docs/sigma-fiscal.md`, `docs/review-supply-effects-gemini.md`, `docs/review-comptes-notionnels.md`, `docs/review-lvt-module.md`, `docs/citations.md`.
-- **Catalogue unique des paramètres** : `src/engine/params.js` (160 paramètres avec valeur centrale, fourchette `low`/`high`, unité, source, statut et explication). Ne jamais dupliquer de constante économique dans les pages UI.
+- **Données et collecte** : `docs/baseline-data.md`, `docs/sigma-fiscal.md`, `docs/review-supply-effects-gemini.md`, `docs/review-age-legal.md`, `docs/review-comptes-notionnels.md`, `docs/review-lvt-module.md`, `docs/citations.md`.
+- **Catalogue unique des paramètres** : `src/engine/params.js` (162 paramètres avec valeur centrale, fourchette `low`/`high`, unité, source, statut et explication). Ne jamais dupliquer de constante économique dans les pages UI.
 - **Seuils d'avertissement** : `src/config.js` (`WARNING_THRESHOLDS`, source unique).
 
 ## 2. Architecture du moteur v2 (`src/engine/`)
@@ -25,7 +25,7 @@ Le moteur projette les **administrations publiques consolidées (APU)** en compt
 ### Équations clés (E1–E12)
 - **E1** : PIB nominal de référence `Yb(t) = Yb(t-1) * (1 + g + pi)` (croissance et inflation = médiane des prévisionnistes indépendants, jamais les prévisions du Gouvernement).
 - **E2** : Effet ex ante d'un levier en part du PIB de base (`a(j,t)` positif = améliore le solde), indexé sur le PIB (zéro érosion nominale).
-- **E3** : Réponse comportementale `θ` symétrique en paramètres, évaluée au taux après réforme, réduite à sa part non réelle `θ_non_réel(t)` quand `σ ≠ 0` ; `θ = 0` sur les dépenses (hors `comp.offset.prestations` optionnel, 0 par défaut).
+- **E3** : Réponse comportementale `θ` symétrique en paramètres, évaluée au taux après réforme, réduite à sa part non réelle `θ_non_réel(t)` quand `σ ≠ 0` ; `θ = 0` sur les dépenses hors effets de report sociaux de l'âge légal (`comp.offset.age_legal = 0,20`) et `comp.offset.prestations` optionnel (`0` par défaut).
 - **E4** : Effet de demande en niveau, qui s'estompe (`λ = 0,7`), par catégorie de multiplicateur `dem.m.*`.
 - **E5** : Effets d'offre permanents sur le niveau du PIB (`yS`), isolés ligne par ligne avec cas `bas` / `central` / `haut` ordonnés par résultat PIB.
 - **E6** : PIB réalisé `Y(t) = Yb(t) * (1 + yD(t) + yS(t))`.
@@ -42,7 +42,7 @@ Le moteur projette les **administrations publiques consolidées (APU)** en compt
 1. **`IntroPage.jsx`** : présentation pédagogique du moteur v2, chiffres 2025 lus depuis `PARAMS`, trajectoire de référence à 10 ans et sensibilité à `β` à 30 ans, limites assumées.
 2. **`SimulateurBudgetPage.jsx`** (`src/pages/budget/`) : 14 leviers actifs en 3 groupes (recettes, dépenses, prestations), 3 leviers structurels désactivés, **6 scénarios types neutres** (`presets.js`, dont le comparateur macroéconomique RESF 2027), 3 horizons, 3 cas d'offre, décomposition exacte par cause (`decomposeAtYear`, somme = écart au centième de milliard), 3 blocs APU, avertissements palier 1 (`260 %`, record Japon 2020) / palier 2 (`500 %` dette ou `50 %` intérêts/recettes), **URL partageables** (`share.js`), **export CSV** (`exportCsv.js`).
 3. **`SimulateurRetraitesPage.jsx`** (`src/pages/retraites/`) : variantes de productivité COR juin 2026 (`1,0 %` / `0,7 %` / `0,4 %`), variantes santé/dépendance Commission européenne 2024, leviers validés (`age_legal` 62–67 ans dès janv. 2028 avec effet d'offre emploi seniors, `indexation_pensions`), **préréglage Comptes notionnels (D8)** (`age_legal = 65 ans` + `NDC_MODULE`, `non validé`, confiance basse), mesure désactivée (`plafonnement_pensions`), 4 graphiques, décomposition exacte et 3 blocs.
-4. **`HypothesesPage.jsx`** (`src/pages/hypotheses/`) : lit 100 % de ses tableaux dans `PARAMS`, `LEVERS`, `STRUCTURAL_LEVERS`, `SUPPLY_EFFECTS` et `WARNING_THRESHOLDS` (comptes APU 2025, COFOG 2024, équations E1–E12, catalogue leviers/σ, table filtrable des 160 paramètres, 3 questions ouvertes aux relecteurs).
+4. **`HypothesesPage.jsx`** (`src/pages/hypotheses/`) : lit 100 % de ses tableaux dans `PARAMS`, `LEVERS`, `STRUCTURAL_LEVERS`, `SUPPLY_EFFECTS` et `WARNING_THRESHOLDS` (comptes APU 2025, COFOG 2024, équations E1–E12, catalogue leviers/σ, table filtrable des 162 paramètres, 3 questions ouvertes aux relecteurs).
 
 ## 4. Suite de tests (`npm test`)
 

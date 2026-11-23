@@ -13,7 +13,7 @@ import {
 } from 'recharts'
 import { projectScenario, HORIZONS, START_YEAR } from '../engine/project.js'
 import { resolveParams, PARAM_BY_ID } from '../engine/params.js'
-import { LEVER_BY_ID, staticYield } from '../engine/levers.js'
+import { LEVER_BY_ID, staticYield, defaultRampFor } from '../engine/levers.js'
 import { NDC_MODULE, NDC_START_T, NDC_RAMP_YEARS } from '../engine/ndc-module.js'
 import { WARNING_THRESHOLDS as W } from '../config.js'
 import {
@@ -203,9 +203,15 @@ export default function SimulateurRetraitesPage() {
   const noSupplyEffect = !hasSupplyEffect(result)
 
   const ageTarget = legalAgeFromDelta(ageDelta)
-  const ageStartYear = START_YEAR + AGE_LEVER.defaultRamp.start
-  const ageFullYear = ageStartYear + AGE_LEVER.defaultRamp.years - 1
+  const ageRamp = defaultRampFor(AGE_LEVER, ageDelta)
+  const ageStartYear = START_YEAR + ageRamp.start
+  const ageFullYear = ageStartYear + ageRamp.years - 1
+  const ageUpStartYear = START_YEAR + AGE_LEVER.defaultRamp.start
+  const ageUpFullYear = ageUpStartYear + AGE_LEVER.defaultRamp.years - 1
+  const ageDownStartYear = START_YEAR + AGE_LEVER.defaultRampDown.start
+  const ageDownFullYear = ageDownStartYear + AGE_LEVER.defaultRampDown.years - 1
   const ageYield = staticYield(AGE_LEVER, ageDelta, activeP)
+  const ageOffsetPct = activeP['comp.offset.age_legal'] * 100
   const idxYield = staticYield(INDEX_LEVER, indexDelta, activeP)
   const ndcStartYear = START_YEAR + NDC_START_T
   const ndcFullYear = ndcStartYear + NDC_RAMP_YEARS - 1
@@ -343,8 +349,16 @@ export default function SimulateurRetraitesPage() {
                 <InfoPopover label={AGE_LEVER.titre}>
                   <span className="sb-info-line">{AGE_LEVER.aide}</span>
                   <span className="sb-info-sub">
-                    <strong>rend.age_legal</strong>
-                    <ParamInfo param={PARAM_BY_ID['rend.age_legal']} />
+                    <strong>rend.age_legal.hausse</strong>
+                    <ParamInfo param={PARAM_BY_ID['rend.age_legal.hausse']} />
+                  </span>
+                  <span className="sb-info-sub">
+                    <strong>rend.age_legal.baisse</strong>
+                    <ParamInfo param={PARAM_BY_ID['rend.age_legal.baisse']} />
+                  </span>
+                  <span className="sb-info-sub">
+                    <strong>comp.offset.age_legal</strong>
+                    <ParamInfo param={PARAM_BY_ID['comp.offset.age_legal']} />
                   </span>
                   <span className="sb-info-sub">
                     <strong>offre.sigma.age_legal</strong>
@@ -372,9 +386,11 @@ export default function SimulateurRetraitesPage() {
                 </span>
               </div>
               <p className="ret-lever-note">
-                Calendrier LFSS 2026 : entrée en vigueur en janvier {ageStartYear}, montée en charge sur{' '}
-                {AGE_LEVER.defaultRamp.years} ans. Effet d'offre emploi seniors :{' '}
-                <strong>{fmt(AGE_SIGMA.value, 2, { signed: true })} %</strong> du PIB par année au centre (
+                Pensions brutes (hors cotisations retraites déjà dans <code>ε_offre</code>) :{' '}
+                <strong>{fmt(staticYield(AGE_LEVER, 1, activeP), 2, { signed: true })} Md€</strong>/an en hausse (dès {ageUpStartYear}, plein effet {ageUpFullYear}) /{' '}
+                <strong>{fmt(staticYield(AGE_LEVER, -1, activeP), 2, { signed: true })} Md€</strong>/an en baisse (dès {ageDownStartYear}, plein effet {ageDownFullYear}),
+                corrigées de <strong>{fmt(ageOffsetPct, 0)} %</strong> d'effets de report sociaux (DREES/DARES <CitedText text="[S27]" />).
+                Offre emploi seniors : <strong>{fmt(AGE_SIGMA.value, 2, { signed: true })} %</strong> PIB/an (
                 {fmt(AGE_SIGMA.low, 2, { signed: true })} / {fmt(AGE_SIGMA.high, 2, { signed: true })} %).
               </p>
             </div>
@@ -587,9 +603,10 @@ export default function SimulateurRetraitesPage() {
                 <h3>Droit en vigueur (LFSS 2026)</h3>
                 <p>
                   La LFSS 2026 gèle l'âge légal à <strong>62 ans et 9 mois</strong> et la durée d'assurance à 170 trimestres
-                  jusqu'en <strong>janvier {ageStartYear}</strong> <CitedText text="[S15][S16]" />, avant reprise de la
-                  montée vers {LEGAL_AGE_BASE} ans. Le levier âge légal du simulateur démarre donc en janvier{' '}
-                  {ageStartYear} sur une rampe de {AGE_LEVER.defaultRamp.years} ans (plein effet en {ageFullYear}).
+                  pour la génération 1964 et le T1 1965 jusqu'en <strong>janvier {ageUpStartYear}</strong> <CitedText text="[S15][S16][S23]" />,
+                  avant reprise vers {LEGAL_AGE_BASE} ans (atteint pour la génération 1969 en 2033). Le levier âge légal démarre
+                  en {ageUpStartYear} en hausse accélérée (plein effet {ageUpFullYear}) et en {ageDownStartYear} en baisse (plein effet {ageDownFullYear}),
+                  sans double compte des cotisations retraites et avec {fmt(ageOffsetPct, 0)} % de reports sociaux <CitedText text="[S27]" />.
                 </p>
               </div>
               <div className="ret-demo-card">

@@ -221,12 +221,17 @@ describe('blocs et paramètres', () => {
     }
     const { r: rAge, ref: refAge } = run({ age_legal: 1 }, 'central')
     const ageIds = paramIdsFor({ age_legal: 1 }, rAge)
-    expect(ageIds).toContain('rend.age_legal')
+    expect(ageIds).toContain('rend.age_legal.hausse')
+    expect(ageIds).toContain('rend.age_legal.baisse')
+    expect(ageIds).toContain('comp.offset.age_legal')
     expect(ageIds).toContain('offre.sigma.age_legal')
     expect(ageIds).toContain('offre.lag.age_legal')
     const dAge = decomposeAtYear(rAge, refAge, 8, EPS, EPS_OFFRE)
     expect(dAge.lines.reduce((s, l) => s + l.montant, 0)).toBeCloseTo(dAge.ecart, 6)
     expect(visibleLines(dAge.lines).some((l) => l.key === 'offre:age_legal' && l.montant > 0)).toBe(true)
+    const behavAge = dAge.lines.find((l) => l.key === 'behav:age_legal')
+    expect(behavAge?.label).toBe('Âge légal de départ en retraite : effets de report (autres prestations)')
+    expect(behavAge?.montant).toBeLessThan(0)
   })
 })
 

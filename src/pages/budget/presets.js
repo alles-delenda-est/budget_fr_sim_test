@@ -58,7 +58,7 @@ export const NEUTRAL_SCENARIOS = [
   {
     id: 'equilibre',
     titre: 'Ajustement équilibré (recettes / dépenses)',
-    resume: '≈ +48 Md€ ex ante · 49 % recettes / 51 % dépenses',
+    resume: '≈ +45 Md€ ex ante · 53 % recettes / 47 % dépenses',
     description: 'Consolidation répartie à parts presque égales entre prélèvements larges (TVA +2 pts, CSG +0,5 pt) et maîtrise des dépenses et prestations (affaires économiques −4 %, ONDAM −2 %, pensions −1 pt, âge légal +1 an dès 2028).',
     levers: {
       tva_normal: 2,
@@ -73,7 +73,7 @@ export const NEUTRAL_SCENARIOS = [
   {
     id: 'depenses',
     titre: 'Ajustement par les dépenses',
-    resume: '≈ +48 Md€ ex ante · 100 % dépenses et prestations',
+    resume: '≈ +44 Md€ ex ante · 100 % dépenses et prestations',
     description: 'Consolidation uniquement par la dépense (affaires économiques −8 %, enseignement −4 %, ordre et sécurité −4 %, ONDAM −3 %, pensions −1,5 pt, assurance chômage −10 %, âge légal +1 an). Illustre des multiplicateurs de demande plus élevés à court terme mais un effet d\'offre de long terme plus favorable.',
     levers: {
       dep_affaires_eco: -8,

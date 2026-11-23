@@ -213,7 +213,7 @@ export default function IntroPage({ navigateTo }) {
               basse 0,4 %) et la dérive santé / dépendance (Commission européenne 2024). Leviers retenus pour la version
               0.9 : <strong>âge légal de départ</strong> ({LEGAL_AGE_BASE + AGE_LEVER.min} à{' '}
               {LEGAL_AGE_BASE + AGE_LEVER.max} ans dès janvier {START_YEAR + AGE_LEVER.defaultRamp.start} avec effet d'offre emploi seniors ; statut
-              « {statusOf('rend.age_legal', 'offre.sigma.age_legal')} ») et <strong>indexation des pensions</strong> (statut
+              « {statusOf('rend.age_legal.hausse', 'rend.age_legal.baisse', 'offre.sigma.age_legal')} ») et <strong>indexation des pensions</strong> (statut
               « {statusOf('ref.derive.a_retraites')} »), ainsi que le préréglage <strong>Comptes notionnels</strong> (forme
               réduite, non validé) et le plafonnement (désactivé, non validé).
             </p>

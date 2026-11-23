@@ -25,7 +25,7 @@ const YARDSTICKS = {
   ondam: { x: -1, md: 2.61 },
   indexation_pensions: { x: -1, md: 4.217 },
   travail_assurance_chomage: { x: -1, md: 0.372 },
-  age_legal: { x: 1, md: 8.4, t: 7 },
+  age_legal: { x: 1, md: 4.95, t: 8 },
 }
 
 describe('paramètres', () => {
@@ -759,68 +759,89 @@ describe('indexation des pensions : unité et signe cohérents', () => {
   })
 })
 
-describe('âge légal de départ en retraite (levier validé le 21 nov. 2026)', () => {
+describe('âge légal de départ en retraite (recalibré sur sources primaires le 23 nov. 2026)', () => {
   const yS = (r) => r.total.map((x) => x.yS)
-  it('paramètre rend.age_legal et définition du levier : valeurs, fourchette, source, statut et rampe par défaut', () => {
-    const q = PARAM_BY_ID['rend.age_legal']
-    expect([q.low, q.value, q.high]).toEqual([5.8, 8.4, 10.0])
-    expect(q.unit).toBe('Md€ par année d\'âge légal')
-    expect(q.status).toBe('sourcé (fourchette), centre choisi')
-    expect(q.source).toMatch(/Cour des comptes.*2025/)
-    expect(q.explanation).toMatch(/recoupement/)
-    expect(q.explanation).toMatch(/comp\.offset\.prestations/)
-    expect(PARAM_BY_ID['offre.sigma.age_legal'].explanation).not.toMatch(/Pas encore branché/)
+  it('paramètres asymétriques rend.age_legal.hausse / baisse, comp.offset.age_legal et définition du levier', () => {
+    expect(PARAM_BY_ID['rend.age_legal']).toBeUndefined()
+    const up = PARAM_BY_ID['rend.age_legal.hausse']
+    const dn = PARAM_BY_ID['rend.age_legal.baisse']
+    const off = PARAM_BY_ID['comp.offset.age_legal']
+    expect([up.low, up.value, up.high]).toEqual([3.80, 4.95, 6.10])
+    expect([dn.low, dn.value, dn.high]).toEqual([2.20, 2.61, 4.10])
+    expect([off.low, off.value, off.high]).toEqual([0.15, 0.20, 0.25])
+    expect(up.status).toBe('sourcé (fourchette), centre choisi')
+    expect(dn.status).toBe('sourcé (fourchette), centre choisi')
+    expect(off.status).toBe('sourcé')
+    expect(up.source).toMatch(/Cour des comptes.*2025/)
+    expect(dn.source).toMatch(/Cour des comptes.*2025/)
+    expect(off.source).toMatch(/DREES.*DARES/)
+    expect(PARAM_BY_ID['offre.sigma.age_legal'].source).toMatch(/COR.*juin 2026/)
     const l = LEVER_BY_ID.age_legal
-    expect([l.unite, l.min, l.max, l.type, l.signe, l.categorie, l.offsetGroup, l.statut]).toEqual([
-      'années par rapport au droit en vigueur', -2, 3, 'depense', 1, 'prestations', 'prestations', 'sourcé (fourchette), centre choisi',
+    expect([l.unite, l.min, l.max, l.type, l.signe, l.categorie, l.offsetParam, l.asymmetric, l.statut]).toEqual([
+      'années par rapport au droit en vigueur', -2, 3, 'depense', 1, 'prestations', 'comp.offset.age_legal', true, 'sourcé (fourchette), centre choisi',
     ])
-    expect(l.defaultRamp).toEqual({ start: 2, years: 6 })
+    expect(l.rendParams).toEqual(['rend.age_legal.hausse', 'rend.age_legal.baisse'])
+    expect(l.defaultRamp).toEqual({ start: 2, years: 7, profile: [0.156, 0.281, 0.375, 0.625, 0.719, 0.781, 1] })
+    expect(l.defaultRampDown).toEqual({ start: 3, years: 5, profile: [0.219, 0.406, 0.594, 0.781, 1] })
   })
-  it('trajectoire budgétaire : nul en 2026–2027 (gel LFSS 2026), rampe linéaire sur 6 ans (2028–2033), bloc ASSO seul, décalage prestations', () => {
+  it('trajectoire budgétaire asymétrique : profils de cohortes LFSS 2026 (2028–2034 hausse, 2029–2033 baisse), bloc ASSO seul, reports 20 %', () => {
     const o = { 'fisc.eps': 0, 'fisc.eps_offre': 0 }
-    const r = projectScenario({ levers: { age_legal: 1 }, overrides: o })
-    const exAnteMd25 = (t) => r.blocks.securiteSociale[t].leversExAnte / r.total[t].gdpBase * Y0
-    expect(exAnteMd25(0)).toBe(0) // 2026
-    expect(exAnteMd25(1)).toBe(0) // 2027 (gel LFSS 2026)
-    for (let k = 1; k <= 6; k++) {
-      expect(exAnteMd25(1 + k)).toBeCloseTo((8.4 * k) / 6, 8) // 2028..2033 : 1/6 .. 6/6
-    }
-    expect(exAnteMd25(8)).toBeCloseTo(8.4, 8) // 2034 : plateau
-    expect(exAnteMd25(10)).toBeCloseTo(8.4, 8)
+    // Hausse (+1 an, 64 → 65 ans) : profil accéléré +6m/gén. dès janv. 2028 (2028–2034)
+    const rUp = projectScenario({ levers: { age_legal: 1 }, overrides: o })
+    const exAnteUp25 = (t) => rUp.blocks.securiteSociale[t].leversExAnte / rUp.total[t].gdpBase * Y0
+    expect(exAnteUp25(0)).toBe(0) // 2026
+    expect(exAnteUp25(1)).toBe(0) // 2027 (gel LFSS 2026)
+    const upProf = [0.156, 0.281, 0.375, 0.625, 0.719, 0.781, 1]
+    upProf.forEach((share, i) => {
+      expect(exAnteUp25(2 + i)).toBeCloseTo(4.95 * share, 8)
+    })
+    expect(exAnteUp25(10)).toBeCloseTo(4.95, 8) // plateau 2036
     for (let t = 0; t <= 10; t++) {
-      expect(r.blocks.centrales[t].leversExAnte).toBe(0)
-      expect(r.blocks.locales[t].leversExAnte).toBe(0)
+      expect(rUp.blocks.centrales[t].leversExAnte).toBe(0)
+      expect(rUp.blocks.locales[t].leversExAnte).toBe(0)
     }
-    // décalage optionnel comp.offset.prestations : 0 par défaut, actif si surchargé
-    expect(leverTheta(LEVER_BY_ID.age_legal, 1, P)).toBe(0)
-    expect(leverTheta(LEVER_BY_ID.age_legal, 1, resolveParams({ 'comp.offset.prestations': 0.2 }))).toBe(0.2)
-    const rOff = projectScenario({ levers: { age_legal: 1 }, overrides: { ...o, 'comp.offset.prestations': 0.2 } })
-    expect(rOff.total[7].byInstrument.age_legal.exPost / rOff.total[7].byInstrument.age_legal.exAnte).toBeCloseTo(0.8, 10)
-    // une option ramp explicite remplace defaultRamp (y compris pour sizeByYear)
+    // Baisse (−1 an, 64 → 63 ans) : gén. 1965 T2–T4 déjà à 63 ans 0 mois => nul en 2028, profil 2029–2033
+    const rDn = projectScenario({ levers: { age_legal: -1 }, overrides: o })
+    const exAnteDn25 = (t) => rDn.blocks.securiteSociale[t].leversExAnte / rDn.total[t].gdpBase * Y0
+    expect(exAnteDn25(0)).toBe(0) // 2026
+    expect(exAnteDn25(1)).toBe(0) // 2027
+    expect(exAnteDn25(2)).toBe(0) // 2028
+    const dnProf = [0.219, 0.406, 0.594, 0.781, 1]
+    dnProf.forEach((share, i) => {
+      expect(exAnteDn25(3 + i)).toBeCloseTo(-2.61 * share, 8)
+    })
+    expect(exAnteDn25(10)).toBeCloseTo(-2.61, 8) // plateau 2036
+    // Effets de report sociaux DREES/DARES : comp.offset.age_legal = 0,20 par défaut (indépendant de comp.offset.prestations)
+    expect(leverTheta(LEVER_BY_ID.age_legal, 1, P)).toBe(0.20)
+    expect(leverTheta(LEVER_BY_ID.age_legal, -1, P)).toBe(0.20)
+    expect(rUp.total[8].byInstrument.age_legal.exPost / rUp.total[8].byInstrument.age_legal.exAnte).toBeCloseTo(0.8, 10)
+    expect(rDn.total[7].byInstrument.age_legal.exPost / rDn.total[7].byInstrument.age_legal.exAnte).toBeCloseTo(0.8, 10)
+    const rZeroOff = projectScenario({ levers: { age_legal: 1 }, overrides: { ...o, 'comp.offset.age_legal': 0 } })
+    expect(rZeroOff.total[8].byInstrument.age_legal.exPost / rZeroOff.total[8].byInstrument.age_legal.exAnte).toBeCloseTo(1, 10)
+    // Une option ramp explicite remplace defaultRamp (y compris pour sizeByYear)
     const rCustom = projectScenario({ levers: { age_legal: 1 }, overrides: o, ramp: { start: 1, years: 1 } })
-    expect(rCustom.blocks.securiteSociale[1].leversExAnte / rCustom.total[1].gdpBase * Y0).toBeCloseTo(8.4, 8)
+    expect(rCustom.blocks.securiteSociale[1].leversExAnte / rCustom.total[1].gdpBase * Y0).toBeCloseTo(4.95, 8)
     const rCustomMulti = projectScenario({ levers: { age_legal: 1 }, ramp: { start: 1, years: 4 } })
     expect(rCustomMulti.total[2].yS).toBeCloseTo(0.003 * (2 / 4) * (1 / 6), 10) // t=2: ramp=2/4, tau=1 -> 1/6
-    // demande E4 : nulle en 2026–2027 (gel LFSS 2026), puis négative pendant la montée en charge 2028–2033
+    // Demande E4 : nulle en 2026–2027 (gel LFSS 2026), puis négative pendant la montée en charge 2028–2034
     const rFull = projectScenario({ levers: { age_legal: 1 } })
     const refFull = projectScenario({})
     expect(rFull.total[0].yD).toBe(0)
     expect(rFull.total[1].yD).toBe(0)
-    for (let t = 2; t <= 7; t++) expect(rFull.total[t].yD).toBeLessThan(0)
-    // recettes d'affichage : excluent age_legal.exPost (levier de dépense), ne varient qu'avec le PIB
+    for (let t = 2; t <= 8; t++) expect(rFull.total[t].yD).toBeLessThan(0)
+    // Recettes d'affichage : excluent age_legal.exPost (levier de dépense), ne varient qu'avec le PIB
     const revShare = P['base.recettes.apu'] / Y0
     for (const t of [2, 5, 8]) {
       expect(rFull.total[t].revenue - refFull.total[t].revenue).toBeCloseTo(revShare * (rFull.total[t].gdp - refFull.total[t].gdp), 8)
     }
   })
-  it('effet d\'offre yS : +0,15 / +0,30 / +0,50 % PIB par année, rampe linéaire sur L = 6 ans dès 2028 sans double comptage, symétrique pour x < 0', () => {
+  it('effet d\'offre yS : +0,15 / +0,30 / +0,50 % PIB par année, L = 6 sans double comptage (dès 2028 hausse, 2029 baisse), sans double compte des cotisations', () => {
     const run = (x, ysCase, horizon = 'dixAns') => projectScenario({ levers: { age_legal: x }, ysCase, horizon })
     const c = run(1, 'central')
     const b = run(1, 'bas')
     const h = run(1, 'haut')
-    // nul avant 2028 (t = 0, 1) et à l'entrée en vigueur τ = 0 (t = 2)
+    // Hausse : nul avant 2028 (t = 0, 1) et à l'entrée en vigueur τ = 0 (t = 2), rampe linéaire L = 6 (t = 2..8)
     expect(yS(c).slice(0, 3)).toEqual([0, 0, 0])
-    // rampe strictement linéaire sur L = 6 ans (t = 2..8) : pas de rampe quadratique (τ/6)²
     for (let tau = 1; tau <= 6; tau++) {
       expect(yS(c)[2 + tau]).toBeCloseTo((0.003 * tau) / 6, 10)
     }
@@ -830,7 +851,7 @@ describe('âge légal de départ en retraite (levier validé le 21 nov. 2026)', 
     expect(yS(c)[10]).toBeCloseTo(0.0030, 10) // plateau
     expect(c.supply.lignes.map((l) => l.id)).toEqual(['age_legal'])
     expect(c.supply.lignes[0].cas).toBe('central')
-    // décomposition exacte à chaque année pour les trois cas
+    // Décomposition exacte à chaque année pour les trois cas
     for (const r of [b, c, h]) {
       for (let t = 1; t < r.total.length; t++) {
         const d = r.decomposition[t]
@@ -838,19 +859,27 @@ describe('âge légal de départ en retraite (levier validé le 21 nov. 2026)', 
         expect(s).toBeCloseTo(d.total, 8)
       }
     }
-    // symétrie x = -1 (64 → 63 ans) : PIB en baisse, solde dégradé
+    // Baisse (x = -1, 64 → 63 ans) : démarre en 2029 (t = 3), plein effet L = 6 en 2035 (t = 9)
     const ref = projectScenario({})
     const downC = run(-1, 'central')
     const downB = run(-1, 'bas')
     const downH = run(-1, 'haut')
-    expect(yS(downC)[8]).toBeCloseTo(-0.0030, 10)
-    expect(yS(downB)[8]).toBeCloseTo(-0.0050, 10) // « bas » = PIB le plus bas
-    expect(yS(downH)[8]).toBeCloseTo(-0.0015, 10)
-    expect(downC.total[8].balance).toBeLessThan(ref.total[8].balance)
+    expect(yS(downC).slice(0, 4)).toEqual([0, 0, 0, 0]) // nul en 2026..2029 (τ = 0 en 2029)
+    expect(yS(downC)[9]).toBeCloseTo(-0.0030, 10)
+    expect(yS(downB)[9]).toBeCloseTo(-0.0050, 10) // « bas » = PIB le plus bas
+    expect(yS(downH)[9]).toBeCloseTo(-0.0015, 10)
+    expect(downC.total[9].balance).toBeLessThan(ref.total[9].balance)
     expect(c.total[8].balance).toBeGreaterThan(ref.total[8].balance)
-    // recoupement APU statique + retour fiscal d'offre en équivalent € 2025 : 8,4 + 0,436 × 0,30 % × 2991 ≈ 12,31 Md€
-    const totalApu25 = (c.total[8].byInstrument.age_legal.exPost + P['fisc.eps_offre'] * c.total[8].yS * c.total[8].gdpBase) / c.total[8].gdpBase * Y0
-    expect(totalApu25).toBeCloseTo(8.4 + P['fisc.eps_offre'] * 0.003 * Y0, 6)
-    expect(totalApu25 / Y0 * 100).toBeCloseTo(0.41, 2)
+    // Contrôle anti-double-compte (docs/review-age-legal.md) :
+    // Hausse : 4,95 × (1 − 0,20) = 3,96 Md€ direct net + 0,436 × 0,30 % × 2 991 = 3,91 Md€ offre => +7,87 Md€ (+0,263 % PIB) au centre, +10,48 Md€ (+0,350 % PIB) au cas haut
+    const totalApuUp25 = (c.total[8].byInstrument.age_legal.exPost + P['fisc.eps_offre'] * c.total[8].yS * c.total[8].gdpBase) / c.total[8].gdpBase * Y0
+    expect(totalApuUp25).toBeCloseTo(4.95 * 0.8 + P['fisc.eps_offre'] * 0.003 * Y0, 6)
+    expect(totalApuUp25 / Y0 * 100).toBeCloseTo(0.263, 2)
+    const totalApuUpHigh25 = (h.total[8].byInstrument.age_legal.exPost + P['fisc.eps_offre'] * h.total[8].yS * h.total[8].gdpBase) / h.total[8].gdpBase * Y0
+    expect(totalApuUpHigh25 / Y0 * 100).toBeCloseTo(0.350, 2)
+    // Baisse : −2,61 × 0,80 − 0,436 × 0,30 % × 2 991 ≈ −6,00 Md€ (−0,201 % PIB) — asymétrie hausse > |baisse|
+    const totalApuDn25 = (downC.total[9].byInstrument.age_legal.exPost + P['fisc.eps_offre'] * downC.total[9].yS * downC.total[9].gdpBase) / downC.total[9].gdpBase * Y0
+    expect(totalApuDn25).toBeCloseTo(-2.61 * 0.8 - P['fisc.eps_offre'] * 0.003 * Y0, 6)
+    expect(totalApuUp25).toBeGreaterThan(Math.abs(totalApuDn25))
   })
 })

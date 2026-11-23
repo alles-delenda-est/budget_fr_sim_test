@@ -166,9 +166,11 @@ export function decomposeAtYear(result, reference, t, eps, epsOffre) {
   }
   const modById = Object.fromEntries((result.modules ?? []).map((m) => [m.id, m]))
   for (const [id, v] of Object.entries(tot.byInstrument)) {
-    const titre = LEVER_BY_ID[id]?.titre ?? modById[id]?.titre ?? id
+    const lever = LEVER_BY_ID[id]
+    const titre = lever?.titre ?? modById[id]?.titre ?? id
+    const behavSuffix = lever?.type === 'depense' ? 'effets de report (autres prestations)' : 'réaction des contribuables'
     lines.push({ key: `static:${id}`, kind: 'statique', leverId: id, label: `${titre} : effet statique`, montant: v.exAnte })
-    lines.push({ key: `behav:${id}`, kind: 'comportement', leverId: id, label: `${titre} : réaction des contribuables`, montant: v.exPost - v.exAnte })
+    lines.push({ key: `behav:${id}`, kind: 'comportement', leverId: id, label: `${titre} : ${behavSuffix}`, montant: v.exPost - v.exAnte })
   }
   let offreTotal = 0
   const offreLines = result.supply.lignes.map((l) => {
@@ -212,8 +214,10 @@ export function paramIdsFor(values, result, macroId = null) {
   if (macroId && Object.hasOwn(MACRO_VARIANT_BY_ID, macroId)) ids.push(...MACRO_VARIANT_BY_ID[macroId].paramIds)
   for (const l of LEVERS) {
     if (!values?.[l.id]) continue
-    if (PARAM_BY_ID[`rend.${l.id}`]) ids.push(`rend.${l.id}`)
+    if (l.rendParams) ids.push(...l.rendParams)
+    else if (PARAM_BY_ID[`rend.${l.id}`]) ids.push(`rend.${l.id}`)
     if (l.theta) ids.push(l.theta.id, l.theta.tau0)
+    if (l.offsetParam) ids.push(l.offsetParam)
     if (l.categorie) ids.push(`dem.m.${l.categorie}`)
     const reg = SUPPLY_BY_LEVER[l.id]
     if (reg) ids.push(...(reg.sigma ? [reg.sigma] : reg.sigmaParams), reg.L, reg.t0)

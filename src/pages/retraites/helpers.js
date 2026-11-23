@@ -19,6 +19,7 @@ export const SOURCE_LINKS = {
   S16: { label: 'OFCE, 30 janvier 2026', url: 'https://www.ofce.sciences-po.fr/blog2024/fr/2026/20260129_MD/' },
   S23: { label: 'COR, rapport annuel de juin 2026 (synthèse)', url: 'https://www.cor-retraites.fr/sites/default/files/2026-06/Synth%C3%A8se_RA_2026.pdf' },
   S24: { label: 'Parti libéral français, simulateur « Retraite à comptes notionnels »', url: 'https://g-pliberal.github.io/retraitecomptenotionelle/' },
+  S27: { label: 'Cour des comptes, 20 février 2025 (PDF primaire)', url: 'https://www.vie-publique.fr/files/rapport/pdf/297428.pdf' },
 }
 
 /** Découpe un texte en morceaux { text } et { ref } (balises [S15], [S16], [S23], [S24] connues de SOURCE_LINKS). */
@@ -42,7 +43,7 @@ export const paramStatuses = (ids) => [...new Set(ids.map((id) => PARAM_BY_ID[id
 
 /** Paramètres dont le statut s'affiche sur chaque levier retraites. */
 export const LEVER_STATUS_PARAMS = {
-  age_legal: ['rend.age_legal', 'offre.sigma.age_legal'],
+  age_legal: ['rend.age_legal.hausse', 'rend.age_legal.baisse', 'comp.offset.age_legal', 'offre.sigma.age_legal'],
   indexation_pensions: ['ref.derive.a_retraites'],
 }
 

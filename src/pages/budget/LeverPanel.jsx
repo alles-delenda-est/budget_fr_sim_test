@@ -1,5 +1,5 @@
 import { useId } from 'react'
-import { staticYield, STRUCTURAL_LEVERS } from '../../engine/levers.js'
+import { staticYield, defaultRampFor, STRUCTURAL_LEVERS } from '../../engine/levers.js'
 import { START_YEAR } from '../../engine/project.js'
 import { SUPPLY_BY_LEVER } from '../../engine/supply.js'
 import { PARAM_BY_ID } from '../../engine/params.js'
@@ -9,14 +9,19 @@ import { InfoPopover, StatusBadge, ParamInfo } from './InfoPopover'
 function LeverSlider({ lever, value, onChange, P }) {
   const id = useId()
   const yieldMd = staticYield(lever, value, P)
-  const params = [`rend.${lever.id}`, lever.theta?.id, lever.categorie && `dem.m.${lever.categorie}`].filter((p) => p && PARAM_BY_ID[p])
-  const startYear = lever.defaultRamp ? START_YEAR + lever.defaultRamp.start : null
-  const fullYear = lever.defaultRamp ? startYear + lever.defaultRamp.years - 1 : null
-  const rampNote = lever.defaultRamp ? ` (entrée en vigueur en ${startYear}, plein effet en ${fullYear})` : ''
-  const rampShort = lever.defaultRamp ? ` (dès ${startYear}, plein effet ${fullYear})` : ''
-  const yieldTitle = lever.defaultRamp
+  const rendIds = lever.rendParams ?? [`rend.${lever.id}`]
+  const params = [...rendIds, lever.offsetParam, lever.theta?.id, lever.categorie && `dem.m.${lever.categorie}`].filter((p) => p && PARAM_BY_ID[p])
+  const activeRamp = defaultRampFor(lever, value)
+  const startYear = activeRamp ? START_YEAR + activeRamp.start : null
+  const fullYear = activeRamp ? startYear + activeRamp.years - 1 : null
+  const rampNote = activeRamp ? ` (entrée en vigueur en ${startYear}, plein effet en ${fullYear})` : ''
+  const rampShort = activeRamp ? ` (dès ${startYear}, plein effet ${fullYear})` : ''
+  const yieldTitle = activeRamp
     ? `Étalon statique en régime permanent : effet ex ante sur le solde dès ${startYear}, plein effet en ${fullYear}`
     : 'Étalon statique : effet ex ante sur le solde'
+  const unitLine = lever.asymmetric
+    ? `Étalon par unité (pensions brutes) : ${fmt(staticYield(lever, 1, P), 2, { signed: true })} Md€/an en hausse (dès ${START_YEAR + lever.defaultRamp.start}) / ${fmt(staticYield(lever, -1, P), 2, { signed: true })} Md€/an en baisse (dès ${START_YEAR + (lever.defaultRampDown?.start ?? lever.defaultRamp.start)}), avant effets de report (${fmt(P[lever.offsetParam] * 100, 0)} %) et effet d'offre.`
+    : `Étalon par unité : ${fmt(staticYield(lever, 1, P), 2, { signed: true })} Md€ par an sur le solde${rampNote} (avant réaction des contribuables et effets sur l'activité).`
   return (
     <div className="sb-lever">
       <div className="sb-lever-head">
@@ -27,7 +32,7 @@ function LeverSlider({ lever, value, onChange, P }) {
         )}
         <InfoPopover label={lever.titre}>
           <span className="sb-info-line">{lever.aide}</span>
-          <span className="sb-info-line">Étalon par unité : {fmt(staticYield(lever, 1, P), 2, { signed: true })} Md€ par an sur le solde{rampNote} (avant réaction des contribuables et effets sur l'activité).</span>
+          <span className="sb-info-line">{unitLine}</span>
           {params.map((pid) => (
             <span key={pid} className="sb-info-sub"><strong>{pid}</strong><ParamInfo param={PARAM_BY_ID[pid]} /></span>
           ))}
@@ -49,7 +54,7 @@ export default function LeverPanel({ values, onChange, onReset, onExtreme, P }) 
   return (
     <section className="sb-section" aria-labelledby="sb-leviers">
       <h2 id="sb-leviers">Leviers</h2>
-      <p className="sb-help">Chaque curseur change une mesure à partir de 2027 (sauf l'âge légal de retraite : à partir de janvier 2028, fin du gel LFSS 2026, avec montée en charge sur 6 ans). L'étalon statique est l'effet en régime permanent sur le solde, avant toute réaction : signe positif = solde amélioré.</p>
+      <p className="sb-help">Chaque curseur change une mesure à partir de 2027 (sauf l'âge légal de retraite : dès janvier 2028 en hausse ou 2029 en baisse selon le calendrier LFSS 2026). L'étalon statique est l'effet brut en régime permanent sur le solde, avant reports et réaction comportementale : signe positif = solde amélioré.</p>
       <div className="sb-toolbar">
         <button type="button" className="sb-btn" onClick={onReset}>Remettre les leviers à zéro</button>
         <button type="button" className="sb-btn" onClick={() => onExtreme('min')}>Tout au minimum</button>
