@@ -230,7 +230,7 @@ export default function SimulateurRetraitesPage() {
         <p className="sb-help">
           Moteur v2 (équations E1–E12) appliqué au système de retraites et au vieillissement : trajectoires du{' '}
           <strong>COR (juin 2026)</strong>, dérive santé / dépendance (Commission européenne 2024), leviers retenus pour
-          la version de relecture (âge légal dès janvier {START_YEAR + AGE_LEVER.defaultRamp.start} avec effet d'offre
+          la version 0.9 (âge légal dès janvier {START_YEAR + AGE_LEVER.defaultRamp.start} avec effet d'offre
           emploi seniors, indexation des pensions) et préréglage{' '}
           <strong>Comptes notionnels</strong> (forme réduite, non validé).
         </p>
@@ -329,7 +329,7 @@ export default function SimulateurRetraitesPage() {
           </fieldset>
 
           <fieldset className="sb-group">
-            <legend>Leviers retenus pour la version de relecture (actifs)</legend>
+            <legend>Leviers retenus pour la version 0.9 (actifs)</legend>
             <p className="sb-help">
               Effet sur le bloc sécurité sociale (ASSO) et, pour l'âge légal, effet d'offre sur le PIB via l'emploi des
               seniors (<code>ε_offre = {fmt(EPS_OFFRE * 100, 1)} %</code>).

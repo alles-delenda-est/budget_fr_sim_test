@@ -35,7 +35,7 @@ function App() {
           <p>
             Simulateur Budget France (moteur v2) &bull; Sources : Insee (comptes 2025), RESF 2027, AFT (2026), COR (juin 2026), Cour des comptes, Commission européenne, OCDE, Banque de France, Unédic, DG Trésor, FIPECO.
           </p>
-          <p className="footer-note footer-version">Version de relecture {versionStamp()}</p>
+          <p className="footer-note footer-version">Version 0.9 {versionStamp()}</p>
           <p className="footer-note">
             Administrations publiques consolidées : État et ODAC, sécurité sociale, collectivités locales &bull; équations E1–E12, effets de demande et d'offre explicites, avertissements hors expérience historique.
           </p>

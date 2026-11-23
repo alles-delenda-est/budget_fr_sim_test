@@ -211,7 +211,7 @@ export default function IntroPage({ navigateTo }) {
             <p>
               Exploration des trajectoires du <strong>COR (juin 2026)</strong> selon la productivité (centrale, haute 1,0 %,
               basse 0,4 %) et la dérive santé / dépendance (Commission européenne 2024). Leviers retenus pour la version
-              de relecture : <strong>âge légal de départ</strong> ({LEGAL_AGE_BASE + AGE_LEVER.min} à{' '}
+              0.9 : <strong>âge légal de départ</strong> ({LEGAL_AGE_BASE + AGE_LEVER.min} à{' '}
               {LEGAL_AGE_BASE + AGE_LEVER.max} ans dès janvier {START_YEAR + AGE_LEVER.defaultRamp.start} avec effet d'offre emploi seniors ; statut
               « {statusOf('rend.age_legal', 'offre.sigma.age_legal')} ») et <strong>indexation des pensions</strong> (statut
               « {statusOf('ref.derive.a_retraites')} »), ainsi que le préréglage <strong>Comptes notionnels</strong> (forme

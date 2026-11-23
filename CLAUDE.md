@@ -70,3 +70,61 @@ Le moteur projette les **administrations publiques consolidées (APU)** en compt
 - **Paramètres à vérifier / collecter** : plusieurs paramètres portent un statut signalé (notamment `de mémoire` pour multiplicateurs, θ, ε, κ ; `à collecter` pour `ref.derive.b_autres`, `comp.offset.prestations`, `rend.is`, `rend.cotis`, `bloc.part_hors_secu.*`, `macro.pi.long` ; `non validé` pour `macro.g/pi` 2026–2027, `dem.lambda`, délais `offre.lag/t0`, effet d'offre de l'IR, `NDC_MODULE`).
 - **Hors périmètre Day 0** : modèle déterministe (pas de distribution probabiliste), inflation exogène (pas de boucle prix-salaires), régime unique de multiplicateurs d'expansion, prolongement linéaire de `β` jusqu'au plafond de 25 % (encadré par les paliers 1 et 2).
 - **Questions ouvertes aux relecteurs (§12)** : (1) rentabilité long terme d'une hausse uniforme d'IR (`e_L = 0,40`, `τ_m = 21 %`), (2) calibrage de `ε_offre = 0,436` (D13), (3) pente dette–taux `β = 3 pb/pt` en zone euro et comportement au-delà de 200 % de dette/PIB.
+
+---
+
+## 7. Security Review Process (HARD GATE)
+
+**MANDATORY: No production deployment proceeds without Gemini security review sign-off.**
+
+**Reviewer model: Gemini 4 Neon** (API model code `gemini-4-neon`, Google AI Studio / Gemini API). Do not substitute another model without Patrick's approval.
+
+### Review Scope
+
+1. **Security-by-design:** No injection vulnerabilities, proper input validation at system boundaries (URL parameters in `share.js`, CSV export)
+2. **Coding excellence:** Clean code, no dead code, consistent patterns, proper error handling
+3. **Robustness:** Edge cases handled (NaN, undefined, extreme lever values, 30-year horizon, debt-warning tiers)
+
+### Process
+
+1. Before any deployment to production, request a Gemini 4 Neon review of all changed files
+2. Gemini must confirm: "APPROVED for production deployment"
+3. If Gemini flags issues, fix them and re-request review
+4. **No exceptions.** Preview deploys are allowed without review; production deploys are not.
+
+### Review Checklist
+
+- [ ] All interest-rate paths (`issuanceRate()`, β premium, `RATE_MAX` cap in `src/engine/project.js`) produce valid numbers (no NaN, no Infinity)
+- [ ] All lever extreme combinations produce valid projections on every horizon
+- [ ] No hardcoded credentials or API keys
+- [ ] No eval(), innerHTML, dangerouslySetInnerHTML or other injection vectors
+- [ ] All external data (user inputs, URL-decoded scenarios) are sanitized and clamped before use in calculations
+
+---
+
+## 8. Deployment Workflow
+
+### Platform: Vercel
+
+| Command | Purpose |
+|---|---|
+| `npm run dev` | Local development server |
+| `npm run build` | Production build (`vite build`) |
+| `npm run preview` | Preview production build locally |
+| `npx vitest run` | Run test suite |
+
+### Deployment Steps
+
+1. **Development:** Work on a branch from `review/day0`, run tests locally
+2. **Preview deploy:** Push branch → Vercel creates a preview deploy automatically
+3. **Gemini 4 Neon review:** Request security review (HARD GATE — see §7)
+4. **Production deploy:** Only after Gemini sign-off, merge to `main` (Patrick only) → Vercel deploys to production
+
+### Pre-deployment Checklist
+
+- [ ] `npm run lint && npx vitest run && npm run build` — zero errors, zero lint warnings
+- [ ] Manual verification: load app, check baseline figures, test lever extremes
+- [ ] No NaN in any chart or metric card
+- [ ] All presets load correctly
+- [ ] Hypothèses page displays all parameters with sources and statuses
+- [ ] Gemini 4 Neon security review: APPROVED
