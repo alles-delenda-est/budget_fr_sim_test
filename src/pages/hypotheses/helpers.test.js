@@ -114,7 +114,7 @@ describe('Hypothèses : catalogue des leviers et σ', () => {
     expect(byId.age_legal.supply.mode).toBe('décidé')
     expect(byId.age_legal.supply.central).toBeCloseTo(0.30, 6)
     expect(byId.age_legal.unitYield).toBeCloseTo(4.95, 6)
-    expect(byId.age_legal.unitYieldDown).toBeCloseTo(-2.61, 6)
+    expect(byId.age_legal.unitYieldDown).toBeCloseTo(-3.40, 6)
     expect(byId.age_legal.rampText).toContain('2028')
     expect(byId.age_legal.rampText).toContain('2029')
     expect(byId.travail_assurance_chomage.supply.mode).toBe('décidé')

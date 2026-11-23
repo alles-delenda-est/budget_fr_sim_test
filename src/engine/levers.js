@@ -95,7 +95,7 @@ export const LEVERS = [
     defaultRampDown: { start: 3, years: 5, profile: [0.219, 0.406, 0.594, 0.781, 1] },
     rampInSupplyLag: true,
     statut: 'sourcé (fourchette), centre choisi',
-    aide: 'Variation par rapport au droit en vigueur (64 ans, atteint pour la gén. 1969 en 2033 après gel LFSS 2026). Pensions brutes seules (hors cotisations retraites déjà comptées dans E7) : +4,95 Md€/an en hausse (dès 2028 accéléré, plein effet 2034) et −2,61 Md€/an en baisse (dès 2029, plein effet 2033), corrigées de 20 % d\'effets de report sociaux (Unédic, IJ maladie, minima — DREES/DARES) et couplées à l\'effet d\'offre emploi seniors (+0,30 % PIB, L = 6 ans).' },
+    aide: 'Variation par rapport au droit en vigueur (64 ans, atteint pour la gén. 1969 en 2033 après gel LFSS 2026), avec translation symétrique des bornes carrières longues. Pensions brutes seules (hors cotisations retraites déjà comptées dans E7) : +4,95 Md€/an en hausse (dès 2028 accéléré, plein effet 2034) et −3,40 Md€/an en baisse (dès 2029, plein effet 2033), corrigées de 20 % d\'effets de report sociaux (Unédic, IJ maladie, minima — DREES/DARES) et couplées à l\'effet d\'offre emploi seniors (+0,30 % PIB, L = 6 ans).' },
 ]
 
 // Leviers de réforme du logement et du marché du travail (D5) : visibles, désactivés, sans effet budgétaire (σ = 0).
@@ -122,7 +122,7 @@ export function defaultRampFor(lever, x = 1) {
  * (ex. chevauchement mensuel de cohortes pour l'âge légal ; plateau sur la dernière valeur au-delà).
  */
 export function ramp(t, { start = 1, years = 1, profile = null } = {}) {
-  if (t < start) return 0
+  if (!Number.isFinite(t) || t < start) return 0
   if (Array.isArray(profile) && profile.length > 0) {
     const idx = t - start
     return idx < profile.length ? profile[idx] : profile[profile.length - 1]

@@ -766,8 +766,8 @@ describe('âge légal de départ en retraite (recalibré sur sources primaires l
     const up = PARAM_BY_ID['rend.age_legal.hausse']
     const dn = PARAM_BY_ID['rend.age_legal.baisse']
     const off = PARAM_BY_ID['comp.offset.age_legal']
-    expect([up.low, up.value, up.high]).toEqual([3.80, 4.95, 6.10])
-    expect([dn.low, dn.value, dn.high]).toEqual([2.20, 2.61, 4.10])
+    expect([up.low, up.value, up.high]).toEqual([4.20, 4.95, 6.10])
+    expect([dn.low, dn.value, dn.high]).toEqual([2.60, 3.40, 4.30])
     expect([off.low, off.value, off.high]).toEqual([0.15, 0.20, 0.25])
     expect(up.status).toBe('sourcé (fourchette), centre choisi')
     expect(dn.status).toBe('sourcé (fourchette), centre choisi')
@@ -808,9 +808,9 @@ describe('âge légal de départ en retraite (recalibré sur sources primaires l
     expect(exAnteDn25(2)).toBe(0) // 2028
     const dnProf = [0.219, 0.406, 0.594, 0.781, 1]
     dnProf.forEach((share, i) => {
-      expect(exAnteDn25(3 + i)).toBeCloseTo(-2.61 * share, 8)
+      expect(exAnteDn25(3 + i)).toBeCloseTo(-3.40 * share, 8)
     })
-    expect(exAnteDn25(10)).toBeCloseTo(-2.61, 8) // plateau 2036
+    expect(exAnteDn25(10)).toBeCloseTo(-3.40, 8) // plateau 2036
     // Effets de report sociaux DREES/DARES : comp.offset.age_legal = 0,20 par défaut (indépendant de comp.offset.prestations)
     expect(leverTheta(LEVER_BY_ID.age_legal, 1, P)).toBe(0.20)
     expect(leverTheta(LEVER_BY_ID.age_legal, -1, P)).toBe(0.20)
@@ -877,9 +877,9 @@ describe('âge légal de départ en retraite (recalibré sur sources primaires l
     expect(totalApuUp25 / Y0 * 100).toBeCloseTo(0.263, 2)
     const totalApuUpHigh25 = (h.total[8].byInstrument.age_legal.exPost + P['fisc.eps_offre'] * h.total[8].yS * h.total[8].gdpBase) / h.total[8].gdpBase * Y0
     expect(totalApuUpHigh25 / Y0 * 100).toBeCloseTo(0.350, 2)
-    // Baisse : −2,61 × 0,80 − 0,436 × 0,30 % × 2 991 ≈ −6,00 Md€ (−0,201 % PIB) — asymétrie hausse > |baisse|
+    // Baisse : −3,40 × 0,80 − 0,436 × 0,30 % × 2 991 ≈ −6,63 Md€ (−0,222 % PIB) — asymétrie hausse > |baisse| (contrainte 172 trimestres)
     const totalApuDn25 = (downC.total[9].byInstrument.age_legal.exPost + P['fisc.eps_offre'] * downC.total[9].yS * downC.total[9].gdpBase) / downC.total[9].gdpBase * Y0
-    expect(totalApuDn25).toBeCloseTo(-2.61 * 0.8 - P['fisc.eps_offre'] * 0.003 * Y0, 6)
+    expect(totalApuDn25).toBeCloseTo(-3.40 * 0.8 - P['fisc.eps_offre'] * 0.003 * Y0, 6)
     expect(totalApuUp25).toBeGreaterThan(Math.abs(totalApuDn25))
   })
 })

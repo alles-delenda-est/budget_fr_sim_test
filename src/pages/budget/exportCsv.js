@@ -30,7 +30,7 @@ export const COLUMNS = [
   'PIB référence (Md€)', 'Solde référence (% du PIB)', 'Dette référence (% du PIB)', 'Intérêts référence (Md€)', 'Chômage référence (%)',
   'Écart de solde total (Md€)',
   'Cause : hypothèses macroéconomiques (Md€)',
-  'Cause : mesures, effet statique (Md€)', 'Cause : réaction des contribuables (Md€)', 'Cause : demande (Md€)',
+  'Cause : mesures, effet statique (Md€)', 'Cause : réaction comportementale et reports (Md€)', 'Cause : demande (Md€)',
   'Cause : effets d\'offre (Md€)', 'Cause : intérêts (Md€)',
 ]
 
@@ -63,7 +63,7 @@ export function buildCsv({ stamp, url, horizonLabel, ysCase, macroLabel = null, 
     ['Cas des effets d\'offre', ysCase],
   ]
   if (macroLabel) headerRows.push(['Hypothèses macroéconomiques', macroLabel])
-  headerRows.push(['Leviers (dès 2027, âge légal dès 2028 avec montée en charge sur 6 ans)'])
+  headerRows.push(['Leviers (dès 2027, âge légal dès 2028 en hausse [2028–2034] ou 2029 en baisse [2029–2033])'])
   const lines = headerRows.map((cells) => cells.map(csvText).join(SEP))
   const active = LEVERS.filter((l) => typeof values?.[l.id] === 'number' && Number.isFinite(values[l.id]) && values[l.id] !== 0)
   if (active.length === 0) {

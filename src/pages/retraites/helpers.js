@@ -204,11 +204,12 @@ export function buildPensionSeries(result, reference, P) {
 export function buildPensionSnapshots(result, reference, P) {
   const N = result.years.length - 1
   const corSeries = P['ref.derive.a_retraites']
+  const ageFullT = AGE_LEVER.defaultRamp.start + AGE_LEVER.defaultRamp.years - 1
   const rawTargets = N >= 25
     ? [{ t: 4, titre: 'Court terme' }, { t: 14, titre: 'Horizon 2040' }, { t: N, titre: 'Fin d\'horizon' }]
     : N >= 14
       ? [{ t: 4, titre: 'Court terme' }, { t: 10, titre: 'À 10 ans' }, { t: N, titre: 'Fin d\'horizon' }]
-      : [{ t: 4, titre: 'Court terme' }, { t: 7, titre: 'Plein effet âge légal' }, { t: N, titre: 'Fin d\'horizon' }]
+      : [{ t: 4, titre: 'Court terme' }, { t: ageFullT, titre: 'Plein effet âge légal' }, { t: N, titre: 'Fin d\'horizon' }]
 
   const seen = new Set()
   const chosen = []

@@ -19,8 +19,11 @@ function LeverSlider({ lever, value, onChange, P }) {
   const yieldTitle = activeRamp
     ? `Étalon statique en régime permanent : effet ex ante sur le solde dès ${startYear}, plein effet en ${fullYear}`
     : 'Étalon statique : effet ex ante sur le solde'
+  const upStart = START_YEAR + (lever.defaultRamp?.start ?? 1)
+  const dnStart = START_YEAR + (lever.defaultRampDown?.start ?? lever.defaultRamp?.start ?? 1)
+  const offsetPct = lever.offsetParam ? P[lever.offsetParam] * 100 : 0
   const unitLine = lever.asymmetric
-    ? `Étalon par unité (pensions brutes) : ${fmt(staticYield(lever, 1, P), 2, { signed: true })} Md€/an en hausse (dès ${START_YEAR + lever.defaultRamp.start}) / ${fmt(staticYield(lever, -1, P), 2, { signed: true })} Md€/an en baisse (dès ${START_YEAR + (lever.defaultRampDown?.start ?? lever.defaultRamp.start)}), avant effets de report (${fmt(P[lever.offsetParam] * 100, 0)} %) et effet d'offre.`
+    ? `Étalon par unité (pensions brutes) : ${fmt(staticYield(lever, 1, P), 2, { signed: true })} Md€/an en hausse (dès ${upStart}) / ${fmt(staticYield(lever, -1, P), 2, { signed: true })} Md€/an en baisse (dès ${dnStart}), avant effets de report (${fmt(offsetPct, 0)} %) et effet d'offre.`
     : `Étalon par unité : ${fmt(staticYield(lever, 1, P), 2, { signed: true })} Md€ par an sur le solde${rampNote} (avant réaction des contribuables et effets sur l'activité).`
   return (
     <div className="sb-lever">
