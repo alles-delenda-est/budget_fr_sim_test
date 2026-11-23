@@ -245,7 +245,12 @@ export default function HypothesesPage() {
                     <code className="hyp-id">{l.id}</code>
                   </th>
                   <td>{l.unite} ({fmt(l.min, 0)} à {fmt(l.max, 0, { signed: true })})</td>
-                  <td className="hyp-num">{fmt(l.unitYield, 2, { signed: true })} Md€</td>
+                  <td className="hyp-num">
+                    <div>{fmt(l.unitYield, 2, { signed: true })} Md€</div>
+                    {l.unitYieldDown !== null && (
+                      <div className="hyp-sub">−1 u. : {fmt(l.unitYieldDown, 2, { signed: true })} Md€</div>
+                    )}
+                  </td>
                   <td>
                     <div>{l.blocsLabel}</div>
                     <div className="hyp-sub">{l.rampText}</div>

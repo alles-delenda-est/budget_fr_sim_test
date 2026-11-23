@@ -21,7 +21,7 @@ src/
 │   ├── Navigation.jsx/.css     # Barre d'onglets
 │   └── ReviewBanner.jsx/.css   # Bandeau « Version de relecture »
 ├── engine/                     # Moteur de projection v2 (pur JavaScript, sans dépendance React)
-│   ├── params.js               # Catalogue unique des 160 paramètres (PARAMS, PARAM_BY_ID, resolveParams, interpolateSeries)
+│   ├── params.js               # Catalogue unique des 162 paramètres (PARAMS, PARAM_BY_ID, resolveParams, interpolateSeries)
 │   ├── levers.js               # 14 leviers actifs (LEVERS) + 3 leviers structurels désactivés (STRUCTURAL_LEVERS)
 │   ├── supply.js               # Effets d'offre E5 (σ calculé fiscal + σ décidé) et θ_non_réel
 │   ├── modules.js              # Contrat de module autonome (validateModuleDefinition, runModule, TEST_MODULE)
@@ -74,7 +74,7 @@ Le modèle couvre l'ensemble des **administrations publiques (APU)** en comptabi
 ## 3. Flux de calcul du moteur (`projectScenario`)
 
 ### 3.1 Résolution des paramètres et instruments
-1. `resolveParams(overrides)` résout les 160 paramètres de `PARAMS` en validant les identifiants et la finitude des valeurs.
+1. `resolveParams(overrides)` résout les 162 paramètres de `PARAMS` en validant les identifiants et la finitude des valeurs.
 2. `leversToInstruments(levers, P, N, ramp, { sigma, ysCase })` convertit les 14 leviers actifs (`LEVERS`) en séries annuelles par bloc `aBlocks[bloc][t]` (fraction du PIB de référence) et `theta[t]`.
 3. Chaque module passé dans `options.modules` est exécuté par `runModule(mod, values, context)` avec un `context` profondément gelé (`deepFreeze`). Le contrat impose qu'un module ne renvoie que `{ annees, flux, explications }`, ne touche jamais à la dette ni aux intérêts, et fournisse `a` par bloc, `theta ∈ [0, 1]`, `categorie` ou `m`, et un `yS` optionnel `{ bas, central, haut }`.
 4. `coreSupplyLines` calcule les séries d'effets d'offre E5 des leviers natifs pour les trois cas (`bas`, `central`, `haut`), auxquelles s'ajoutent celles des modules et d'un éventuel chemin `options.yS` externe.
@@ -84,7 +84,7 @@ Le modèle couvre l'ensemble des **administrations publiques (APU)** en comptabi
 - **E2 — Mesures ex ante** : `a(j,t) = signe * rendement(j) * x(j) * rampe(j,t) / base.pib.2025`, appliqué au PIB de référence `Yb(t)`.
 - **E3 — Réponse comportementale `θ`** :
   - Recettes : `θ = e·τ/(1−τ)` (ou `η·τ` pour l'IS), symétrique en paramètres, évalué au taux après réforme `τ1`. Quand le levier porte un effet d'offre `σ ≠ 0`, `θ` est réduit à sa part non réelle au rythme de la montée en charge E5 (`θ_non_réel(t) = max(0, θ − θ_réel × phase(t))`) afin d'éviter tout double compte avec E5 + E7.
-  - Dépenses : `θ = 0`, sauf décalage optionnel `comp.offset.prestations` (`0` par défaut) pour les prestations de retraite (`indexation_pensions`, `age_legal`, `NDC_MODULE`).
+  - Dépenses : `θ = 0`, sauf effets de report sociaux `comp.offset.age_legal` (`0,20`, DREES/DARES) pour `age_legal` et décalage optionnel `comp.offset.prestations` (`0` par défaut) pour `indexation_pensions` et `NDC_MODULE`.
 - **E4 — Effet de demande** : `S_j(t) = λ S_j(t-1) + m_j Δa_j(t)` ; `yD(t) = −Σ S_j(t)` (`λ = 0,7`). Effet en niveau qui s'estompe vers 0.
 - **E5 — Effets d'offre** : `yS_j(t) = σ_j × taille_j(t) × clamp((τ − t0_j) / (L_j − t0_j), 0, 1)`.
   - `σ` **calculé** dans `supply.js` pour les impôts sur le travail (`cotis_patronales`, `csg`, `tva_normal`, `tva_tous_taux`, `ir` via `offre.e_L = 0,40` et le coin fiscal `comp.coin.part_nette = 0,57`) et pour l'`is` (coût d'usage du capital, plafonné à `0,15 %` PIB/pt). L'effet d'offre de l'`ir` porte le statut `non validé`.

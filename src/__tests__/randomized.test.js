@@ -4,7 +4,7 @@
 // Pour explorer d'autres tirages : changer BASE_SEED (le nom des tests porte la graine).
 
 import { describe, it, expect } from 'vitest'
-import { LEVERS, LEVER_BY_ID, BLOCKS, leversToInstruments, staticYield } from '../engine/levers.js'
+import { LEVERS, LEVER_BY_ID, BLOCKS, leversToInstruments, staticYield, defaultRampFor } from '../engine/levers.js'
 import { PARAMS, resolveParams } from '../engine/params.js'
 import { projectScenario, HORIZONS, deepFreeze } from '../engine/project.js'
 import { SUPPLY_EFFECTS } from '../engine/supply.js'
@@ -317,7 +317,7 @@ describe(`tests aléatoires (graine de base ${BASE_SEED})`, () => {
       const step = uniform(rng, 0.2, 2) * 1e-2 * (l.max - l.min)
       const x1 = x0 + step <= l.max ? x0 + step : null
       if (x1 === null) return
-      const t = l.defaultRamp?.start ?? 1
+      const t = defaultRampFor(l, x1)?.start ?? 1
       c.info = { base, lever: l.id, signe: l.signe, t, x0, x1 }
       const b0 = balanceAt({ ...base, [l.id]: x0 }, t)
       const b1 = balanceAt({ ...base, [l.id]: x1 }, t)
@@ -343,17 +343,18 @@ describe(`tests aléatoires (graine de base ${BASE_SEED})`, () => {
     })
   })
 
-  it('12 [seed +12] linéarité des étalons statiques : staticYield(l, k·x) = k·staticYield(l, x)', () => {
+  it('12 [seed +12] linéarité des étalons statiques : linéaire pour les leviers symétriques, positivement homogène par branche pour les leviers asymétriques (age_legal)', () => {
     forCases('12', BASE_SEED + 12, 200, (rng, c) => {
       const l = pick(rng, LEVERS)
       const x = uniform(rng, l.min, l.max)
-      const k = uniform(rng, -5, 5)
+      const k = l.asymmetric ? uniform(rng, 0, 5) : uniform(rng, -5, 5)
       c.info = { lever: l.id, x, k }
       const lhs = staticYield(l, k * x, P0)
       const rhs = k * staticYield(l, x, P0)
       expect(near(lhs, rhs, 1e-12), `${lhs} vs ${rhs}`).toBe(true)
       expect(staticYield(l, 0, P0) === 0).toBe(true) // +0 ou −0
     })
+    expect(staticYield(LEVER_BY_ID.age_legal, 1, P0)).toBeGreaterThan(Math.abs(staticYield(LEVER_BY_ID.age_legal, -1, P0)))
   })
 
   it('13 [seed +13] déterminisme : deux exécutions identiques, entrées gelées acceptées, paramètres globaux non modifiés', () => {
