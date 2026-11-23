@@ -298,7 +298,7 @@ Règles : un module n'écrit jamais dans la dette ni dans les intérêts ; un mo
 - [S26] Revue du module taxe sur la valeur du sol (LVTShift), 17 novembre 2026 : `docs/review-lvt-module.md`
 - [S27] Cour des comptes, « Situation financière et perspectives du système de retraites », 20 février 2025 : https://www.vie-publique.fr/files/rapport/pdf/297428.pdf (PDF primaire téléchargé et relu directement : pp. 11, 44, 66–68, 70–73, 92–95)
 - [S28] Revue primaire et recalibrage du levier âge légal de départ en retraite, 23 novembre 2026 : `docs/review-age-legal.md`
-- [S29] DG Trésor, « Simulations pour le COR », mars 2026 : COR, séance du 26 mars 2026, document n° 3 (Tableau 4, méthode comptable, AOD 64 → 65 ans avec montée en charge immédiate et complète)
+- [S29] DG Trésor, « Simulations pour le COR », mars 2026 : COR, séance du 26 mars 2026, document n° 3 (Tableau 4, méthode comptable, AOD 64 → 65 ans avec montée en charge immédiate et complète ; la colonne « 20 ans » correspond à une simulation à 18 ans) : https://www.cor-retraites.fr/sites/default/files/2026-03/Doc_03_DG%20Tr%C3%A9sor_mod%C3%A8le_r%C3%A9sultats.pdf
 
 ## 10. Ce qui manque
 
