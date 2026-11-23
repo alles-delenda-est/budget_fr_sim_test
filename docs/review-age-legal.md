@@ -1,5 +1,36 @@
 # Revue primaire et recalibrage du levier « Âge légal de départ en retraite » (`age_legal`)
 
+## Addendum 23 nov. 2026 (Claude, validé par Patrick)
+
+Trois paramètres du levier sont modifiés après relecture directe des sources. Le reste de ce document (revue initiale et PR #23) est conservé tel quel ; là où il diffère, cet addendum prévaut.
+
+1. **`rend.age_legal.baisse` : 3,40 → 3,90 Md€/an (fourchette 2,60 – 4,95).** Le texte qui accompagne le Tableau n° 6 de la Cour des comptes (20 févr. 2025, `297428.pdf`) attribue l'écart d'environ 50 % entre les économies d'un relèvement de l'âge et le coût d'un arrêt à 63 ans au traitement des *carrières longues* : bornes relevées d'un an dans le scénario AOD 65, inchangées dans le scénario AOD 63. Les bornes suivant désormais l'âge légal dans les deux sens (décision du 23 nov. 2026), le chiffrage de la Cour à bornes fixes (2,61 Md€ de pensions en 2045, ramené au PIB 2025) est multiplié par ≈ 1,5, soit 3,90 Md€ (0,130 % du PIB). Bas 2,60 : Cour à bornes fixes ; haut 4,95 : symétrie complète avec la hausse. Cette règle remplace l'hypothèse de +30 % de la PR #23 ; le ratio résiduel hausse / baisse passe de 1,46 à ≈ 1,27 (contrainte des 172 trimestres). Statut : « sourcé (fourchette), centre choisi ».
+2. **`offre.sigma.age_legal` : +0,15 / +0,30 / +0,50 → +0,30 / +0,50 / +0,70 % du PIB par année d'âge légal** (L = 6, t0 = 0 et `rampInSupplyLag` inchangés). Sources : (a) DG Trésor, « Simulations pour le COR », mars 2026 (séance COR du 26 mars 2026, document n° 3, Tableau 4, méthode comptable, AOD 64 → 65 ans, montée en charge immédiate et complète) : PIB +0,5 % à 2 et 5 ans, +0,6 % à 10 ans, +0,7 % à 20 ans ; emploi +142 000, +198 000, +210 000 ; solde APU +0,4 / +0,5 pt ; élasticité unitaire du PIB à l'emploi, productivité des seniors égale à la moyenne, statuts d'activité figés (pas d'effet sur le chômage) : estimation haute ; Mésange jugé inadapté à un décalage de l'AOD. (b) COR, rapport annuel juin 2026, partie 2, chapitre 6, Tableau 2.10 p. 123 (DG Trésor, I-MIP CepreHANK, OFCE EmeRaude) : PIB +0,1 à +0,5 % à 2 ans, +0,5 à +0,7 % à 10 ans, +0,1 à +0,8 % à 20 ans ; emploi +160 000 à +250 000 à 10 ans, +200 000 à +240 000 à 20 ans ; solde primaire APU +0,3 à +0,6 pt à 10 ans, +0,3 à +0,65 pt à 20 ans. Le texte pp. 122–123 indique +0,7 à +0,9 point de PIB à long terme, ce qui ne concorde pas avec le tableau. Centre +0,50 : bas de la fourchette des modèles à 10 ans, pour tenir compte d'une productivité et d'une durée du travail des seniors inférieures à la moyenne (choix) ; haut +0,70 : méthode comptable DG Trésor à 20 ans ; bas +0,30 : substitution et bas de la fourchette à 20 ans. Décision de Patrick du 23 nov. 2026, qui remplace celle du 17 nov. (+0,30 au centre).
+3. **`comp.offset.age_legal` : centre 0,20 et bas 0,15 inchangés, haut 0,25 → 0,33.** Source ajoutée : COR, rapport annuel juin 2026, partie 2, chapitre 6, pp. 119–120, citant Drees/Dares (séance COR de janvier 2022) : « près d'un tiers des économies réalisées sur les dépenses de retraite grâce à un recul de l'âge d'ouverture des droits serait compensé à court terme par une hausse des dépenses sociales hors retraite ». Le centre (0,20) reste l'estimation stabilisée Cour / Drees-Dares sur la réforme de 2010 ; 0,33 est l'effet de court terme selon le COR.
+
+**Vérification.** Chiffres du Tableau n° 6 de la Cour et part de 20 % de reports (p. 67) confirmés par lecture directe du PDF. Chiffres du Tableau 2.10 du COR (juin 2026) et du Tableau 4 de la DG Trésor (mars 2026) tels que repris ci-dessus.
+
+**Totaux de régime permanent (PIB 2025, `ε_offre` = 0,436).** Hausse : 4,95 × 0,8 + 0,436 × 0,50 % × 2 991 = +10,48 Md€ (+0,350 % du PIB ; +0,438 % au cas haut d'offre). Baisse : −3,90 × 0,8 − 0,436 × 0,50 % × 2 991 = −9,64 Md€ (−0,322 % du PIB). Ces totaux remplacent +0,263 % / +0,350 % cités plus bas.
+
+**Effets simulés par rapport à la référence** (`projectScenario`, horizon 30 ans, paramètres centraux, profils de cohortes par défaut) :
+
+| Variante | Année | Δ solde (Md€ courants) | Δ solde (pt de PIB) | Δ solde primaire (pt de PIB) | Δ PIB (%) |
+|---|---|---|---|---|---|
+| +1 an (65 ans) | 2030 | +3,9 | +0,12 | +0,11 | +0,15 |
+| +1 an (65 ans) | 2034 | +15,2 | +0,43 | +0,34 | +0,46 |
+| +1 an (65 ans) | 2036 | +19,2 | +0,52 | +0,35 | +0,48 |
+| +1 an (65 ans) | 2040 | +30,9 | +0,73 | +0,36 | +0,50 |
+| +1 an (65 ans) | 2045 | +60,2 | +1,22 | +0,36 | +0,50 |
+| −1 an (63 ans) | 2030 | −2,3 | −0,07 | −0,07 | −0,06 |
+| −1 an (63 ans) | 2034 | −12,2 | −0,35 | −0,28 | −0,39 |
+| −1 an (63 ans) | 2036 | −17,0 | −0,47 | −0,33 | −0,49 |
+| −1 an (63 ans) | 2040 | −27,6 | −0,67 | −0,34 | −0,50 |
+| −1 an (63 ans) | 2045 | −54,9 | −1,14 | −0,34 | −0,50 |
+
+Le solde total s'écarte du solde primaire au fil du temps parce que la dette plus basse (ou plus haute) réduit (ou augmente) la charge d'intérêts ; le solde primaire se stabilise vers +0,36 / −0,34 pt de PIB, dans la fourchette du COR (+0,3 à +0,6 pt à 10 ans).
+
+---
+
 > **Document de revue (23 nov. 2026) — destiné à Claude et Patrick sur `review/day0`.**
 > Analyse primaire menée à partir des PDF originaux de la **Cour des comptes** (*Situation financière et perspectives du système de retraites*, 20 févr. 2025, `297428.pdf`, **lu**) et du **COR** (*Rapport annuel – Juin 2026, Synthèse*, `Synthèse_RA_2026.pdf`, **lu**). Chaque chiffre est étiqueté **`read`** (lu directement dans le document primaire), **`secondary`** (source secondaire / synthèse) ou **`assumed`** (hypothèse de modélisation explicite).
 >
