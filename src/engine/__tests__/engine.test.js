@@ -466,7 +466,7 @@ describe('paramètres d\'offre décidés le 17 novembre (offre.sigma.*, offre.la
     expect(edHaut).toBeCloseTo(0.03985, 4)
     expect([P['offre.lag.enseignement'], P['offre.t0.enseignement']]).toEqual([35, 8])
     expect(P['offre.lag.tva']).toBe(5)
-    expect(triple('offre.sigma.age_legal')).toEqual([0.15, 0.30, 0.50])
+    expect(triple('offre.sigma.age_legal')).toEqual([0.30, 0.50, 0.70]) // décision du 23 nov. 2026 (DG Trésor mars 2026, COR juin 2026 Tableau 2.10)
     expect([P['offre.lag.age_legal'], P['offre.t0.age_legal']]).toEqual([6, 0])
     expect(triple('offre.sigma.lvt')).toEqual([0.10, 0.20, 0.45])
     expect([P['offre.lag.lvt'], P['offre.t0.lvt']]).toEqual([12, 1])
@@ -767,14 +767,20 @@ describe('âge légal de départ en retraite (recalibré sur sources primaires l
     const dn = PARAM_BY_ID['rend.age_legal.baisse']
     const off = PARAM_BY_ID['comp.offset.age_legal']
     expect([up.low, up.value, up.high]).toEqual([4.20, 4.95, 6.10])
-    expect([dn.low, dn.value, dn.high]).toEqual([2.60, 3.40, 4.30])
-    expect([off.low, off.value, off.high]).toEqual([0.15, 0.20, 0.25])
+    expect([dn.low, dn.value, dn.high]).toEqual([2.60, 3.90, 4.95])
+    expect([off.low, off.value, off.high]).toEqual([0.15, 0.20, 0.33])
     expect(up.status).toBe('sourcé (fourchette), centre choisi')
     expect(dn.status).toBe('sourcé (fourchette), centre choisi')
     expect(off.status).toBe('sourcé')
     expect(up.source).toMatch(/Cour des comptes.*2025/)
     expect(dn.source).toMatch(/Cour des comptes.*2025/)
     expect(off.source).toMatch(/DREES.*DARES/)
+    expect(off.source).toMatch(/COR.*juin 2026.*près d'un tiers/)
+    expect(dn.source).toMatch(/Tableau n° 6/)
+    // Asymétrie résiduelle hausse / baisse (contrainte des 172 trimestres) : 4,95 / 3,90 ≈ 1,27 ; baisse < hausse
+    expect(dn.value).toBeLessThan(up.value)
+    expect(up.value / dn.value).toBeCloseTo(1.27, 2)
+    expect(dn.high).toBe(up.value) // haut = symétrie complète avec la hausse
     expect(PARAM_BY_ID['offre.sigma.age_legal'].source).toMatch(/COR.*juin 2026/)
     const l = LEVER_BY_ID.age_legal
     expect([l.unite, l.min, l.max, l.type, l.signe, l.categorie, l.offsetParam, l.asymmetric, l.statut]).toEqual([
@@ -808,9 +814,9 @@ describe('âge légal de départ en retraite (recalibré sur sources primaires l
     expect(exAnteDn25(2)).toBe(0) // 2028
     const dnProf = [0.219, 0.406, 0.594, 0.781, 1]
     dnProf.forEach((share, i) => {
-      expect(exAnteDn25(3 + i)).toBeCloseTo(-3.40 * share, 8)
+      expect(exAnteDn25(3 + i)).toBeCloseTo(-3.90 * share, 8)
     })
-    expect(exAnteDn25(10)).toBeCloseTo(-3.40, 8) // plateau 2036
+    expect(exAnteDn25(10)).toBeCloseTo(-3.90, 8) // plateau 2036
     // Effets de report sociaux DREES/DARES : comp.offset.age_legal = 0,20 par défaut (indépendant de comp.offset.prestations)
     expect(leverTheta(LEVER_BY_ID.age_legal, 1, P)).toBe(0.20)
     expect(leverTheta(LEVER_BY_ID.age_legal, -1, P)).toBe(0.20)
@@ -822,7 +828,7 @@ describe('âge légal de départ en retraite (recalibré sur sources primaires l
     const rCustom = projectScenario({ levers: { age_legal: 1 }, overrides: o, ramp: { start: 1, years: 1 } })
     expect(rCustom.blocks.securiteSociale[1].leversExAnte / rCustom.total[1].gdpBase * Y0).toBeCloseTo(4.95, 8)
     const rCustomMulti = projectScenario({ levers: { age_legal: 1 }, ramp: { start: 1, years: 4 } })
-    expect(rCustomMulti.total[2].yS).toBeCloseTo(0.003 * (2 / 4) * (1 / 6), 10) // t=2: ramp=2/4, tau=1 -> 1/6
+    expect(rCustomMulti.total[2].yS).toBeCloseTo(0.005 * (2 / 4) * (1 / 6), 10) // t=2: ramp=2/4, tau=1 -> 1/6
     // Demande E4 : nulle en 2026–2027 (gel LFSS 2026), puis négative pendant la montée en charge 2028–2034
     const rFull = projectScenario({ levers: { age_legal: 1 } })
     const refFull = projectScenario({})
@@ -835,7 +841,7 @@ describe('âge légal de départ en retraite (recalibré sur sources primaires l
       expect(rFull.total[t].revenue - refFull.total[t].revenue).toBeCloseTo(revShare * (rFull.total[t].gdp - refFull.total[t].gdp), 8)
     }
   })
-  it('effet d\'offre yS : +0,15 / +0,30 / +0,50 % PIB par année, L = 6 sans double comptage (dès 2028 hausse, 2029 baisse), sans double compte des cotisations', () => {
+  it('effet d\'offre yS : +0,30 / +0,50 / +0,70 % PIB par année, L = 6 sans double comptage (dès 2028 hausse, 2029 baisse), sans double compte des cotisations', () => {
     const run = (x, ysCase, horizon = 'dixAns') => projectScenario({ levers: { age_legal: x }, ysCase, horizon })
     const c = run(1, 'central')
     const b = run(1, 'bas')
@@ -843,12 +849,12 @@ describe('âge légal de départ en retraite (recalibré sur sources primaires l
     // Hausse : nul avant 2028 (t = 0, 1) et à l'entrée en vigueur τ = 0 (t = 2), rampe linéaire L = 6 (t = 2..8)
     expect(yS(c).slice(0, 3)).toEqual([0, 0, 0])
     for (let tau = 1; tau <= 6; tau++) {
-      expect(yS(c)[2 + tau]).toBeCloseTo((0.003 * tau) / 6, 10)
+      expect(yS(c)[2 + tau]).toBeCloseTo((0.005 * tau) / 6, 10)
     }
-    expect(yS(b)[8]).toBeCloseTo(0.0015, 10)
-    expect(yS(c)[8]).toBeCloseTo(0.0030, 10)
-    expect(yS(h)[8]).toBeCloseTo(0.0050, 10)
-    expect(yS(c)[10]).toBeCloseTo(0.0030, 10) // plateau
+    expect(yS(b)[8]).toBeCloseTo(0.0030, 10)
+    expect(yS(c)[8]).toBeCloseTo(0.0050, 10)
+    expect(yS(h)[8]).toBeCloseTo(0.0070, 10)
+    expect(yS(c)[10]).toBeCloseTo(0.0050, 10) // plateau
     expect(c.supply.lignes.map((l) => l.id)).toEqual(['age_legal'])
     expect(c.supply.lignes[0].cas).toBe('central')
     // Décomposition exacte à chaque année pour les trois cas
@@ -865,21 +871,21 @@ describe('âge légal de départ en retraite (recalibré sur sources primaires l
     const downB = run(-1, 'bas')
     const downH = run(-1, 'haut')
     expect(yS(downC).slice(0, 4)).toEqual([0, 0, 0, 0]) // nul en 2026..2029 (τ = 0 en 2029)
-    expect(yS(downC)[9]).toBeCloseTo(-0.0030, 10)
-    expect(yS(downB)[9]).toBeCloseTo(-0.0050, 10) // « bas » = PIB le plus bas
-    expect(yS(downH)[9]).toBeCloseTo(-0.0015, 10)
+    expect(yS(downC)[9]).toBeCloseTo(-0.0050, 10)
+    expect(yS(downB)[9]).toBeCloseTo(-0.0070, 10) // « bas » = PIB le plus bas
+    expect(yS(downH)[9]).toBeCloseTo(-0.0030, 10)
     expect(downC.total[9].balance).toBeLessThan(ref.total[9].balance)
     expect(c.total[8].balance).toBeGreaterThan(ref.total[8].balance)
     // Contrôle anti-double-compte (docs/review-age-legal.md) :
-    // Hausse : 4,95 × (1 − 0,20) = 3,96 Md€ direct net + 0,436 × 0,30 % × 2 991 = 3,91 Md€ offre => +7,87 Md€ (+0,263 % PIB) au centre, +10,48 Md€ (+0,350 % PIB) au cas haut
+    // Hausse : 4,95 × (1 − 0,20) = 3,96 Md€ direct net + 0,436 × 0,50 % × 2 991 = 6,52 Md€ offre => +10,48 Md€ (+0,350 % PIB) au centre, +13,09 Md€ (+0,438 % PIB) au cas haut
     const totalApuUp25 = (c.total[8].byInstrument.age_legal.exPost + P['fisc.eps_offre'] * c.total[8].yS * c.total[8].gdpBase) / c.total[8].gdpBase * Y0
-    expect(totalApuUp25).toBeCloseTo(4.95 * 0.8 + P['fisc.eps_offre'] * 0.003 * Y0, 6)
-    expect(totalApuUp25 / Y0 * 100).toBeCloseTo(0.263, 2)
+    expect(totalApuUp25).toBeCloseTo(4.95 * 0.8 + P['fisc.eps_offre'] * 0.005 * Y0, 6)
+    expect(totalApuUp25 / Y0 * 100).toBeCloseTo(0.350, 2)
     const totalApuUpHigh25 = (h.total[8].byInstrument.age_legal.exPost + P['fisc.eps_offre'] * h.total[8].yS * h.total[8].gdpBase) / h.total[8].gdpBase * Y0
-    expect(totalApuUpHigh25 / Y0 * 100).toBeCloseTo(0.350, 2)
-    // Baisse : −3,40 × 0,80 − 0,436 × 0,30 % × 2 991 ≈ −6,63 Md€ (−0,222 % PIB) — asymétrie hausse > |baisse| (contrainte 172 trimestres)
+    expect(totalApuUpHigh25 / Y0 * 100).toBeCloseTo(0.438, 2)
+    // Baisse : −3,90 × 0,80 − 0,436 × 0,50 % × 2 991 ≈ −9,64 Md€ (−0,322 % PIB) — asymétrie hausse > |baisse| (contrainte 172 trimestres)
     const totalApuDn25 = (downC.total[9].byInstrument.age_legal.exPost + P['fisc.eps_offre'] * downC.total[9].yS * downC.total[9].gdpBase) / downC.total[9].gdpBase * Y0
-    expect(totalApuDn25).toBeCloseTo(-3.40 * 0.8 - P['fisc.eps_offre'] * 0.003 * Y0, 6)
+    expect(totalApuDn25).toBeCloseTo(-3.90 * 0.8 - P['fisc.eps_offre'] * 0.005 * Y0, 6)
     expect(totalApuUp25).toBeGreaterThan(Math.abs(totalApuDn25))
   })
 })
