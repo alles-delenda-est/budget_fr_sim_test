@@ -21,7 +21,7 @@
 | `offre.csg.tmi_salarie` | `de mémoire` | **`sourcé`** | **30 %** (inchangé) | **`read`** — Barème officiel IR 2026 (`service-public.gouv.fr` : 29 580 €–84 577 €/part) |
 | `macro.pi.long` | `à collecter` | **`sourcé (fourchette), centre choisi`** | **1,85 %** (`[1,3 ; 2,3]`, inchangé) | **`read`** BdF sept. 2026 p. 1 (IPCH 2028 : **1,6 %** total, **1,9 %** hors énergie/alim.) + **`secondary`** BCE SPF T4 2026 (2031 : **2,0 %**) |
 | `dem.m.achats_invest` | `de mémoire` | **`sourcé (fourchette), centre choisi`** | **0,9** (`[0,5 ; 1,3]`, inchangé) | **`read`** *Mésange* `G2017/04` (invest. **1,31** p. 102, dépense générique **0,78** p. 105) + **`secondary`** Ramey (2019), Gechert (2015) |
-| `dem.m.remunerations` | `de mémoire` | **`sourcé (fourchette), centre choisi`** | **0,8** (`[0,5 ; 1,2]`, inchangé) | **`read`** *Mésange* `G2017/04` §4.1.2 pp. 105–106 (**0,78** an 1 / **1,06** an 2) + **`read`** BdF WP 883 p. 57 (`EA-BDF` : **1,0–1,1** sur 2 ans) |
+| `dem.m.remunerations` | `de mémoire` | **`sourcé (fourchette), centre choisi`** | **0,8** (`[0,5 ; 1,2]`, inchangé) | **`read`** *Mésange* `G2017/04` §4.1.2 pp. 105–106 (**0,78** an 1 / **1,06** an 2) + **`read`** BdF WP 883 p. 54 (`EA-BDF` : **1,0–1,1** sur 2 ans) |
 | `dem.m.prestations` | `de mémoire` | **`sourcé (fourchette), centre choisi`** | **0,5** (`[0,2 ; 0,8]`, inchangé) | **`read`** *Mésange* §4.1.2 (canal revenu disponible ≈ **0,41** an 1) + **`secondary`** Coenen et al. (2012 : transferts généraux **0,42**, ciblés **1,30**) |
 | `dem.m.tva` | `de mémoire` | **`sourcé (fourchette), centre choisi`** | **0,4** (`[0,2 ; 0,6]`, inchangé) | **`read`** *Mésange* `G2017/04` §4.1.5 pp. 112–113 (**−0,32** an 1 / **−0,66** an 2) + **`secondary`** Coenen et al. (2012 : **0,61**) |
 | `dem.m.ir_csg` | `de mémoire` | **`sourcé (fourchette), centre choisi`** | **0,4** (`[0,2 ; 0,6]`, inchangé) | **`read`** *Mésange* `G2017/04` §4.1.6 CSG p. 115 & §4.1.7 IR p. 117 (**0,41** an 1 pour les deux) + **`secondary`** Coenen et al. (2012 : **0,23**) |
@@ -29,7 +29,7 @@
 | `dem.m.is` | `de mémoire` | **`sourcé (secondaire)`** | **0,2** (`[0,1 ; 0,4]`, inchangé) | **`secondary`** Coenen et al. (2012 : **0,24** an 1), Gechert & Rannenberg (2018) ; **`read`** *Mésange* note 77 p. 105 |
 | `comp.theta.ir` | `de mémoire` | **`sourcé (fourchette), centre choisi`** | **0,15** (`[0,05 ; 0,30]`, inchangé) | **`read`** Neisser (IZA DP 11958 / *EJ* 2021, Tableau 8 p. 55 : après déductions médiane **0,343**, moy. **0,390**) + **`secondary`** Lehmann et al. (2013 France : **≈ 0,20**) |
 | `comp.theta.csg` | `de mémoire` | **`à valider`** | **0,10** (`[0 ; 0,20]`, inchangé) | **`read`** Neisser (Tableau 8 p. 55 : avant déductions **0,203** médiane / **0,296** moy. → formule 3.2 à 9,2 % = **0,014–0,030**, écart soumis à Patrick) |
-| `comp.theta.cotis` | `de mémoire` | **`sourcé (fourchette), centre choisi`** | **0,15** (`[0,05 ; 0,30]`, inchangé) | **`read`** Bozio, Breda & Grenet (IZA DP 12502 / *REStud*, pp. 7 & 30 : pass-through **6–21 %**, moy. **15 %** sans lien contributif) + **`read`** *Mésange* §4.1.3 |
+| `comp.theta.cotis` | `de mémoire` | **`sourcé (fourchette), centre choisi`** | **0,15** (`[0,05 ; 0,30]`, inchangé) | **`read`** Bozio, Breda & Grenet (IZA DP 12502 / *REStud*, pp. 5 & 28 : pass-through **6–21 %**, moy. **15 %** sans lien contributif) + **`read`** *Mésange* §4.1.3 |
 | `comp.theta.tva` | `de mémoire` | **`sourcé (secondaire)`** | **0,03** (`[0 ; 0,08]`, inchangé) | **`secondary`** Commission européenne, *VAT Gap in Europe 2025* : France **5,6 %** en 2023 (5,1 % en 2022) |
 | `comp.theta.is` | `de mémoire` | **`sourcé (secondaire)`** | **0,25** (`[0,20 ; 0,38]`, inchangé) | **`secondary`** Beer, de Mooij & Liu (2020, *JES* 34(3)) : `η ≈ 1,0–1,5` (`η × 25 % = 0,25–0,375`) |
 | `emploi.kappa` | `de mémoire` | **`sourcé (secondaire)`** | **0,4** (`[0,3 ; 0,5]`, inchangé) | **`secondary`** Ball, Leigh & Loungani (2017, *JMCB* 49(7)) : France = **−0,37** |
@@ -104,7 +104,7 @@ Pour éviter tout double compte avec la dérive démographique `dA` (retraites C
 
 **Sources principales :**
 - **`read`** — Insee / DG Trésor, *« Le modèle macroéconométrique Mésange : réestimation et nouveautés »*, Document de travail **G2017/04** (mai 2017, `https://www.insee.fr/fr/statistiques/fichier/2848300/G2017-04.pdf`, section 4.1, pp. 102–118 imprimées).
-- **`read`** — Banque de France, Working Paper n° **883** (Aldama, Gaulier, Lemoine, Robert, Turunen & Zhutova, 2022, *The EA-BDF Model and Government Spending Multipliers in a Monetary Union*, `wp-883.pdf`, p. 57).
+- **`read`** — Banque de France, Working Paper n° **883** (Aldama, Gaulier, Lemoine, Robert, Turunen & Zhutova, 2022, *The EA-BDF Model and Government Spending Multipliers in a Monetary Union*, `wp-883.pdf`, p. 54 imprimée).
 - **`secondary`** — Coenen et al. (2012, *AEJ: Macroeconomics*, moyenne 1re année de 7 modèles institutionnels sous politique monétaire accommodante) ; Gechert & Rannenberg (2018, *Journal of Economic Surveys*, 98 études).
 
 | Variante (*Mésange* `G2017/04`, choc permanent de 1 % PIB ex ante) | Section & page imprimée | PIB An 1 | PIB An 2 | PIB An 3 | PIB An 5 | Solde primaire An 1 | Paramètre moteur (`dem.m.*`) |
@@ -118,7 +118,7 @@ Pour éviter tout double compte avec la dérive démographique `dA` (retraites C
 | 4.1.7 Impôt sur le revenu (baisse) | p. 117 | **+0,41** | +0,83 | +0,88 | +0,81 | −0,81 | `ir_csg = 0,4 [0,2 ; 0,6]` |
 
 - **Complément `dem.m.is = 0,2 [0,1 ; 0,4]` :** *Mésange* (note 77, p. 105, `read`) ne fait pas entrer les marges/trésoreries d'entreprises directement dans l'investissement de court terme ; Coenen et al. (2012, `secondary`) donnent un multiplicateur moyen de première année de **`0,24`** pour l'impôt sur les sociétés (contre `0,42` pour les transferts généraux, `0,23` impôts travail, `0,61` taxes sur la consommation). `dem.m.is` est donc honnêtement classé **`sourcé (secondaire)`**.
-- **Complément `EA-BDF` (BdF WP 883, p. 57, `read`) :** Le multiplicateur français de consommation publique sur les 2 premières années atteint **`1,0` à `1,1`** (`MCE` / `VBE`), cohérent avec la borne haute de `dem.m.remunerations` (`1,2`).
+- **Complément `EA-BDF` (BdF WP 883, p. 54 imprimée, `read`) :** Le multiplicateur français de consommation publique sur les 2 premières années atteint **`1,0` à `1,1`** (`MCE` / `VBE`), cohérent avec la borne haute de `dem.m.remunerations` (`1,2`).
 
 ---
 
@@ -126,7 +126,7 @@ Pour éviter tout double compte avec la dérive démographique `dA` (retraites C
 
 **Sources principales :**
 - **`read`** — Carina Neisser, *The Elasticity of Taxable Income: A Meta-Regression Analysis*, IZA DP n° 11958 (publié *The Economic Journal*, 131(640), 2021), `https://docs.iza.org/dp11958.pdf` (**Tableau 8, p. 55 imprimée / p. 58 PDF**, 1 448 estimations issues de 51–53 études).
-- **`read`** — Antoine Bozio, Thomas Breda & Julien Grenet, *Does Tax-Benefit Linkage Matter for the Incidence of Social Security Contributions?*, IZA DP n° 12502 (publié *Review of Economic Studies*), `https://docs.iza.org/dp12502.pdf` (pp. 7 et 30).
+- **`read`** — Antoine Bozio, Thomas Breda & Julien Grenet, *Does Tax-Benefit Linkage Matter for the Incidence of Social Security Contributions?*, IZA DP n° 12502 (publié *Review of Economic Studies*), `https://docs.iza.org/dp12502.pdf` (pp. 5 et 27–28 imprimées).
 - **`secondary`** — Étienne Lehmann, François Marical & Laurence Rioux (2013, *Journal of Public Economics*), France : élasticité des revenus salariaux bruts au taux net d'IR **`≈ 0,20`**.
 
 | Base fiscale (Neisser, Tableau 8 p. 55 imprimée, `read`) | Obs. / Études | Moyenne `e` | Médiane `e` | Application formule §3.2 `θ = e × τ / (1 − τ)` |
@@ -135,7 +135,7 @@ Pour éviter tout double compte avec la dérive démographique `dA` (retraites C
 | **Avant déductions (assiette large, type CSG)** | 852 / 38 | **0,296** | **0,203** | À `τ0 = 9,2 %` (`0,101`) : **`θ = 0,021–0,030`** (`0,014–0,021` sur salaires seuls `e = 0,138 / 0,211`) → **écart notable avec le centre actuel `0,10`** (signalé `à valider`) |
 | *Total toutes études* | *1 448 / 53* | *0,340* | *0,260* | — |
 
-- **Cotisations patronales (`comp.theta.cotis = 0,15 [0,05 ; 0,30]`) :** Bozio, Breda & Grenet (`read`, pp. 7 & 30) établissent sur trois réformes françaises qu'en l'absence de lien contributif fort, la répercussion sur les salaires est limitée (**6 % à 21 %**, moyenne méta-analyse **15 %** sur 11 études contre **103 %** avec lien contributif fort), si bien que le coin pèse sur le coût du travail et l'emploi (retour budgétaire de **28 %** dès l'année 1 dans *Mésange* §4.1.3). À `τ0 = 36,4 %`, `θ = 0,15` implique `e ≈ 0,26`, et `θ_non_réel` redescend à `0,050` lorsque E5 est actif.
+- **Cotisations patronales (`comp.theta.cotis = 0,15 [0,05 ; 0,30]`) :** Bozio, Breda & Grenet (`read`, pp. 5 & 28 imprimées) établissent sur trois réformes françaises qu'en l'absence de lien contributif fort, la répercussion sur les salaires est limitée (**6 % à 21 %**, moyenne méta-analyse **15 %** sur 11 études contre **103 %** avec lien contributif fort), si bien que le coin pèse sur le coût du travail et l'emploi (retour budgétaire de **28 %** dès l'année 1 dans *Mésange* §4.1.3). À `τ0 = 36,4 %`, `θ = 0,15` implique `e ≈ 0,26`, et `θ_non_réel` redescend à `0,050` lorsque E5 est actif.
 
 ---
 
@@ -153,7 +153,7 @@ Pour éviter tout double compte avec la dérive démographique `dA` (retraites C
 4. **`rend.cotis` (`8,5 [7 ; 10]` Md€/pt → `à valider`) :**
    - **Eurostat `nama_10_gdp`** (`eurostat_wages_fr.json`, **`read`**) : salaires et traitements bruts totaux (`D11`) = **`1 111,6 Md€`** (2024) et **`1 129,3 Md€`** (2025) ; cotisations employeurs (`D12`) = `406,9 Md€` (2025).
    - **Urssaf / Acoss** (2024, **`secondary`** `urssaf.org`) : masse salariale du **secteur privé** soumise à cotisations = **`726 Md€`** (+3,3 %, soit ≈ `750 Md€` en 2025), hors salaires bruts publics (≈ `234 Md€`, FIPECO — où une hausse de cotisations employeurs publics est un transfert interne entre APUC/APUL et ASSO, **neutre au consolidé APU**).
-   - **PLFSS 2026, Annexe 4** (`plfss2026_annexe4.pdf`, pp. 23–24 et 37, **`read`**) : les allègements généraux dépassent **`75 Md€`** en 2024 (`71,5 Md€` ROBSS en 2026), réduisant l'assiette effective autour du SMIC (`6,2–7,5 Md€/pt` selon Cour des comptes / Sénat, `secondary`).
+   - **PLFSS 2026, Annexe 4** (`plfss2026_annexe4.pdf`, pp. 23 et 36 imprimées, **`read`**) : les allègements généraux dépassent **`75 Md€`** en 2024 (`71,5 Md€` ROBSS en 2026), réduisant l'assiette effective autour du SMIC (`6,2–7,5 Md€/pt` selon Cour des comptes / Sénat, `secondary`).
    - **Point d'attention pour Patrick :** Sur la masse salariale privée consolidée, 1 point vaut **`≈ 7,3–7,5 Md€`** brut (`6,2–7,5` net des allègements bas salaires), en dessous du centre actuel `8,5 Md€` (hérité de la moyenne DSS `7` / Ecalle `10`). Centre conservé à `8,5`, statut passé à **`à valider`**.
 5. **`cmp.aft.taux_emission.2026` (`3,5 %`, affichage seul → reste `à collecter`) :**
    - Le site `aft.gouv.fr` est protégé contre l'accès automatisé (défi Cloudflare, non contourné) et le rapport annuel AFT 2026 n'est publié qu'après clôture de l'exercice. Les suivis financiers secondaires situent le taux moyen pondéré des émissions OAT MLT en cours d'année 2026 autour de **`3,47–3,6 %`**. Conservé honnêtement en **`à collecter`**.
