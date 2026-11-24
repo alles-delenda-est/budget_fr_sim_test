@@ -5,6 +5,8 @@
 // Convention d'unités : chaque `unit` dit comment lire `value` (ex. "%" = 2,1 pour 2,1 %). Le moteur convertit.
 // Un paramètre « à collecter » porte une VALEUR PROVISOIRE (placeholder) : ne jamais la présenter comme sourcée.
 
+import { LVT_BASE_FONCIERE, LVT_PROVENANCE } from './lvt-snapshot.js'
+
 const p = (id, value, low, high, unit, source, status, explanation) => ({
   id, value, low, high, unit, source, status, explanation,
 })
@@ -287,10 +289,12 @@ const offreFiscal = [
 ]
 
 // ---------- 4quater. Module « taxe sur la valeur du sol » (src/engine/lvt-module.js ; docs/review-lvt-module.md, décisions D11 et D12) ----------
-// Les rendements de LVTShift sont dans l'instantané daté src/engine/lvt-snapshot.js ; ici, les paramètres du mécanisme.
+// Les rendements de LVTShift sont lus dans src/engine/data/lvt-yields.json (import épinglé, src/engine/lvt-snapshot.js) ;
+// ici, les paramètres du mécanisme, et l'assiette foncière, lue dans le même fichier (land_base.taxable_meur).
 const LVTR = 'Revue du module taxe sur la valeur du sol, 17 nov. 2026 (docs/review-lvt-module.md) [S26]'
+const fmtMeur = (v) => new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(v)
 const lvt = [
-  obs('lvt.base_fonciere.2025', 6122, 'Md€ 2025', `INSEE, patrimoine national 2025 (provisoire), valeur foncière imposable reprise par LVTShift (yields.json, commit 322190e du 12 nov. 2026) ; ${LVTR}, §1.3 et §4.4. Non relu dans la publication de l'INSEE`,
+  obs('lvt.base_fonciere.2025', LVT_BASE_FONCIERE.montant, `Md€ ${LVT_BASE_FONCIERE.annee}`, `yields.json de LVTShift (commit ${LVT_PROVENANCE.commit}, importé le ${LVT_PROVENANCE.importeLe}), land_base.taxable_meur = ${fmtMeur(LVT_BASE_FONCIERE.meur)} M€, arrondi au Md€ : ${LVT_BASE_FONCIERE.source} : ${LVT_BASE_FONCIERE.url} ; ${LVTR}, §1.3 et §4.4. Non relu dans la publication de l'INSEE`,
     'Valeur du sol qui sert d\'assiette à la nouvelle taxe. La capitalisation de la taxe dans le prix du sol réduit cette assiette (D12).', 'sourcé (secondaire)'),
   p('lvt.capi.part', 0.80, 0.60, 1.00, 'part', `${LVTR}, §4.2 et §4.4 : capitalisation de 60 à 100 % de la valeur actuelle d'une taxe récurrente (Palmon et Smith 1998 : 62 % ; Høj et al. 2018 : complète au Danemark ; LVTShift : 100 % en central, 60 % en sensibilité). Centre 0,80 proposé par l'implémentation (milieu de la fourchette) : valeur centrale NON fixée par le propriétaire (D12, « valeur centrale à fixer »). Même part pour la nouvelle taxe et pour les impôts supprimés (symétrie, décision du 24 nov. 2026) : aucune estimation d'une asymétrie n'a été trouvée dans les sources de la revue`, 'à valider',
     'Part de la valeur actuelle d\'une taxe récurrente qui se reporte dans le prix des biens (D12). Elle s\'applique dans les deux sens (décision du 24 nov. 2026) : baisse du prix du sol sous l\'effet de la nouvelle taxe nationale, hausse du prix des biens après la suppression des impôts nationaux sur les plus-values, les loyers et, selon la variante, l\'IFI. Plus elle est forte, plus l\'assiette nette et donc le produit de la taxe baissent à taux fixé. Le centre (0,80) est à valider : il n\'a pas été choisi par le propriétaire.'),

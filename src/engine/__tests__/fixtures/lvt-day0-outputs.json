@@ -1,5 +1,5 @@
 {
- "note": "Sorties du module LVT avant l'import de yields.json (review/day0 4b17162, instantané recopié à la main). Années t = 0, 1, 2, 5, 10, 30 (2026 + t). Ne pas régénérer : c'est la référence de non-régression du refactoring.",
+ "note": "Sorties du module LVT (scripts/lvt-day0-fixture.mjs ; yields.json LVTShift 322190e), identiques à celles du Day 0 (review/day0 4b17162, instantané recopié à la main). Années t = 0, 1, 2, 5, 10, 30 (2026 + t). Référence de non-régression : ne régénérer que dans une PR qui documente l'écart.",
  "years": [
   0,
   1,

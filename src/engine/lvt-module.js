@@ -3,7 +3,8 @@
 // Contrat de module (src/engine/modules.js) : n'écrit jamais dans la dette ni dans les intérêts.
 //
 // Mécanisme :
-//   - Données : instantané daté de yields.json de LVTShift (src/engine/lvt-snapshot.js), converti en part du PIB 2025
+//   - Données : yields.json de LVTShift, importé à un commit épinglé (src/engine/data/lvt-yields.json, npm run sync:lvt) et lu
+//     par src/engine/lvt-snapshot.js, converti en part du PIB 2025
 //     (`base.pib.2025`), constant en part de PIB comme les leviers (E2). Effet dès 2027 (t = 1, D1).
 //   - Rendement égal : chaque impôt supprimé est remplacé par la taxe sur la valeur du sol, niveau par niveau.
 //     Bloc local : impôts locaux supprimés et part locale (et départementale) de la nouvelle taxe s'annulent ; a(locales) = 0,
@@ -29,7 +30,7 @@
 //   - theta = 0 ; aucun multiplicateur de demande (m = 0), y compris pour la capitalisation : l'effet de richesse de la baisse
 //     du prix du sol (canal patrimonial) n'est pas modélisé, et aucune catégorie existante ne représente ce canal.
 
-import { LVT_SCENARIO_BY_CODE, LVT_PRELEVEMENTS_SOCIAUX as PS, LVT_IMPOTS_NATIONAUX_SUPPRIMES as SUPPRIMES } from './lvt-snapshot.js'
+import { LVT_SCENARIO_BY_CODE, LVT_PRELEVEMENTS_SOCIAUX as PS, LVT_IMPOTS_NATIONAUX_SUPPRIMES as SUPPRIMES, LVT_PROVENANCE } from './lvt-snapshot.js'
 import { supplyPhase } from './supply.js'
 import { PARAM_BY_ID } from './params.js'
 import { START_YEAR } from './project.js'
@@ -67,7 +68,7 @@ export function lvtComponents(scenarioCode, P, {
   const s = LVT_SCENARIO_BY_CODE[code(scenarioCode)]
   if (!s) return null
   const pib = P['base.pib.2025']
-  // Produit de la nouvelle taxe = somme des trois niveaux (yields.json arrondit son total : écart ≤ 0,1 Md€, voir LVT_SNAPSHOT_META).
+  // Produit de la nouvelle taxe = somme des trois niveaux arrondis au dixième (écart ≤ 0,1 Md€ au total arrondi, voir LVT_SNAPSHOT_META).
   const totalNouvelle = s.local + s.departemental + s.national
   const psTotal = (s.plusValues ? PS.plusValues.montant : 0) + (s.revenusLocatifs ? PS.revenusLocatifs.montant : 0)
   const secuPerte = psTotal * (1 - P['lvt.ps.cle_etat'])
@@ -119,7 +120,7 @@ export const LVT_MODULE = {
   titre: 'Taxe sur la valeur du sol (non validé)',
   statut: 'non validé',
   sources: [
-    'LVTShift (alles-delenda-est/LVTShift), yields.json, commit 322190e du 12 novembre 2026 : rendements à remplacer par scénario et par niveau (instantané figé, src/engine/lvt-snapshot.js)',
+    `LVTShift (${LVT_PROVENANCE.depot}), yields.json, commit ${LVT_PROVENANCE.commit} du ${LVT_PROVENANCE.commitDate} (as_of ${LVT_PROVENANCE.asOf}), importé le ${LVT_PROVENANCE.importeLe} : rendements à remplacer par scénario et par niveau (import épinglé, src/engine/data/lvt-yields.json) : ${LVT_PROVENANCE.url}`,
     'Revue du module taxe sur la valeur du sol, 17 novembre 2026 (docs/review-lvt-module.md) [S26] : blocs, clé des prélèvements sociaux (§2.3), borne OCDE (§4.3), capitalisation (§4.4)',
     'Note de modèle, décisions D2, D9, D11 et D12 (docs/model-note.md §7 et §8)',
     'OCDE, Arnold et al. (2011, Economic Journal 121), cité par O\'Connor et al. (2016) : seule borne chiffrée d\'effet sur le PIB, non robuste',
@@ -198,7 +199,7 @@ export const LVT_MODULE = {
     return { annees, flux, explications }
   },
   explications: [
-    'Ce module remplace des impôts existants par une taxe sur la valeur du sol, à rendement égal, selon trois scénarios de LVTShift (S1 : impôts fonciers locaux et DMTO ; S2 : en plus, l\'imposition des plus-values immobilières ; S3 : en plus, celle des revenus locatifs ; IFI en option). Les montants sont un instantané daté (12 novembre 2026), convertis en part du PIB 2025.',
+    `Ce module remplace des impôts existants par une taxe sur la valeur du sol, à rendement égal, selon trois scénarios de LVTShift (S1 : impôts fonciers locaux et DMTO ; S2 : en plus, l'imposition des plus-values immobilières ; S3 : en plus, celle des revenus locatifs ; IFI en option). ${LVT_PROVENANCE.texte} (import épinglé, relu avant chaque mise à jour) ; montants convertis en part du PIB 2025.`,
     'LVTShift est un modèle de répartition (qui paie plus, qui paie moins, commune par commune) à produit constant. Il ne calcule aucun effet sur l\'activité. Le détail par commune n\'est pas repris ici.',
     'Aucune estimation de l\'effet sur le PIB français n\'a été trouvée. Le seul repère chiffré, de l\'OCDE, ne résiste pas aux tests de robustesse : l\'effet d\'offre est nul en bas et au centre ; la borne de l\'OCDE n\'entre dans le cas « haut » que si l\'option est cochée.',
     `D11 : la part nationale de la taxe va à l'État. La sécurité sociale perd sa part de CSG et de prélèvements sociaux sur les revenus remplacés (${TXT_CLE}). Montants retenus : plus-values de ${PS.plusValues.annee}, loyers de ${PS.revenusLocatifs.annee}, soit le bas de la fourchette de la revue (1,1 à 1,4 Md€ en S2, 3,1 à 3,4 Md€ en S3 avec les moyennes sur cinq ans). Le solde consolidé n'en est pas modifié.`,
