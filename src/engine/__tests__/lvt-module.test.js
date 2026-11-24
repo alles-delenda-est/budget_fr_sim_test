@@ -20,7 +20,7 @@ const NET = [2, 3, 4, 5] // scénarios avec capitalisation (S2, S2 avec IFI, S3,
 /** Plein effet dès 2027 (D12, décision du 24 nov. 2026) : 0 en 2026, 1 ensuite. */
 const on = (t) => (t >= LVT_START_T ? 1 : 0)
 
-describe('instantané LVTShift (yields.json, commit 322190e, 12 nov. 2026) : gardes de non-régression', () => {
+describe('rendements LVTShift (yields.json importé, commit 322190e, 12 nov. 2026) : gardes de non-régression', () => {
   it('métadonnées datées', () => {
     expect(LVT_SNAPSHOT_META.commit).toBe('322190e')
     expect(LVT_SNAPSHOT_META.date).toBe('2026-11-12')
@@ -54,13 +54,20 @@ describe('instantané LVTShift (yields.json, commit 322190e, 12 nov. 2026) : gar
     expect(LVT_PRELEVEMENTS_SOCIAUX.plusValues.annee).toBe(2024)
     expect(LVT_PRELEVEMENTS_SOCIAUX.revenusLocatifs.montant).toBe(3.5)
     expect(LVT_PRELEVEMENTS_SOCIAUX.revenusLocatifs.annee).toBe(2022)
+    // Montants lus dans yields.json (reference_meur ou values_meur du millésime cité par la revue), en Md€, sans arrondi.
     const byId = Object.fromEntries(LVT_LIGNES.map((l) => [l.id, l.montant]))
-    expect(byId).toEqual({ tfpb: 42.8, tfpnb: 0.27, annexes_tf: 0.92, thrs: 2.97, dmto_dep: 13.5, dmto_com: 3.2, frais_gestion: 1.8, pv_ir_ps: 2.8, ifi: 2.3, loyers_ir_ps: 7.7 })
+    const attendu = { tfpb: 42.776, tfpnb: 0.266, annexes_tf: 0.9, thrs: 2.974, dmto_dep: 13.484, dmto_com: 3.155, frais_gestion: 1.779, pv_ir_ps: 2.8321, ifi: 2.332, loyers_ir_ps: 7.69 }
+    expect(Object.keys(byId)).toEqual(Object.keys(attendu))
+    for (const [id, v] of Object.entries(attendu)) expect(byId[id]).toBeCloseTo(v, 9)
     for (const l of LVT_LIGNES) {
       expect(l.url).toMatch(/^https:\/\//)
       expect(['relu', 'relu (secondaire)', 'LVTShift']).toContain(l.statut)
+      expect(l.statutLVTShift.split(', ').every((x) => ['verified', 'derived', 'reported'].includes(x))).toBe(true)
       expect(BLOCKS).toContain(l.bloc)
     }
+    expect(LVT_LIGNES.find((l) => l.id === 'ifi').scenarios).toEqual([3, 5])
+    expect(LVT_LIGNES.find((l) => l.id === 'loyers_ir_ps').scenarios).toEqual([4, 5])
+    expect(LVT_LIGNES.find((l) => l.id === 'tfpb').scenarios).toEqual([1, 2, 3, 4, 5])
   })
   it('impôts nationaux supprimés (capitalisation inverse, D12) : montants de yields.json, source et statut', () => {
     const byId = Object.fromEntries(LVT_IMPOTS_NATIONAUX_SUPPRIMES.map((l) => [l.id, l]))

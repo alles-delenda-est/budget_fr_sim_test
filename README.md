@@ -32,6 +32,7 @@ npm run dev      # http://localhost:5173
 npm run lint     # vérification ESLint
 npm test         # suite de tests Vitest
 npm run build    # build de production (dist/)
+npm run sync:lvt -- <commit>   # réimporte yields.json de LVTShift à un commit (relire le diff, puis PR)
 ```
 
 ## Structure du projet

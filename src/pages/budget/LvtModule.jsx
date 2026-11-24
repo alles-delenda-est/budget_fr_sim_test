@@ -1,6 +1,6 @@
 import { useId } from 'react'
 import { LVT_MODULE, LVT_START_YEAR } from '../../engine/lvt-module.js'
-import { LVT_SCENARIOS, LVT_SNAPSHOT_META } from '../../engine/lvt-snapshot.js'
+import { LVT_SCENARIOS, LVT_PROVENANCE } from '../../engine/lvt-snapshot.js'
 import { fmt, moduleBlockRows } from './helpers'
 import { InfoPopover, StatusBadge } from './InfoPopover'
 
@@ -21,7 +21,8 @@ export function LvtModuleControl({ lvt, onChange }) {
           <span className="sb-info-sub"><strong>Sources :</strong> {LVT_MODULE.sources.join(' ; ')}</span>
         </InfoPopover>
       </div>
-      <p className="sb-help">Remplace des impôts existants par une taxe sur la valeur du sol, à rendement égal, dès {LVT_START_YEAR} (instantané LVTShift du {LVT_SNAPSHOT_META.date.split('-').reverse().join('/')}). Seule la capitalisation nette dans les prix (baisse due à la nouvelle taxe moins hausse due aux impôts nationaux supprimés, part du sol seulement) change le solde consolidé, en entier dès {LVT_START_YEAR}.</p>
+      <p className="sb-help">Remplace des impôts existants par une taxe sur la valeur du sol, à rendement égal, dès {LVT_START_YEAR}. Seule la capitalisation nette dans les prix (baisse due à la nouvelle taxe moins hausse due aux impôts nationaux supprimés, part du sol seulement) change le solde consolidé, en entier dès {LVT_START_YEAR}.</p>
+      <LvtProvenance />
       <label htmlFor={selectId} className="sb-module-label">Scénario</label>
       <select id={selectId} className="sb-module-select" value={lvt.scenario}
         onChange={(e) => onChange({ ...lvt, scenario: parseInt(e.target.value, 10) })}>
@@ -33,6 +34,15 @@ export function LvtModuleControl({ lvt, onChange }) {
         <label htmlFor={checkId}>Inclure la borne haute de l'OCDE dans le cas « haut » des effets d'offre (S2 et S3, non validé)</label>
       </div>
     </fieldset>
+  )
+}
+
+/** Provenance des rendements : commit LVTShift épinglé, date des données (as_of) et date d'import, lien vers le fichier à ce commit. */
+export function LvtProvenance() {
+  return (
+    <p className="sb-help sb-provenance">
+      <a href={LVT_PROVENANCE.url} target="_blank" rel="noopener noreferrer" title={`${LVT_PROVENANCE.depot}, ${LVT_PROVENANCE.fichier}, commit ${LVT_PROVENANCE.commitComplet}`}>{LVT_PROVENANCE.texte}</a>.
+    </p>
   )
 }
 
@@ -74,6 +84,7 @@ export function LvtModuleResults({ result, yearIdx }) {
       <details className="sb-module-details">
         <summary>Ce que fait le module et ses limites</summary>
         <ul>{LVT_MODULE.explications.map((e) => <li key={e}>{e}</li>)}</ul>
+        <LvtProvenance />
       </details>
     </section>
   )

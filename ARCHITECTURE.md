@@ -27,13 +27,19 @@ src/
 │   ├── modules.js              # Contrat de module autonome (validateModuleDefinition, runModule, TEST_MODULE)
 │   ├── ndc-module.js           # Module Comptes notionnels (NDC_MODULE, forme réduite, non validé, D8)
 │   ├── lvt-module.js           # Module Taxe sur la valeur du sol (LVT_MODULE, non validé, D11, D12)
-│   ├── lvt-snapshot.js         # Instantané daté de yields.json (LVTShift, commit 322190e, 12 nov. 2026)
+│   ├── lvt-snapshot.js         # Rendements dérivés de data/lvt-yields.json (LVTShift, commit épinglé 322190e) et provenance
+│   ├── lvt-yields-schema.js    # Contrôle de structure de yields.json (import et chargement)
+│   ├── data/
+│   │   ├── lvt-yields.json     # Copie verbatim de yields.json de LVTShift (npm run sync:lvt)
+│   │   └── lvt-yields.source.json # Provenance : dépôt, chemin, commit, date d'import, SHA-256
 │   ├── project.js              # Boucle de projection E1–E12 (projectScenario, HORIZONS, issuanceRate)
 │   └── __tests__/
 │       ├── engine.test.js      # Invariants et tests unitaires E1–E12, modules, offres
 │       ├── benchmarks.test.js  # Comparateurs homogènes RESF 2027, CE 2026 / DSM 2025, Cour des comptes 2026
 │       ├── ndc-module.test.js  # Contrat, rampe 15 ans, ancrage COR 2026, décomposition NDC
-│       └── lvt-module.test.js  # Instantané, D11, flux, capitalisation D12, yS, intégration
+│       ├── lvt-module.test.js  # Rendements, D11, flux, capitalisation D12, yS, intégration
+│       ├── lvt-yields.test.js  # Structure, provenance, gardes toBe sur yields.json, non-régression Day 0 (fixtures/)
+│       └── fixtures/lvt-day0-outputs.json # Sorties du module avant l'import (référence à 1e-9)
 ├── pages/
 │   ├── IntroPage.jsx/.css      # Accueil pédagogique, référence 10 ans et sensibilité β à 30 ans
 │   ├── SimulateurBudgetPage.jsx/.css
@@ -111,7 +117,7 @@ Le modèle couvre l'ensemble des **administrations publiques (APU)** en comptabi
   - Démarre en janvier 2028 (`t = 2`), montée en charge linéaire sur 15 cohortes (`2028–2042`), stabilise sur le bloc `securiteSociale` la dérive `max(0, COR(y) − COR(2025))` de la série `ref.derive.a_retraites` active, avec `yS = 0` (effet d'offre emploi seniors porté uniquement par `age_legal`).
 - **Module sur la page Budget, inactif par défaut (`LVT_MODULE`, `src/engine/lvt-module.js`)** :
   - `id: 'taxe_valeur_sol'`, `statut: 'non validé'` ; leviers `scenario` (0 = inactif, 1 = S1, 2 = S2, 3 = S2 avec IFI, 4 = S3, 5 = S3 avec IFI) et `offre_ocde` (0 par défaut).
-  - Données : instantané `src/engine/lvt-snapshot.js` converti en part du PIB 2025 ; paramètres `lvt.*` dans `params.js`.
+  - Données : `yields.json` de LVTShift importé à un commit épinglé (`src/engine/data/lvt-yields.json`, provenance `lvt-yields.source.json`, mise à jour `npm run sync:lvt -- <commit>` puis PR ; contrôle hebdomadaire `.github/workflows/lvt-yields-watch.yml`), dérivé par `src/engine/lvt-snapshot.js` et converti en part du PIB 2025 ; paramètres `lvt.*` hors `yields.json` dans `params.js`.
   - Flux bruts affichés par bloc (D9) ; D11 : `a(securiteSociale) < 0`, `a(centrales) > 0` du même montant ; D12 : capitalisation négative pour S2 et S3, répartie au prorata du produit (local + départemental en `a(locales)`, national en `a(centrales)`), rampe de 3 ans ; `θ = 0`, `m = 0` ; `yS` bas = central = 0, haut = borne OCDE si `offre_ocde = 1`.
 
 ---

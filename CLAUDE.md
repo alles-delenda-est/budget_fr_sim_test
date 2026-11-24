@@ -21,7 +21,9 @@ Le moteur projette les **administrations publiques consolidées (APU)** en compt
 | `src/engine/modules.js` | Contrat de module autonome (`validateModuleDefinition`, `moduleLeverValues`, `runModule`, `TEST_MODULE`). Un module n'écrit **jamais** dans la dette ni dans les intérêts et reçoit un `contexte` profondément gelé (`deepFreeze`). |
 | `src/engine/ndc-module.js` | `NDC_MODULE` (`comptes_notionnels_ndc`, `statut: 'non validé'`, décision D8) : forme réduite stabilisant sur 15 cohortes (dès janvier 2028, `NDC_START_T = 2`, `NDC_RAMP_YEARS = 15`) la dérive post-2025 de `ref.derive.a_retraites` (COR juin 2026), avec `yS = 0` et respect de `comp.offset.prestations`. |
 | `src/engine/lvt-module.js` | `LVT_MODULE` (`taxe_valeur_sol`, `statut: 'non validé'`, décisions D11 et D12) : taxe sur la valeur du sol à rendement égal (S1, S2, S3, IFI en option), dès 2027 ; transfert sécurité sociale → État (D11), capitalisation négative répartie par niveau, `a(locales)` et `a(centrales)` (D12), `flux[]` par bloc, `yS` central 0 (borne OCDE en haut, option désactivée par défaut). Inactif par défaut sur la page Budget. |
-| `src/engine/lvt-snapshot.js` | Instantané daté de `yields.json` de LVTShift (commit 322190e, 12 nov. 2026) : `LVT_SCENARIOS`, `LVT_PRELEVEMENTS_SOCIAUX`, `LVT_LIGNES` (source et statut par ligne). |
+| `src/engine/lvt-snapshot.js` | Dérive de `src/engine/data/lvt-yields.json` (`yields.json` de LVTShift, commit épinglé 322190e) : `LVT_SCENARIOS`, `LVT_PRELEVEMENTS_SOCIAUX`, `LVT_IMPOTS_NATIONAUX_SUPPRIMES`, `LVT_LIGNES` (source et statut par ligne), `LVT_BASE_FONCIERE`, `LVT_PROVENANCE`. |
+| `src/engine/lvt-yields-schema.js` | `validateLvtYields` / `assertLvtYields` : contrôle de structure de `yields.json` (script d'import et chargement du moteur). |
+| `src/engine/data/lvt-yields.json`, `lvt-yields.source.json` | Copie verbatim de `yields.json` (LVTShift) et sa provenance (commit, date d'import, SHA-256). Ne pas éditer à la main : `npm run sync:lvt -- <commit>` (`scripts/sync-lvt-yields.mjs`). |
 | `src/engine/project.js` | Boucle de projection E1–E12 (`projectScenario`, `HORIZONS` : 10 ans / 2040 / 30 ans, `issuanceRate`, `deepFreeze`, `DECOMPOSITION_LABELS`). |
 
 ### Équations clés (E1–E12)
@@ -51,7 +53,8 @@ Le moteur projette les **administrations publiques consolidées (APU)** en compt
 - `src/engine/__tests__/engine.test.js` : tests unitaires et d'invariants du moteur v2 (paramètres, leviers, θ, offre, E1–E12, modules, balayage aléatoire).
 - `src/engine/__tests__/benchmarks.test.js` : comparaisons à périmètre homogène contre RESF 2027, Commission européenne (printemps 2026 et DSM 2025) et Cour des comptes (juin 2026).
 - `src/engine/__tests__/ndc-module.test.js` : contrat de module, rampe 15 ans dès 2028, ancrage COR 2026 sur 3 variantes, `yS = 0`, préréglage complet et décomposition exacte.
-- `src/engine/__tests__/lvt-module.test.js` : instantané et paramètres (gardes `toBe`), contrat, D11 par bloc, flux, capitalisation D12, `yS`, intégration au moteur sur tous les horizons.
+- `src/engine/__tests__/lvt-module.test.js` : rendements et paramètres (gardes `toBe`), contrat, D11 par bloc, flux, capitalisation D12, `yS`, intégration au moteur sur tous les horizons.
+- `src/engine/__tests__/lvt-yields.test.js` : structure de `yields.json`, provenance (SHA-256), gardes `toBe` sur les rendements importés, non-régression contre `fixtures/lvt-day0-outputs.json` (1e-9).
 - `src/__tests__/eps-offre.test.js` : vérification de D13 (`ε_offre` vs `ε`) et de la séparation demande/offre.
 - `src/__tests__/randomized.test.js` : tests de propriété déterministes (graines fixes) sur scénarios aléatoires, URL partageables, CSV et bornes numériques.
 - `src/pages/budget/*.test.js` (`helpers`, `presets`, `warnings`, `share`, `exportCsv`), `src/pages/retraites/helpers.test.js`, `src/pages/hypotheses/helpers.test.js`, `src/version.test.js`.
