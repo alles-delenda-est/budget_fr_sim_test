@@ -5,6 +5,7 @@
 import { PARAMS, PARAM_BY_ID, resolveParams } from '../../engine/params.js'
 import { LEVERS, staticYield } from '../../engine/levers.js'
 import { SUPPLY_BY_LEVER, sigmaFiscal, sigmaFiscalCase } from '../../engine/supply.js'
+import { irTranches } from '../../engine/ir-tranches.js'
 import { START_YEAR, RATE_MAX, HORIZONS, projectScenario } from '../../engine/project.js'
 import { fmt, isFlagged, paramRange, BLOCK_LABELS } from '../budget/helpers.js'
 
@@ -265,6 +266,8 @@ export function buildReviewerQuestions() {
   const beta = PARAM_BY_ID['dette.beta']
   const endYear = HORIZONS.trenteAns.endYear
   const sigmaIr = sigmaFiscalCase('ir', P, 'value')
+  const tr = irTranches(P)
+  const tauImplicite = tr ? tr.tranches.reduce((a, r) => a + (r.taux / 100) * r.revenu, 0) / tr.total : Number.NaN
   const gapCentral = irPrimaryGap30(eL.value)
   const gapLow = irPrimaryGap30(eL.low)
   const gapHigh = irPrimaryGap30(eL.high)
@@ -277,7 +280,7 @@ export function buildReviewerQuestions() {
     {
       numero: 1,
       titre: 'Une hausse uniforme de l\'impôt sur le revenu perd-elle de l\'argent à long terme ?',
-      resume: `Avec e_L = ${fmt(eL.value, 2)} et un taux marginal moyen estimé à ${fmt(tauIr.value, 0)} % (fourchette ${fmt(tauIr.low, 0)}–${fmt(tauIr.high, 0)} %), +1 % du produit de l'IR génère un effet d'offre calculé σ = ${fmt(sigmaIr, 3).replace('-', '−')} % du PIB qui, passé au solde par ε_offre = ${pctTxt(epsOffre.value)}, ${gapCentral < 0 ? 'dépasse' : 'reste inférieur à'} la recette statique à l'horizon ${endYear}${breakEven === null ? '' : ` (seuil de rentabilité vers e_L ≈ ${fmt(breakEven, 2)})`}. Au bas de la fourchette (e_L = ${fmt(eL.low, 2)}), ${outcome(gapLow)} ; au haut (${fmt(eL.high, 2)}), ${outcome(gapHigh)}.`,
+      resume: `Avec e_L = ${fmt(eL.value, 2)} et un effet d'offre calculé tranche par tranche (revenus DGFiP 2024 estimés, coin marginal complet IR + CSG/CRDS + CEHR ; taux marginal moyen implicite ${fmt(tauImplicite * 100, 1)} %, contre ${fmt(tauIr.value, 0)} % (fourchette ${fmt(tauIr.low, 0)}–${fmt(tauIr.high, 0)} %) retenu pour θ), +1 % du produit de l'IR génère un effet d'offre calculé σ = ${fmt(sigmaIr, 3).replace('-', '−')} % du PIB qui, passé au solde par ε_offre = ${pctTxt(epsOffre.value)}, ${gapCentral < 0 ? 'dépasse' : 'reste inférieur à'} la recette statique à l'horizon ${endYear}${breakEven === null ? '' : ` (seuil de rentabilité vers e_L ≈ ${fmt(breakEven, 2)})`}. Au bas de la fourchette (e_L = ${fmt(eL.low, 2)}), ${outcome(gapLow)} ; au haut (${fmt(eL.high, 2)}), ${outcome(gapHigh)}.`,
       statut: 'Effet d\'offre de l\'IR : non validé — avis demandé.',
     },
     {

@@ -3,6 +3,7 @@ import { PARAMS, PARAM_BY_ID, STATUSES, resolveParams } from '../params.js'
 import { LEVERS, LEVER_BY_ID, STRUCTURAL_LEVERS, staticYield, thetaElasticity, leverTheta, BLOCKS } from '../levers.js'
 import { projectScenario, HORIZONS, issuanceRate, deepFreeze } from '../project.js'
 import { TEST_MODULE, validateModuleDefinition } from '../modules.js'
+import { irTranches, irDeltaLnNet, thetaIrTranches, coinMarginal } from '../ir-tranches.js'
 import { supplyPhase, sigmaFiscal, sigmaFiscalCase, partReelle, supplyForCase, coutUsageParPoint, impliedJobs, roundJobs, SUPPLY_BY_LEVER } from '../supply.js'
 
 const P = resolveParams()
@@ -605,7 +606,7 @@ describe('σ des leviers fiscaux : calculé depuis les paramètres (docs/sigma-f
     expect(t('comp.tau0.ir')).toEqual([18, 21, 23])
     expect(PARAM_BY_ID['comp.tau0.ir'].status).toBe('calculé (estimation)')
     expect(PARAM_BY_ID['comp.tau0.ir'].unit).toBe('%')
-    expect(P['offre.ir.conv_brut']).toBe(0.76)
+    expect(P['offre.ir.conv_brut']).toBeUndefined() // remplacé par le barème par tranche (ir-tranches.js)
     expect(P['base.conso_menages']).toBe(1545.9)
     expect(PARAM_BY_ID['base.conso_menages'].status).toBe('sourcé')
     expect(t('base.tva.2025')).toEqual([200, 208.8, 215])
@@ -640,9 +641,11 @@ describe('σ des leviers fiscaux : calculé depuis les paramètres (docs/sigma-f
     expect(sigmaFiscal('is', P).low).toBeCloseTo(-100 * 0.16 * 0.25 * dc, 10)
     expect(sigmaFiscal('is', P).high).toBeCloseTo(-100 * 0.21 * 1.0 * dc, 10)
     expect(sigmaFiscal('is', P).high).toBeCloseTo(-0.09, 2)
-    // IR : e_L × 0,01 × (τ_IR × conversion brut) / part nette, par 1 % du produit
-    expect(sigmaFiscalCase('ir', P)).toBeCloseTo(-100 * 0.4 * (0.01 * 0.21 * 0.76) / 0.57, 10)
-    expect(sigmaFiscal('ir', P).value).toBeCloseTo(-0.11, 2)
+    // IR : e_L × Σ_i (Z_i / Z) × 0,01 × τ_i × (1 − 6,8 %) / (1 − w_i), par 1 % du produit (barème par tranche, ir-tranches.js)
+    expect(sigmaFiscalCase('ir', P)).toBeCloseTo(-100 * 0.4 * irDeltaLnNet(P), 10)
+    expect(sigmaFiscal('ir', P).value).toBeCloseTo(-0.122, 3)
+    expect(sigmaFiscal('ir', P).low).toBeCloseTo(-0.061, 3)
+    expect(sigmaFiscal('ir', P).high).toBeCloseTo(-0.168, 3)
   })
   it('plafond de l\'IS (Gemini n° 4) : 0,15 par point en valeur absolue, sans effet au centre ; pas de plafond pour le travail', () => {
     expect(Math.abs(sigmaFiscal('is', P).high)).toBeLessThan(P['offre.is.plafond'])
@@ -1018,3 +1021,58 @@ describe('emplois implicites de l\'effet d\'offre de l\'âge légal (affichage s
     expect(roundJobs(Infinity)).toBeNull()
   })
 })
+
+describe('barème de l\'IR par tranche : données communes au θ (documenté) et à σ (docs/review-day0-parameters.md §9)', () => {
+  const d = irTranches(P)
+  it('données DGFiP (revenus 2024) et barème lus ; revenus estimés et quotients moyens dans leurs tranches', () => {
+    expect([11, 30, 41, 45].map((t) => P[`offre.ir.tranche.${t}.foyers`])).toEqual([20930797, 6868031, 434112, 61476])
+    expect([1, 2, 3, 4].map((n) => P[`offre.ir.bareme.seuil${n}`])).toEqual([11497, 29315, 83823, 180294])
+    for (const t of [11, 30, 41, 45]) {
+      expect(PARAM_BY_ID[`offre.ir.tranche.${t}.foyers`].status).toBe('sourcé')
+      expect(PARAM_BY_ID[`offre.ir.tranche.${t}.parts`].status).toBe('calculé (estimation)')
+    }
+    expect(PARAM_BY_ID['offre.ir.tranche.0.revenu'].status).toBe('calculé (estimation)')
+    expect(d.tranches.map((r) => Math.round(r.revenu * 10) / 10)).toEqual([476.0, 475.8, 74.0, 22.5])
+    expect(d.total).toBeCloseTo(1144.3, 1)
+    expect(d.assiettePoint).toBeCloseTo(519.2, 1)
+    const seuils = [11497, 29315, 83823, 180294, Infinity]
+    d.tranches.forEach((r, i) => {
+      const q = (r.revenu * 1e3) / r.parts
+      expect(q).toBeGreaterThan(seuils[i])
+      expect(q).toBeLessThan(seuils[i + 1])
+    })
+    // taux marginal moyen pondéré par les revenus ≈ comp.tau0.ir (21 %, 18–23 %)
+    const moyen = d.tranches.reduce((a, r) => a + (r.taux / 100) * r.revenu, 0) / d.total
+    expect(moyen * 100).toBeGreaterThan(PARAM_BY_ID['comp.tau0.ir'].low)
+    expect(moyen * 100).toBeLessThan(PARAM_BY_ID['comp.tau0.ir'].high)
+  })
+  it('coins marginaux complets : 19,95 / 37,66 / 47,91 / 54,64 % (CEHR 3 %) ; 55,64 % au cas haut', () => {
+    expect([11, 30, 41, 45].map((t) => coinMarginal(P, t))).toEqual([11, 30, 41, 45].map((t) => expect.closeTo(0.097 + (t / 100) * 0.932 + (t === 45 ? 0.03 : 0), 10)))
+    expect(coinMarginal(P, 45, 'high')).toBeCloseTo(0.5564, 4)
+  })
+  it('θ par tranche reproduit la dérivation documentée : +1 pt 0,21 (0,07–0,39), proportionnel 0,37 (0,15–0,66) ; comp.theta.ir reste 0,15', () => {
+    expect(thetaIrTranches(P, 'point')).toBeCloseTo(0.213, 3)
+    expect(thetaIrTranches(P, 'point', 'low')).toBeCloseTo(0.074, 3)
+    expect(thetaIrTranches(P, 'point', 'high')).toBeCloseTo(0.391, 3)
+    expect(thetaIrTranches(P, 'proportionnel')).toBeCloseTo(0.372, 3)
+    expect(thetaIrTranches(P, 'proportionnel', 'low')).toBeCloseTo(0.150, 3)
+    expect(thetaIrTranches(P, 'proportionnel', 'high')).toBeCloseTo(0.663, 3)
+    expect(P['comp.theta.ir']).toBe(0.15)
+    expect([PARAM_BY_ID['comp.theta.ir'].low, PARAM_BY_ID['comp.theta.ir'].high]).toEqual([0.07, 0.39])
+  })
+  it('σ de l\'IR et θ_non_réel : part réelle 0,113 au cas central, θ_non_réel 0,039 (0 au cas bas, 0,095 au cas haut)', () => {
+    const l = LEVER_BY_ID.ir
+    const th = leverTheta(l, 1, P)
+    const nonReel = (c) => Math.max(0, th - partReelle('ir', supplyForCase('ir', 1, P, undefined, c).sigma, l.rendement(P, 1), P))
+    expect(nonReel('central')).toBeCloseTo(0.0388, 4)
+    expect(nonReel('bas')).toBe(0)
+    expect(nonReel('haut')).toBeCloseTo(0.0954, 4)
+  })
+  it('jamais de NaN : données incohérentes => irTranches null, σ et θ nuls', () => {
+    const bad = resolveParams({ 'offre.ir.tranche.30.impot': -500 }) // revenu estimé négatif
+    expect(irTranches(bad)).toBeNull()
+    expect(sigmaFiscalCase('ir', bad)).toBe(-0)
+    expect(thetaIrTranches(bad)).toBe(0)
+  })
+})
+
