@@ -797,9 +797,9 @@ describe('vérification primaire Day 0 : ventilation COFOG Eurostat 2024 et para
 
 describe('suivi de l\'audit Day 0 (PR #30/#32) : corrections de sources et fourchettes, centres inchangés', () => {
   const range = (id) => [PARAM_BY_ID[id].low, PARAM_BY_ID[id].value, PARAM_BY_ID[id].high, PARAM_BY_ID[id].status]
-  it('fourchettes approuvées : θ CSG 0,01–0,05, θ IR 0,07–0,39 (dérivation par tranche), rend.cotis 7,0–10 ; centres inchangés', () => {
+  it('fourchettes approuvées : θ CSG 0,01–0,05, θ IR 0,15–0,66 (levier proportionnel, dérivation par tranche), rend.cotis 7,0–10 ; centres inchangés', () => {
     expect(range('comp.theta.csg')).toEqual([0.01, 0.03, 0.05, 'sourcé (fourchette), centre choisi'])
-    expect(range('comp.theta.ir')).toEqual([0.07, 0.15, 0.39, 'sourcé (fourchette), centre choisi'])
+    expect(range('comp.theta.ir')).toEqual([0.15, 0.15, 0.66, 'sourcé (fourchette), centre choisi'])
     expect(range('rend.cotis')).toEqual([7.0, 7.4, 10, 'sourcé (fourchette), centre choisi'])
     expect(range('rend.is')).toEqual([2.0, 2.3, 3.0, 'calculé (estimation)'])
     expect(range('comp.theta.cotis')).toEqual([0.05, 0.15, 0.30, 'sourcé (fourchette), centre choisi'])
@@ -1058,7 +1058,10 @@ describe('barème de l\'IR par tranche : données communes au θ (documenté) et
     expect(thetaIrTranches(P, 'proportionnel', 'low')).toBeCloseTo(0.150, 3)
     expect(thetaIrTranches(P, 'proportionnel', 'high')).toBeCloseTo(0.663, 3)
     expect(P['comp.theta.ir']).toBe(0.15)
-    expect([PARAM_BY_ID['comp.theta.ir'].low, PARAM_BY_ID['comp.theta.ir'].high]).toEqual([0.07, 0.39])
+    expect([PARAM_BY_ID['comp.theta.ir'].low, PARAM_BY_ID['comp.theta.ir'].high]).toEqual([0.15, 0.66])
+    expect(LEVER_BY_ID.ir.aide).toContain('θ = 0,37 (0,15–0,66)')
+    expect(LEVER_BY_ID.cotis_patronales.aide).toContain(`fourchette ${String(PARAM_BY_ID['rend.cotis'].low)}–${String(PARAM_BY_ID['rend.cotis'].high)} Md€`)
+    expect(LEVER_BY_ID.is.aide).not.toMatch(/2,6–2,8/)
   })
   it('σ de l\'IR et θ_non_réel : part réelle 0,113 au cas central, θ_non_réel 0,039 (0 au cas bas, 0,095 au cas haut)', () => {
     const l = LEVER_BY_ID.ir
