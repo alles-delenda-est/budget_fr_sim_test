@@ -1,124 +1,123 @@
-USER ACCEPTANCE TESTS - Budget Simulator v1.9
-================================================
+USER ACCEPTANCE TESTS — Simulateur Budget France (moteur v2, version 0.9 / Day 0)
+=================================================================================
 
-These tests cover visual, interactive, and browser-dependent behavior
-that automated unit tests cannot validate.
+Checklist manuelle (navigateur) pour les comportements visuels, interactifs et
+responsives que la suite automatisée Vitest (15 fichiers, 354 tests) ne couvre pas.
+Source de vérité des chiffres : src/engine/params.js (171 paramètres).
 
 
-1. CHART RENDERING
-------------------
-[ ] Debt trajectory chart renders on page load with two lines:
-    - Dashed grey "Baseline (PLF 2025)"
-    - Solid blue "Scénario"
-[ ] Both lines start at the same point (~115.8% debt/GDP)
-[ ] X-axis shows years (2025-2035), Y-axis shows "Dette/PIB (%)"
-[ ] Maastricht (60%) and alert (100%) reference lines are visible
-[ ] Hovering over chart points shows a tooltip with exact values
-[ ] Legend is visible and labels match the lines
-[ ] Policy impact bar chart appears when any lever is moved off zero
-[ ] Bar chart shows three bars: Recettes (green), Dépenses (red), Solde (blue)
+1. NAVIGATION, BANDEAU & PIED DE PAGE
+-------------------------------------
+[ ] Les 4 onglets s'affichent et naviguent via le hash :
+    #/intro, #/budget, #/retraites, #/hypotheses
+[ ] Le bandeau « Version 0.9 » s'affiche en haut de page avec le lien de commentaires
+[ ] Le pied de page affiche la version, le commit court et la date de build (version.js)
+[ ] Tous les caractères français (é, è, ê, ç, œ, −, €) s'affichent correctement
 
-2. SLIDER INTERACTIONS
-----------------------
-[ ] Each slider moves smoothly and updates its displayed value in real time
-[ ] Moving any tax slider updates the chart immediately (no lag or flicker)
-[ ] Moving any spending slider updates the chart immediately
-[ ] Slider value resets to 0 correctly (not stuck at a near-zero float)
-[ ] Sliders respect their min/max bounds (cannot drag beyond range):
-    - IR: -10 to +10 pp
-    - TVA: -5 to +5 pp (step 0.5)
-    - IS: -10 to +5 pp
-    - Education: -20% to +20%
-    - Défense: -15% to +15%
-    - Solidarité: -30% to +30%
-    - Indexation retraites: -2 to +1 pp (step 0.1)
-    - Dépenses santé: -10% to +10%
-    - Cotisations: -5 to +5 pp (step 0.5)
-    - CSG: -2 to +2 pp (step 0.5)
-    - Prime de risque: 0 to 200 bps (step 10)
-    - Horizon: 5 to 20 ans
 
-3. PRESET BUTTONS
------------------
-[ ] Clicking "PLF 2025 (Barnier)" sets all sliders to expected positions
-[ ] Clicking "Sarah Knafo" sets all sliders (verify solidarity goes to -60%)
-[ ] Clicking "Nouveau Front Populaire" sets all sliders (verify IR goes to +5)
-[ ] Clicking "Génération Libre" sets all sliders AND checks laborMarket + planning reforms
-[ ] After applying a preset, manually adjusting one slider works normally
-[ ] Applying a second preset fully overwrites the first (no stale values)
-[ ] After Génération Libre, applying Knafo unchecks all reform checkboxes
+2. ONGLET INTRO (#/intro)
+-------------------------
+[ ] Les chiffres 2025 affichés concordent avec params.js (dette 3 460,5 Md€ / 115,7 %,
+    solde −152,5 Md€, PIB 2 991 Md€)
+[ ] La trajectoire de référence à 10 ans (2036) s'affiche sans couleur d'alerte trompeuse
+[ ] L'encadré à 30 ans (2056) montre la sensibilité à β (β = 1, 3, 5 et 0)
+[ ] Les 2 cartes « Simulateur Budget » et « Simulateur Retraites » ouvrent le bon onglet
+    au clic et au clavier (Entrée / Espace)
+[ ] La liste des limites assumées mentionne ref.derive.b_autres = 0, les statuts
+    à vérifier (de mémoire, à collecter, non validé, calculé (estimation), à valider)
+    et le plafond de 25 % du taux à l'émission
 
-4. STRUCTURAL REFORM CHECKBOXES
---------------------------------
-[ ] Each reform checkbox can be toggled independently
-[ ] Selecting multiple reforms shows "N réformes combinées" summary
-[ ] Combined growth effect displays correctly (with 15% overlap penalty)
-[ ] Reform selection updates the chart (visible improvement in later years)
-[ ] Unchecking all reforms removes the combined summary block
 
-5. KEY METRICS (Hero Numbers)
------------------------------
-[ ] Four metric cards display under "Indicateurs clés (2025)":
-    Déficit, Dette/PIB, Taux d'intérêt effectif, Charge d'intérêts
-[ ] Baseline values show reasonable numbers (deficit ~156 Md€, debt ~115.8%)
-[ ] Moving sliders toward austerity turns deltas green (metric-better)
-[ ] Moving sliders toward stimulus turns deltas red (metric-worse)
-[ ] Percentage change displays correctly (not NaN or Infinity)
-[ ] Negative deficit values display in red
+3. SIMULATEUR BUDGÉTAIRE (#/budget) — LEVIERS & GRAPHIQUES
+----------------------------------------------------------
+[ ] 14 leviers actifs répartis en 3 groupes : Recettes (6), Dépenses (4), Prestations (4)
+[ ] 3 leviers structurels affichés désactivés avec badge « Non validé — avis demandé » (σ = 0)
+[ ] Déplacer un curseur met à jour immédiatement les 3 fiches (Année 1, Année 5, Fin d'horizon),
+    les graphiques, la décomposition par cause et les 3 blocs APU
+[ ] Cliquer « Tout remettre à zéro » (ou « Référence (politique inchangée) ») ramène tous les
+    curseurs à 0, désactive le module LVT et superpose exactement la courbe Scénario sur la Référence
+    (remettre seulement les curseurs à 0 à la main laisse le module LVT dans son état choisi)
+[ ] Sous « Âge légal de départ en retraite », la note d'emplois implicites (JobsNote) s'actualise
+    selon le cas d'offre (bas / central / haut) et affiche « emplois en moins » pour x < 0
+[ ] Chaque levier possède un bouton d'information (InfoPopover) affichant source, fourchette et statut
+[ ] Le sélecteur d'horizon bascule entre 10 ans (2036), 2040 et 30 ans (2056)
+[ ] Le sélecteur « Cas des effets d'offre » (Bas / Central / Haut) indique « Sans effet »
+    quand aucun levier à σ ≠ 0 n'est actif, et modifie le PIB/solde dès qu'un levier fiscal,
+    âge légal, assurance chômage ou enseignement (haut/bas) est déplacé
+[ ] En cas de forte relance ou austérité en année 1, l'explication du paradoxe de la première
+    année apparaît sur la fiche Année 1 lorsque dette/PIB et solde bougent dans le même sens
 
-6. DOOM LOOP WARNING
---------------------
-[ ] Warning section does NOT appear on page load with default sliders
-[ ] Increasing spending significantly (e.g. solidarity +30%) triggers the warning
-[ ] Warning shows severity (Élevée/Moyenne/Faible) and numeric details
-[ ] Adding 200 bps political risk makes the warning appear or worsen
-[ ] Reducing spending back to 0 makes the warning disappear
 
-7. VALIDATION WARNINGS
------------------------
-[ ] No warnings on page load
-[ ] Extreme stimulus (all spending max, all revenue min) for 20 years
-    shows "⚠️ Avertissements de validation" section
-[ ] Warning messages mention specific years and thresholds
+4. SCÉNARIOS TYPES NEUTRES & COMPARATEUR MACRO
+----------------------------------------------
+[ ] 6 boutons de scénarios neutres (aucun nom partisan) :
+    Référence · Prévisions du Gouvernement (RESF 2027) · Ajustement équilibré ·
+    Ajustement par les dépenses · Ajustement par les recettes · Bascule TVA sociale
+[ ] Cliquer « Prévisions du Gouvernement (RESF 2027) » affiche le bandeau comparateur
+    (jamais présenté comme cible) et une ligne « Hypothèses macroéconomiques » dans la décomposition
+[ ] Cliquer « Référence (politique inchangée) » remet tous les curseurs à zéro, retire le
+    comparateur macroéconomique ET réinitialise le module LVT à Inactif
+[ ] Ajuster un curseur après un préréglage désactive aussitôt l'état actif du bouton préréglage
 
-8. TAB NAVIGATION
------------------
-[ ] "Simulateur" tab is active by default
-[ ] Clicking "Baseline" shows budget tables (État + Sécurité Sociale)
-[ ] Clicking "Hypothèses" shows assumptions tables with sources
-[ ] Switching back to "Simulateur" preserves slider positions
-[ ] External links in Hypothèses tab open in new tabs
-[ ] Baseline tab numbers match the values used in calculations:
-    État revenue 308.4, spending 444.97, SS revenue 659.4, etc.
 
-9. BUDGET BREAKDOWN
---------------------
-[ ] "Décomposition du déficit" shows État + SS + Total APU
-[ ] État + SS deficits sum to the APU total shown
-[ ] Moving only État sliders changes only the État line
-[ ] Moving only SS sliders changes only the SS line
+5. MODULE TAXE SUR LA VALEUR DU SOL (LVT, NON VALIDÉ)
+-----------------------------------------------------
+[ ] Inactif par défaut (scénario 0) ; la case « borne haute OCDE » est grisée en S0 et S1
+[ ] Activer S2 ou S3 (avec ou sans IFI) affiche la section « Taxe sur la valeur du sol » :
+    flux bruts par bloc (affichage seul), transfert D11 sécurité sociale → État,
+    capitalisation nette D12 (plein effet dès 2027) et provenance LVTShift (commit + lien)
+[ ] Quand LVT est actif, le bouton « Référence (politique inchangée) » n'est PAS surligné actif
+[ ] Cocher la borne haute OCDE n'a d'effet que dans le cas « Haut » (bas et central = 0)
 
-10. VISUAL / LAYOUT
---------------------
-[ ] Page renders without horizontal scrollbar on 1280px+ screens
-[ ] Charts resize when window is resized (ResponsiveContainer)
-[ ] No overlapping text in slider labels or metric cards
-[ ] Footer displays at the bottom with version and sources
-[ ] All French characters (é, è, ê, ç, etc.) render correctly
 
-11. CROSS-SCENARIO COHERENCE
------------------------------
-[ ] Apply Knafo preset → chart shows debt improving vs baseline
-[ ] Apply NFP preset → chart shows debt worsening or similar to baseline
-    (NFP raises both taxes and spending; net effect should be visible)
-[ ] Apply Génération Libre → reform effect visible as curve diverges
-    from baseline in later years (after lag period)
-[ ] Set projection horizon to 5 years → chart shows only 5 years
-[ ] Set projection horizon to 20 years → chart extends, trends amplified
+6. DÉCOMPOSITION EXACTE, TROIS BLOCS, PARTAGE URL & EXPORT CSV
+--------------------------------------------------------------
+[ ] Décomposition par cause : la somme des lignes (y compris lignes masquées < 0,05 Md€)
+    égale exactement l'écart total de solde pour toute année choisie au curseur
+[ ] Trois blocs APU : la somme État/ODAC + Sécurité sociale + Collectivités locales égale le total
+[ ] Partage URL : copier l'URL (#/budget?...) et l'ouvrir dans un nouvel onglet restaure
+    exactement leviers, horizon, cas d'offre, comparateur macro et réglage LVT
+[ ] Export CSV : télécharge un fichier UTF-8 avec BOM, séparateur « ; », virgule décimale,
+    ouvrable directement dans Excel sans erreur d'encodage ni formule injectée
 
-12. EDGE INTERACTIONS
----------------------
-[ ] Rapidly clicking multiple presets in succession does not crash
-[ ] Moving a slider while chart is updating does not produce glitches
-[ ] Setting all sliders to 0 returns chart to match baseline exactly
-    (both lines should overlap)
+
+7. AVERTISSEMENTS « HORS EXPÉRIENCE HISTORIQUE »
+------------------------------------------------
+[ ] À 10 ans (référence) : aucun bandeau palier 1 ni palier 2
+[ ] À 30 ans (référence ou relance extrême) :
+    - Palier 1 (260 % PIB, record Japon 2020) : bandeau vigilance + ligne repère orangée
+    - Palier 2 (500 % PIB ou intérêts > 50 % recettes) : bandeau alerte + zone grisée pointillée
+      et axe vertical calibré sur la seule zone réaliste
+[ ] « Tout au minimum » et « Tout au maximum » sur les 3 horizons × 3 cas : aucun NaN,
+    aucun Infinity, aucun crash graphique
+
+
+8. SIMULATEUR RETRAITES (#/retraites)
+-------------------------------------
+[ ] Sélecteurs COR juin 2026 (centrale 15,3 % / haute 1,0 % → 14,5 % / basse 0,4 % → 16,1 %)
+    et dérive santé / dépendance (santé seule / santé + longue durée / aucune)
+[ ] Curseur Âge légal (62 à 67 ans, pas 0,5 an) : affiche étalon asymétrique (+4,95 Md€ hausse
+    dès 2028–2034 / −3,90 Md€ baisse dès 2029–2033), reports sociaux 20 % et JobsNote
+[ ] Curseur Indexation des pensions (−3 à +3 pts vs inflation)
+[ ] Préréglage « Comptes notionnels (NDC, dès 2028) » : pastille « Non validé », confiance basse,
+    active âge légal 65 ans + module NDC, signale l'hypothèse de stabilisation 14,1 % et le risque
+    de double compte ; liens cliquables [S15], [S16], [S23], [S24], [S27]
+[ ] Mesure « Plafonnement des hautes pensions » affichée désactivée (« Non validé — avis demandé »)
+[ ] Les 4 graphiques, la décomposition exacte et les 3 blocs se mettent à jour sans NaN
+
+
+9. HYPOTHÈSES & PARAMÈTRES (#/hypotheses)
+-----------------------------------------
+[ ] Sommaire interne (Comptes 2025, Équations E1–E12, Leviers & σ, Paramètres, Questions)
+[ ] Comptes APU 2025 (3 blocs + total consolidé + 105,6 Md€ transferts) et 10 fonctions COFOG 2024
+[ ] Table des 171 paramètres : filtre « Tous » vs « À vérifier uniquement » fonctionnel,
+    aucun paramètre orphelin ni valeur NaN / undefined
+[ ] 3 questions ouvertes aux relecteurs (§12) affichées avec chiffres recalculés depuis le moteur
+
+
+10. RESPONSIVE & ACCESSIBILITÉ (320 px / 375 px / 1280 px+)
+-----------------------------------------------------------
+[ ] Aucun débordement horizontal à 320 px, 375 px et 1280 px+
+[ ] Cibles tactiles ≥ 44 px pour les boutons, onglets et curseurs
+[ ] InfoPopover ouvrable et fermable au clavier (Tab / Entrée / Échap)
+[ ] Les cartes de métriques restent lisibles (valeurs abrégées proprement au-delà de 10 000)

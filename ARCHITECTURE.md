@@ -21,7 +21,7 @@ src/
 │   ├── Navigation.jsx/.css     # Barre d'onglets
 │   └── ReviewBanner.jsx/.css   # Bandeau « Version de relecture »
 ├── engine/                     # Moteur de projection v2 (pur JavaScript, sans dépendance React)
-│   ├── params.js               # Catalogue unique des 167 paramètres (PARAMS, PARAM_BY_ID, resolveParams, interpolateSeries)
+│   ├── params.js               # Catalogue unique des 171 paramètres (PARAMS, PARAM_BY_ID, resolveParams, interpolateSeries)
 │   ├── levers.js               # 14 leviers actifs (LEVERS) + 3 leviers structurels désactivés (STRUCTURAL_LEVERS)
 │   ├── supply.js               # Effets d'offre E5 (σ calculé fiscal + σ décidé) et θ_non_réel
 │   ├── modules.js              # Contrat de module autonome (validateModuleDefinition, runModule, TEST_MODULE)
@@ -51,7 +51,7 @@ src/
 │   │   ├── warnings.js / .test.js
 │   │   ├── share.js / .test.js
 │   │   ├── exportCsv.js / .test.js
-│   │   ├── LeverPanel.jsx, Charts.jsx, Results.jsx, InfoPopover.jsx, ShareButton.jsx
+│   │   ├── LeverPanel.jsx, LvtModule.jsx, JobsNote.jsx, Charts.jsx, Results.jsx, InfoPopover.jsx, ShareButton.jsx
 │   ├── retraites/
 │   │   └── helpers.js / .test.js   # Variantes COR 2026 & santé CE 2024, préréglage NDC (D8), séries & fiches
 │   └── hypotheses/
@@ -83,7 +83,7 @@ Le modèle couvre l'ensemble des **administrations publiques (APU)** en comptabi
 ## 3. Flux de calcul du moteur (`projectScenario`)
 
 ### 3.1 Résolution des paramètres et instruments
-1. `resolveParams(overrides)` résout les 167 paramètres de `PARAMS` en validant les identifiants et la finitude des valeurs.
+1. `resolveParams(overrides)` résout les 171 paramètres de `PARAMS` en validant les identifiants et la finitude des valeurs.
 2. `leversToInstruments(levers, P, N, ramp, { sigma, ysCase })` convertit les 14 leviers actifs (`LEVERS`) en séries annuelles par bloc `aBlocks[bloc][t]` (fraction du PIB de référence) et `theta[t]`.
 3. Chaque module passé dans `options.modules` est exécuté par `runModule(mod, values, context)` avec un `context` profondément gelé (`deepFreeze`). Le contrat impose qu'un module ne renvoie que `{ annees, flux, explications }`, ne touche jamais à la dette ni aux intérêts, et fournisse `a` par bloc, `theta ∈ [0, 1]`, `categorie` ou `m`, et un `yS` optionnel `{ bas, central, haut }`.
 4. `coreSupplyLines` calcule les séries d'effets d'offre E5 des leviers natifs pour les trois cas (`bas`, `central`, `haut`), auxquelles s'ajoutent celles des modules et d'un éventuel chemin `options.yS` externe.
@@ -97,7 +97,7 @@ Le modèle couvre l'ensemble des **administrations publiques (APU)** en comptabi
 - **E4 — Effet de demande** : `S_j(t) = λ S_j(t-1) + m_j Δa_j(t)` ; `yD(t) = −Σ S_j(t)` (`λ = 0,7`). Effet en niveau qui s'estompe vers 0.
 - **E5 — Effets d'offre** : `yS_j(t) = σ_j × taille_j(t) × clamp((τ − t0_j) / (L_j − t0_j), 0, 1)`.
   - `σ` **calculé** dans `supply.js` pour les impôts sur le travail (`cotis_patronales`, `csg`, `tva_normal`, `tva_tous_taux`, `ir` via `offre.e_L = 0,40` et le coin fiscal `comp.coin.part_nette = 0,57`) et pour l'`is` (coût d'usage du capital, plafonné à `0,15 %` PIB/pt). L'effet d'offre de l'`ir` porte le statut `non validé`.
-  - `σ` **décidé** (revue de preuves) pour `age_legal` (`+0,50 %` PIB/an, `+0,30 / +0,70`, `L = 6`, décision du 23 nov. 2026), `travail_assurance_chomage` (`−0,012 %` PIB par % de générosité, `L = 3`), `dep_enseignement` (`0 / 0 / +0,040 %` PIB par % de ligne, `L = 35`, `t0 = 8`), ainsi que `offre.sigma.lvt` (`+0,20 %`, `L = 12`, `t0 = 1`, destiné au futur module LVT).
+  - `σ` **décidé** (revue de preuves) pour `age_legal` (`+0,50 %` PIB/an, `+0,30 / +0,70`, `L = 6`, décision du 23 nov. 2026), `travail_assurance_chomage` (`−0,012 %` PIB par % de générosité, `L = 3`), `dep_enseignement` (`0 / 0 / +0,040 %` PIB par % de ligne, `L = 35`, `t0 = 8`), ainsi que `offre.sigma.lvt` (`+0,20 %`, `L = 12`, `t0 = 1`, non lu par `LVT_MODULE` minimal qui applique `yS = 0` au centre et la borne OCDE en cas haut si l'option est activée).
 - **E6 — PIB réalisé** : `Y(t) = Yb(t) * (1 + yD(t) + yS(t))`.
 - **E7 — Stabilisateurs et retour fiscal (D13)** : `stab = (ε * yD + ε_offre * yS) * Yb`, avec `ε = 0,6` (cyclique) et `ε_offre = 0,436` (taux de prélèvements obligatoires 2025, sans dépense cyclique).
 - **E8 — Solde primaire par bloc** : `sp(b, t) = ref(b, t) + exAnte(b, t) + behav(b, t) + stab(b, t)`. La dérive de référence combine le vieillissement `dA` (écart COR retraites à 2025 + dérive santé Commission européenne, affecté à `securiteSociale`) et `dB` (`ref.derive.b_autres`, actuellement `0`, réparti au prorata des dépenses), retranchés en variation depuis `t = 0` pour éviter de compter deux fois la dérive déjà incluse dans `ref.spb_2026`.
@@ -118,7 +118,7 @@ Le modèle couvre l'ensemble des **administrations publiques (APU)** en comptabi
 - **Module sur la page Budget, inactif par défaut (`LVT_MODULE`, `src/engine/lvt-module.js`)** :
   - `id: 'taxe_valeur_sol'`, `statut: 'non validé'` ; leviers `scenario` (0 = inactif, 1 = S1, 2 = S2, 3 = S2 avec IFI, 4 = S3, 5 = S3 avec IFI) et `offre_ocde` (0 par défaut).
   - Données : `yields.json` de LVTShift importé à un commit épinglé (`src/engine/data/lvt-yields.json`, provenance `lvt-yields.source.json`, mise à jour `npm run sync:lvt -- <commit>` puis PR ; contrôle hebdomadaire `.github/workflows/lvt-yields-watch.yml`), dérivé par `src/engine/lvt-snapshot.js` et converti en part du PIB 2025 ; paramètres `lvt.*` hors `yields.json` dans `params.js`.
-  - Flux bruts affichés par bloc (D9) ; D11 : `a(securiteSociale) < 0`, `a(centrales) > 0` du même montant ; D12 : capitalisation négative pour S2 et S3, répartie au prorata du produit (local + départemental en `a(locales)`, national en `a(centrales)`), rampe de 3 ans ; `θ = 0`, `m = 0` ; `yS` bas = central = 0, haut = borne OCDE si `offre_ocde = 1`.
+  - Flux bruts affichés par bloc (D9) ; D11 : `a(securiteSociale) < 0`, `a(centrales) > 0` du même montant ; D12 : capitalisation nette (nouvelle taxe nationale moins capitalisation inverse des impôts nationaux supprimés, part du sol seulement, plancher à 0) pour S2 et S3, plein effet dès 2027, répartie au prorata du produit (local + départemental en `a(locales)`, national en `a(centrales)`) ; `θ = 0`, `m = 0` ; `yS` bas = central = 0, haut = borne OCDE si `offre_ocde = 1`.
 
 ---
 
@@ -140,7 +140,7 @@ Pour toute année `t`, `decomposeAtYear(result, reference, t, eps, epsOffre)` d�
 - **Scénarios types neutres (`src/pages/budget/presets.js`)** : 6 points de départ non partisans (`reference`, `previsions_gouv` comparateur RESF 2027, `equilibre`, `depenses`, `recettes`, `tva_sociale`).
 - **URL partageables (`src/pages/budget/share.js`)** : sérialisation dans le hash `#/budget?h=…&cas=…&m=…&levier=…`, décodage strict borné aux plages valides.
 - **Export CSV (`src/pages/budget/exportCsv.js`)** : séparateur `;`, virgule décimale, horodatage de version, protection contre l'injection de formules tableur.
-- **Statuts de validation** : `StatusBadge` et `InfoPopover` mettent en évidence tout paramètre dont le statut appartient à `FLAGGED_STATUSES` (`de mémoire`, `à collecter`, `non validé`, `calculé (estimation)`).
+- **Statuts de validation** : `StatusBadge` et `InfoPopover` mettent en évidence tout paramètre dont le statut appartient à `FLAGGED_STATUSES` (`de mémoire`, `à collecter`, `non validé`, `calculé (estimation)`, `à valider`).
 
 ---
 
@@ -148,7 +148,7 @@ Pour toute année `t`, `decomposeAtYear(result, reference, t, eps, epsOffre)` d�
 
 Commandes de vérification (toutes requises sans erreur ni avertissement) :
 - `npm run lint` : ESLint 9 (`eslint.config.js`).
-- `npm test` : Vitest (`vitest run`), couvrant le moteur v2 (`engine.test.js`, `benchmarks.test.js`, `ndc-module.test.js`), D13 (`eps-offre.test.js`), les propriétés aléatoires à graine fixe (`randomized.test.js`), les helpers des 4 pages et l'empreinte de version (`version.test.js`).
+- `npm test` : Vitest (`vitest run`), couvrant le moteur v2 (`engine.test.js`, `benchmarks.test.js`, `ndc-module.test.js`, `lvt-module.test.js`, `lvt-yields.test.js`), D13 (`eps-offre.test.js`), les propriétés aléatoires à graine fixe (`randomized.test.js`), les helpers des 4 pages et l'empreinte de version (`version.test.js`).
 - `npm run build` : build de production Vite (`dist/`) avec injection de `__APP_VERSION__`, `__GIT_COMMIT__` et `__BUILD_DATE__`.
 
 ---
