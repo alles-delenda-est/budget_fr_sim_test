@@ -29,7 +29,7 @@ Le moteur projette les **administrations publiques consolidées (APU)** en compt
 ### Équations clés (E1–E12)
 - **E1** : PIB nominal de référence `Yb(t) = Yb(t-1) * (1 + g + pi)` (croissance et inflation = médiane des prévisionnistes indépendants, jamais les prévisions du Gouvernement).
 - **E2** : Effet ex ante d'un levier en part du PIB de base (`a(j,t)` positif = améliore le solde), indexé sur le PIB (zéro érosion nominale).
-- **E3** : Réponse comportementale `θ` symétrique en paramètres, évaluée au taux après réforme, réduite à sa part non réelle `θ_non_réel(t)` quand `σ ≠ 0` ; `θ = 0` sur les dépenses hors effets de report sociaux de l'âge légal (`comp.offset.age_legal = 0,20`) et `comp.offset.prestations` optionnel (`0` par défaut).
+- **E3** : Réponse comportementale `θ` symétrique en paramètres, évaluée au taux après réforme, réduite à sa part non réelle `θ_non_réel(t)` quand `σ ≠ 0` ; `θ = 0` sur les dépenses hors effets de report sociaux de l'âge légal (`comp.offset.age_legal = 0,20`) et décalage prestations (`comp.offset.prestations = 0,20`, Note IPP n° 129).
 - **E4** : Effet de demande en niveau, qui s'estompe (`λ = 0,7`), par catégorie de multiplicateur `dem.m.*`.
 - **E5** : Effets d'offre permanents sur le niveau du PIB (`yS`), isolés ligne par ligne avec cas `bas` / `central` / `haut` ordonnés par résultat PIB.
 - **E6** : PIB réalisé `Y(t) = Yb(t) * (1 + yD(t) + yS(t))`.
@@ -73,7 +73,7 @@ Le moteur projette les **administrations publiques consolidées (APU)** en compt
 
 ## 6. Limites connues (alignées sur `docs/model-note.md` §10–§12)
 
-- **Paramètres à vérifier / collecter** : **0 paramètre `de mémoire` restant** ; 1 seul `à collecter` (`cmp.aft.taux_emission.2026`, rapport annuel AFT 2026 attendu en 2027) ; 3 `calculé (estimation)` (`comp.tau0.ir`, `offre.ir.conv_brut`, `rend.is`) ; 5 `à valider` soumis à décision propriétaire (`lvt.capi.part`, `ref.derive.b_autres`, `comp.offset.prestations`, `comp.theta.csg`, `rend.cotis`) ; `non validé` pour `macro.g/pi` 2026–2027, `dem.lambda`, délais `offre.lag/t0`, effet d'offre de l'IR, `NDC_MODULE`, `LVT_MODULE`. Voir `docs/review-day0-parameters.md`.
+- **Paramètres à vérifier / collecter** : **0 paramètre `de mémoire` restant** ; 1 seul `à collecter` (`cmp.aft.taux_emission.2026`, rapport annuel AFT 2026 attendu en 2027) ; 3 `calculé (estimation)` (`comp.tau0.ir`, `offre.ir.conv_brut`, `rend.is`) ; 2 `à valider` soumis à décision propriétaire (`lvt.capi.part`, `ref.derive.b_autres`) ; `non validé` pour `macro.g/pi` 2026–2027, `dem.lambda`, délais `offre.lag/t0`, effet d'offre de l'IR, `NDC_MODULE`, `LVT_MODULE`. Voir `docs/review-day0-parameters.md`.
 - **Hors périmètre Day 0** : modèle déterministe (pas de distribution probabiliste), inflation exogène (pas de boucle prix-salaires), régime unique de multiplicateurs d'expansion, prolongement linéaire de `β` jusqu'au plafond de 25 % (encadré par les paliers 1 et 2).
 - **Questions ouvertes aux relecteurs (§12)** : (1) rentabilité long terme d'une hausse uniforme d'IR (`e_L = 0,40`, `τ_m = 21 %`), (2) calibrage de `ε_offre = 0,436` (D13), (3) pente dette–taux `β = 3 pb/pt` en zone euro et comportement au-delà de 200 % de dette/PIB.
 

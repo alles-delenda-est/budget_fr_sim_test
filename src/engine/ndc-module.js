@@ -11,7 +11,7 @@
 //     sélectionnée (1,0 % / 0,7 % / 0,4 %).
 //   - Effet d'offre propre nul (yS = 0, D2) : l'effet emploi des seniors provient exclusivement du
 //     levier `age_legal`, retenu pour la version 0.9 (65 ans dans le préréglage D8).
-//   - Respecte `comp.offset.prestations` (0 par défaut).
+//   - Respecte `comp.offset.prestations` (0,20 par défaut, Note IPP n° 129).
 
 import { interpolateSeries } from './params.js'
 

@@ -4,7 +4,7 @@
 >
 > Chaque chiffre est étiqueté **`read`** (PDF / API officielle téléchargés et inspectés directement), **`secondary`** (synthèse ou résumé académique), ou **`assumed`** (choix de modélisation).
 >
-> **Bilan après audit complet :** **`0` paramètre `de mémoire` restant** (sur 17 initiaux) ; **`1` seul paramètre `à collecter`** (`cmp.aft.taux_emission.2026`, rapport annuel AFT 2026 attendu en 2027) ; **`5` décisions propriétaire `à valider`** clairement identifiées en §8.
+> **Bilan après audit complet et décisions de Patrick (24 nov. 2026) :** **`0` paramètre `de mémoire` restant** (sur 17 initiaux) ; **`1` seul paramètre `à collecter`** (`cmp.aft.taux_emission.2026`, rapport annuel AFT 2026 attendu en 2027) ; **3 calibrations de leviers approuvées** (`comp.offset.prestations = 0,20`, `comp.theta.csg = 0,03`, `rend.cotis = 7,4 Md€` avec préréglage `tva_sociale` rééquilibré à `+1 pt` TVA / `−1,5 pt` cotisations) ; **`2` décisions propriétaire `à valider` restantes** (`lvt.capi.part` et `ref.derive.b_autres`, §8).
 
 ---
 
@@ -28,15 +28,15 @@
 | `dem.m.cotisations` | `de mémoire` | **`sourcé (fourchette), centre choisi`** | **0,4** (`[0,2 ; 0,7]`, inchangé) | **`read`** *Mésange* `G2017/04` §4.1.3 pp. 107–108 (**0,20** an 1 / **0,55** an 2 employeurs ; §4.1.4 **0,38** salariés) + **`secondary`** Coenen et al. (2012 : **0,23**) |
 | `dem.m.is` | `de mémoire` | **`sourcé (secondaire)`** | **0,2** (`[0,1 ; 0,4]`, inchangé) | **`secondary`** Coenen et al. (2012 : **0,24** an 1), Gechert & Rannenberg (2018) ; **`read`** *Mésange* note 77 p. 105 |
 | `comp.theta.ir` | `de mémoire` | **`sourcé (fourchette), centre choisi`** | **0,15** (`[0,05 ; 0,30]`, inchangé) | **`read`** Neisser (IZA DP 11958 / *EJ* 2021, Tableau 8 p. 55 : après déductions médiane **0,343**, moy. **0,390**) + **`secondary`** Lehmann et al. (2013 France : **≈ 0,20**) |
-| `comp.theta.csg` | `de mémoire` | **`à valider`** | **0,10** (`[0 ; 0,20]`, inchangé) | **`read`** Neisser (Tableau 8 p. 55 : avant déductions **0,203** médiane / **0,296** moy. → formule 3.2 à 9,2 % = **0,014–0,030**, écart soumis à Patrick) |
+| `comp.theta.csg` | `de mémoire` | **`sourcé (fourchette), centre choisi`** | **0,03** (`[0 ; 0,20]`, recalibré 24 nov.) | **`read`** Neisser (Tableau 8 p. 55 : avant déductions **0,203** médiane / **0,296** moy. → formule 3.2 à 9,2 % = **0,014–0,030** ; `θ_non_réel = 0` avec E5) |
 | `comp.theta.cotis` | `de mémoire` | **`sourcé (fourchette), centre choisi`** | **0,15** (`[0,05 ; 0,30]`, inchangé) | **`read`** Bozio, Breda & Grenet (IZA DP 12502 / *REStud*, pp. 5 & 28 : pass-through **6–21 %**, moy. **15 %** sans lien contributif) + **`read`** *Mésange* §4.1.3 |
 | `comp.theta.tva` | `de mémoire` | **`sourcé (secondaire)`** | **0,03** (`[0 ; 0,08]`, inchangé) | **`secondary`** Commission européenne, *VAT Gap in Europe 2025* : France **5,6 %** en 2023 (5,1 % en 2022) |
 | `comp.theta.is` | `de mémoire` | **`sourcé (secondaire)`** | **0,25** (`[0,20 ; 0,38]`, inchangé) | **`secondary`** Beer, de Mooij & Liu (2020, *JES* 34(3)) : `η ≈ 1,0–1,5` (`η × 25 % = 0,25–0,375`) |
 | `emploi.kappa` | `de mémoire` | **`sourcé (secondaire)`** | **0,4** (`[0,3 ; 0,5]`, inchangé) | **`secondary`** Ball, Leigh & Loungani (2017, *JMCB* 49(7)) : France = **−0,37** |
 | `ref.derive.b_autres` | `à collecter` (`0`, sans borne) | **`à valider`** (`0`, **`[0 ; 0,11]`**) | **0** (inchangé ; décision D7) | **`read`** — Eurostat 1995–2024 (`gov_10a_exp` + `gov_10a_main` + `nama_10_gdp`) |
-| `comp.offset.prestations` | `à collecter` | **`à valider`** | **0** (`[0 ; 0,30]`, inchangé) | **`secondary`** — Note IPP n° 129 (sept. 2026, TAXIPP) : gel des pensions **6,6 Md€** bruts → **5,2 Md€** nets APU (**21,2 %** de retour IR + CSG + ASPA/APL) |
+| `comp.offset.prestations` | `à collecter` | **`sourcé (secondaire)`** | **0,20** (`[0 ; 0,30]`, recalibré 24 nov.) | **`secondary`** — Note IPP n° 129 (sept. 2026, TAXIPP) : gel des pensions **6,6 Md€** bruts → **5,2 Md€** nets APU (**21,2 %** de retour IR + CSG + ASPA/APL) |
 | `rend.is` | `à collecter` | **`calculé (estimation)`** | **2,3** (`[2,0 ; 3,0]`, inchangé) | **`read`** PLF 2026 V&M t. I pp. 18–20 (IS net **58,2 Md€** / 25 % = **2,33**) + **`secondary`** DGFiP Stat. n° 51 sept. 2026 (IS brut **70,5 Md€** → jusqu'à **2,6–2,8 Md€/pt**) |
-| `rend.cotis` | `à collecter` | **`à valider`** | **8,5** (`[7 ; 10]`, inchangé) | **`read`** Eurostat `D11` **1 129,3 Md€** (2025) & PLFSS 2026 A4 (**> 75 Md€** allègements) + **`secondary`** Urssaf masse privée **726 Md€** (2024 → **7,3–7,5 Md€/pt**, **6,2–7,5** net d'allègements) |
+| `rend.cotis` | `à collecter` | **`sourcé (fourchette), centre choisi`** | **7,4** (`[6,2 ; 10]`, recalibré 24 nov.) | **`read`** Eurostat `D11` **1 129,3 Md€** (2025) & PLFSS 2026 A4 (**> 75 Md€** allègements) + **`secondary`** Urssaf masse privée **726 Md€** (2024 → **7,3–7,5 Md€/pt**, **6,2–7,5** net d'allègements) |
 | `cmp.aft.taux_emission.2026` | `à collecter` | `à collecter` (source enrichie) | **3,5 %** (inchangé, affichage seul) | **`secondary`** — Estimations financières en cours d'année 2026 ≈ **3,47–3,6 %** (rapport annuel AFT 2026 attendu en 2027) |
 
 ---
@@ -132,7 +132,7 @@ Pour éviter tout double compte avec la dérive démographique `dA` (retraites C
 | Base fiscale (Neisser, Tableau 8 p. 55 imprimée, `read`) | Obs. / Études | Moyenne `e` | Médiane `e` | Application formule §3.2 `θ = e × τ / (1 − τ)` |
 |---|---:|---:|---:|---|
 | **Après déductions (assiette étroite, type IR)** | 596 / 37 | **0,390** | **0,343** | À `τ0 = 21 %` (`0,266`) : `θ = 0,09–0,10` (0,05 avec Lehmann `0,20`) ; aux tranches hautes `30–45 %` (`0,43–0,82`) : **`0,15–0,30`** → `comp.theta.ir = 0,15 [0,05 ; 0,30]` |
-| **Avant déductions (assiette large, type CSG)** | 852 / 38 | **0,296** | **0,203** | À `τ0 = 9,2 %` (`0,101`) : **`θ = 0,021–0,030`** (`0,014–0,021` sur salaires seuls `e = 0,138 / 0,211`) → **écart notable avec le centre actuel `0,10`** (signalé `à valider`) |
+| **Avant déductions (assiette large, type CSG)** | 852 / 38 | **0,296** | **0,203** | À `τ0 = 9,2 %` (`0,101`) : **`θ = 0,021–0,030`** (`0,014–0,021` sur salaires seuls `e = 0,138 / 0,211`) → **recalibré à `0,03` par Patrick le 24 nov. 2026** (`θ_non_réel = 0` avec E5) |
 | *Total toutes études* | *1 448 / 53* | *0,340* | *0,260* | — |
 
 - **Cotisations patronales (`comp.theta.cotis = 0,15 [0,05 ; 0,30]`) :** Bozio, Breda & Grenet (`read`, pp. 5 & 28 imprimées) établissent sur trois réformes françaises qu'en l'absence de lien contributif fort, la répercussion sur les salaires est limitée (**6 % à 21 %**, moyenne méta-analyse **15 %** sur 11 études contre **103 %** avec lien contributif fort), si bien que le coin pèse sur le coût du travail et l'emploi (retour budgétaire de **28 %** dès l'année 1 dans *Mésange* §4.1.3). À `τ0 = 36,4 %`, `θ = 0,15` implique `e ≈ 0,26`, et `θ_non_réel` redescend à `0,050` lorsque E5 est actif.
@@ -144,17 +144,17 @@ Pour éviter tout double compte avec la dérive démographique `dA` (retraites C
 1. **`macro.pi.long` (`1,85 % [1,3 ; 2,3]` → `sourcé (fourchette), centre choisi`) :**
    - Banque de France, *Projections macroéconomiques France*, 15 sept. 2026 (`bdf_proj_sept2026.pdf`, p. 1, **`read`**) : IPCH total **`2,3 %`** (2026), **`1,9 %`** (2027), **`1,6 %`** (2028) ; inflation hors énergie et alimentation **`1,6 %`** (2026), **`2,3 %`** (2027), **`1,9 %`** (2028).
    - BCE, *Survey of Professional Forecasters* T4 2026 (30 oct. 2026, **`secondary`**) : anticipations long terme (2031) ancrées à **`2,0 %`** (total et sous-jacent, cible symétrique BCE `2,0 %`). Le centre `1,85 %` s'inscrit exactement entre BdF 2028 (`1,6–1,9 %`) et la cible BCE (`2,0 %`).
-2. **`comp.offset.prestations` (`0 [0 ; 0,30]` → `à valider`) :**
+2. **`comp.offset.prestations` (`0 → 0,20 [0 ; 0,30]` → `sourcé (secondaire)`, décision de Patrick du 24 nov. 2026) :**
    - **Note IPP n° 129** (sept. 2026, P. Aubert, S. Duchesne, T. Tochev & M. Tô, *« Comment mettre à contribution les retraités pour le redressement des finances publiques ? »*, modèle TAXIPP, **`secondary`**) : un gel complet des pensions de base économise **`6,6 Md€`** bruts pour les régimes de retraite mais seulement **`5,2 Md€`** nets pour l'ensemble des APU, soit un **effet de retour mécanique de `21,2 %`** (`1,4 / 6,6`) par moindres recettes d'IR et de CSG et hausse induite d'ASPA et d'APL.
-   - **Point d'attention pour Patrick :** `indexation_pensions` et `NDC_MODULE` ont `σ = 0` (`yD → 0` à long terme) : laisser `comp.offset.prestations = 0` surestime donc d'environ **20 %** l'économie permanente nette APU d'une sous-indexation. Le centre est conservé à `0` (zéro dérive non validée) et passé en **`à valider`**.
+   - **Décision du 24 nov. 2026 :** Calibré à **`0,20`** (parce que `indexation_pensions` et `NDC_MODULE` ont `σ = 0` ; simplification assumée : le retour est imputé au bloc sécurité sociale).
 3. **`rend.is` (`2,3 [2,0 ; 3,0]` Md€/pt → `calculé (estimation)`) :**
    - **PLF 2026, *Voies et moyens, tome I*** (`plf2026_vm_t1.pdf`, pp. 18–20, **`read`**) : taux normal `25 %` (PME `15 %` ≤ 42 500 €), IS net État **`57,4 Md€`** (2024), **`58,2 Md€`** (2025 révisé), **`59,0 Md€`** (2026) → ratio net `58,2 / 25 = 2,33 Md€/pt` (`59,0 / 25 = 2,36`).
    - **DGFiP Statistiques n° 51** (sept. 2026, *L'impôt sur le bénéfice 2025 des entreprises*, **`secondary`** `impots.gouv.fr`) : **IS brut 2025 = `70,5 Md€`** (`69 Md€` en 2024), crédits et réductions d'impôt ≈ `13 Md€`, résultat fiscal IS `176 Md€`. Les crédits d'impôt (CIR, etc.) étant forfaitaires en euros, un point de taux normal porte sur l'assiette **brute** taxée à 25 %, ce qui borne le rendement statique brut autour de **`2,6–2,8 Md€/pt`** (`70,5 / 25 = 2,82` avant retrait de la tranche PME 15 %). Faute de sensibilité publiée par la DG Trésor, le proxy `2,3` est maintenu en **`calculé (estimation)`**.
-4. **`rend.cotis` (`8,5 [7 ; 10]` Md€/pt → `à valider`) :**
+4. **`rend.cotis` (`8,5 → 7,4 [6,2 ; 10]` Md€/pt → `sourcé (fourchette), centre choisi`, décision de Patrick du 24 nov. 2026) :**
    - **Eurostat `nama_10_gdp`** (`eurostat_wages_fr.json`, **`read`**) : salaires et traitements bruts totaux (`D11`) = **`1 111,6 Md€`** (2024) et **`1 129,3 Md€`** (2025) ; cotisations employeurs (`D12`) = `406,9 Md€` (2025).
    - **Urssaf / Acoss** (2024, **`secondary`** `urssaf.org`) : masse salariale du **secteur privé** soumise à cotisations = **`726 Md€`** (+3,3 %, soit ≈ `750 Md€` en 2025), hors salaires bruts publics (≈ `234 Md€`, FIPECO — où une hausse de cotisations employeurs publics est un transfert interne entre APUC/APUL et ASSO, **neutre au consolidé APU**).
    - **PLFSS 2026, Annexe 4** (`plfss2026_annexe4.pdf`, pp. 23 et 36 imprimées, **`read`**) : les allègements généraux dépassent **`75 Md€`** en 2024 (`71,5 Md€` ROBSS en 2026), réduisant l'assiette effective autour du SMIC (`6,2–7,5 Md€/pt` selon Cour des comptes / Sénat, `secondary`).
-   - **Point d'attention pour Patrick :** Sur la masse salariale privée consolidée, 1 point vaut **`≈ 7,3–7,5 Md€`** brut (`6,2–7,5` net des allègements bas salaires), en dessous du centre actuel `8,5 Md€` (hérité de la moyenne DSS `7` / Ecalle `10`). Centre conservé à `8,5`, statut passé à **`à valider`**.
+   - **Décision du 24 nov. 2026 :** Recalibré à **`7,4 Md€/pt`** (`[6,2 ; 10]`) et préréglage `tva_sociale` rééquilibré à `+1 pt` TVA tous taux (`+11,4 Md€`) / `−1,5 pt` cotisations (`−11,1 Md€`, écart ex ante `+0,3 Md€`).
 5. **`cmp.aft.taux_emission.2026` (`3,5 %`, affichage seul → reste `à collecter`) :**
    - Le site `aft.gouv.fr` est protégé contre l'accès automatisé (défi Cloudflare, non contourné) et le rapport annuel AFT 2026 n'est publié qu'après clôture de l'exercice. Les suivis financiers secondaires situent le taux moyen pondéré des émissions OAT MLT en cours d'année 2026 autour de **`3,47–3,6 %`**. Conservé honnêtement en **`à collecter`**.
 
@@ -164,11 +164,9 @@ Pour éviter tout double compte avec la dérive démographique `dA` (retraites C
 
 1. **`0` paramètre `de mémoire` restant** dans `src/engine/params.js` (sur 17 initiaux).
 2. **`1` seul paramètre `à collecter` restant :** `cmp.aft.taux_emission.2026` (`3,5 %`, affichage seul, en attente du rapport annuel AFT 2026).
-3. **5 décisions propriétaire (`à valider`) :**
+3. **3 calibrations approuvées le 24 nov. 2026 :** `comp.offset.prestations = 0,20`, `comp.theta.csg = 0,03`, `rend.cotis = 7,4 Md€/pt` (avec rééquilibrage du préréglage `tva_sociale`).
+4. **2 décisions propriétaire (`à valider`) restantes :**
    - `lvt.capi.part = 0,80` (`[0,60 ; 1,00]`, D12) et go/no-go du module LVT (30 nov.).
    - `ref.derive.b_autres = 0` (`[0 ; 0,11]`, D7 — maintenir `0` ou retenir un centre positif ex. `+0,05` / `+0,10` d'après Eurostat 1995–2024).
-   - `comp.offset.prestations = 0` (`[0 ; 0,30]` — maintenir `0` ou calibrer autour de **`0,20`** d'après la Note IPP n° 129 de sept. 2026 mesurant `21,2 %` de retour IR/CSG/ASPA/APL sur un gel des pensions).
-   - `comp.theta.csg = 0,10` (`[0 ; 0,20]` — maintenir `0,10` ou ramener vers **`0,02–0,03`** conformément à la formule §3.2 appliquée aux élasticités assiette large de Neisser 2021).
-   - `rend.cotis = 8,5` (`[7 ; 10]` Md€/pt — maintenir `8,5` ou recaler autour de **`7,3–7,5`** Md€/pt sur la masse salariale privée Urssaf consolidée APU).
-4. **3 paramètres `calculé (estimation)` :** `comp.tau0.ir` (`21 %`), `offre.ir.conv_brut` (`0,76`), `rend.is` (`2,3 Md€/pt` net vs `2,6–2,8` brut DGFiP).
-5. **Hard gate de mise en production (`CLAUDE.md` §7) :** revue de sécurité **Gemini 4 Neon** avant toute fusion `review/day0` → `main`.
+5. **3 paramètres `calculé (estimation)` :** `comp.tau0.ir` (`21 %`), `offre.ir.conv_brut` (`0,76`), `rend.is` (`2,3 Md€/pt` net vs `2,6–2,8` brut DGFiP).
+6. **Hard gate de mise en production (`CLAUDE.md` §7) :** revue de sécurité **Gemini 4 Neon** avant toute fusion `review/day0` → `main`.

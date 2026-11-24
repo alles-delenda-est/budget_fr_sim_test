@@ -214,10 +214,11 @@ describe('θ symétrique évalué au taux après réforme (§3.2)', () => {
       expect(leverTheta(lever, x, P)).toBeGreaterThan(leverTheta(lever, -x, P))
     })
   }
-  it('θ = 0 pour une dépense, sauf décalage optionnel sur les prestations', () => {
+  it('θ = 0 pour une dépense, sauf décalage sur les prestations (0,20 par défaut, surchargeable)', () => {
     expect(leverTheta(LEVER_BY_ID.dep_defense, -5, P)).toBe(0)
-    expect(leverTheta(LEVER_BY_ID.indexation_pensions, -1, P)).toBe(0)
-    expect(leverTheta(LEVER_BY_ID.indexation_pensions, -1, resolveParams({ 'comp.offset.prestations': 0.2 }))).toBe(0.2)
+    expect(leverTheta(LEVER_BY_ID.indexation_pensions, -1, P)).toBe(0.20)
+    expect(leverTheta(LEVER_BY_ID.indexation_pensions, -1, resolveParams({ 'comp.offset.prestations': 0 }))).toBe(0)
+    expect(leverTheta(LEVER_BY_ID.indexation_pensions, -1, resolveParams({ 'comp.offset.prestations': 0.25 }))).toBe(0.25)
   })
 })
 
@@ -661,7 +662,7 @@ describe('σ des leviers fiscaux : calculé depuis les paramètres (docs/sigma-f
     expect(yS(is)[8]).toBeCloseTo(sigmaFiscal('is', P).value / 100, 10) // τ = 7 = L
   })
   it('θ non réel : ≥ 0, valeurs centrales attendues, jamais supérieur à θ', () => {
-    const attendu = { cotis_patronales: 0.05, csg: 0.06, tva_normal: 0, ir: 0.05, is: 0.25 }
+    const attendu = { cotis_patronales: 0.05, csg: 0, tva_normal: 0, ir: 0.05, is: 0.25 }
     for (const [id, th] of Object.entries(attendu)) {
       const lever = LEVER_BY_ID[id]
       const theta = leverTheta(lever, 1, P)
@@ -778,15 +779,16 @@ describe('vérification primaire Day 0 : ventilation COFOG Eurostat 2024 et para
     expect(PARAM_BY_ID['ref.derive.b_autres'].status).toBe('à valider')
     expect([PARAM_BY_ID['ref.derive.b_autres'].low, PARAM_BY_ID['ref.derive.b_autres'].value, PARAM_BY_ID['ref.derive.b_autres'].high]).toEqual([0, 0, 0.11])
   })
-  it('plus aucun paramètre « de mémoire » et seul cmp.aft.taux_emission.2026 reste « à collecter »', () => {
+  it('plus aucun paramètre « de mémoire », seul cmp.aft.taux_emission.2026 « à collecter », et 3 centres calibrés (24 nov. 2026)', () => {
     expect(PARAMS.filter((q) => q.status === 'de mémoire')).toEqual([])
     expect(PARAMS.filter((q) => q.status === 'à collecter').map((q) => q.id)).toEqual(['cmp.aft.taux_emission.2026'])
+    expect(PARAMS.filter((q) => q.status === 'à valider').map((q) => q.id).sort()).toEqual(['lvt.capi.part', 'ref.derive.b_autres'])
     expect(PARAM_BY_ID['dem.m.ir_csg'].source).toMatch(/Mésange.*0,41/)
     expect(PARAM_BY_ID['comp.theta.ir'].source).toMatch(/Neisser.*0,343/)
     expect(PARAM_BY_ID['comp.theta.cotis'].source).toMatch(/Bozio, Breda et Grenet/)
-    expect(PARAM_BY_ID['comp.offset.prestations'].status).toBe('à valider')
-    expect(PARAM_BY_ID['comp.theta.csg'].status).toBe('à valider')
-    expect(PARAM_BY_ID['rend.cotis'].status).toBe('à valider')
+    expect([PARAM_BY_ID['comp.offset.prestations'].value, PARAM_BY_ID['comp.offset.prestations'].status]).toEqual([0.20, 'sourcé (secondaire)'])
+    expect([PARAM_BY_ID['comp.theta.csg'].value, PARAM_BY_ID['comp.theta.csg'].status]).toEqual([0.03, 'sourcé (fourchette), centre choisi'])
+    expect([PARAM_BY_ID['rend.cotis'].low, PARAM_BY_ID['rend.cotis'].value, PARAM_BY_ID['rend.cotis'].high, PARAM_BY_ID['rend.cotis'].status]).toEqual([6.2, 7.4, 10, 'sourcé (fourchette), centre choisi'])
     expect(PARAM_BY_ID['rend.is'].status).toBe('calculé (estimation)')
     expect(PARAM_BY_ID['macro.pi.long'].status).toBe('sourcé (fourchette), centre choisi')
   })
