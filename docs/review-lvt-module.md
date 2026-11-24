@@ -283,3 +283,30 @@ Effet à plein régime (2029 et après), en % du PIB :
 Taux d'actualisation 3,5 % dans les deux cas. Le consolidé est la seule capitalisation.
 
 Reste à faire avant le portillon du 30 novembre : fixer la part capitalisée centrale ; vérifier la clé 7,5/17,2 et le taux des prélèvements sociaux en vigueur en 2026 ; trancher l'écart entre `offre.sigma.lvt` et D2.
+
+## 7. Addendum du 24 nov. 2026 : capitalisation nette et calendrier (décision de Patrick)
+
+Branche `module/lvt-net-capitalisation`, sur `review/day0`. Le module reste « non validé » et inactif par défaut. Cet addendum remplace, pour D12, la montée en charge sur trois ans et la capitalisation brute de la section 6.
+
+**1. Capitalisation nette.** La capitalisation de la nouvelle taxe nationale est inchangée (part 0,60 / 0,80 / 1,00, à valider). On en retranche la capitalisation inverse des impôts nationaux supprimés : en S2 et S3, IR et prélèvements sociaux sur les plus-values immobilières et sur les loyers ; dans les variantes « avec IFI », l'IFI. Supprimer un impôt récurrent sur le rendement des biens relève leur prix de (impôt supprimé / r) × part capitalisée. Seule la part du sol de cette hausse entre dans l'assiette de la nouvelle taxe.
+
+- Perte nette = part × [taxe nationale additionnelle / r − part du sol × impôts supprimés / r] / 6 122 Md€ × produit total de la nouvelle taxe, ramenée à 0 si elle est négative (aucun gain inscrit). Répartition par niveau inchangée (au prorata du produit).
+- Impôts supprimés : montants de `yields.json` par impôt (même commit 322190e, `src/engine/lvt-snapshot.js`, `LVT_IMPOTS_NATIONAUX_SUPPRIMES`) : plus-values 3,99 Md€ (IR 1,37 + PS 2,61, moyenne 2020–2024 en euros 2025, Cour des comptes) ; loyers 8,30 Md€ (IR 4,53 + PS 2,59 + CSG 1,18, données 2022 en euros 2025, CPO) ; IFI 2,33 Md€ (DGFiP, relu, §2.2). Statut : « LVTShift », sauf l'IFI. Ce sont les montants dont la somme forme la part nationale additionnelle de chaque scénario (à 0,02 Md€ près, arrondis de `yields.json`) ; les millésimes relus en §2.2 sont plus bas (plus-values 2,8 Md€ en 2024 ; loyers 7,7 Md€ en euros de 2022). Choix de l'implémentation : prendre les mêmes montants que ceux qui dimensionnent la nouvelle taxe. Conséquence : à rendement égal, impôts supprimés ≈ taxe additionnelle, donc perte nette ≈ perte brute × (1 − part du sol). Avec les millésimes relus, la perte nette centrale serait plus forte (S3 avec IFI : environ −0,09 % du PIB au lieu de −0,08 %).
+- Part du sol `lvt.capi.part_sol` : 0,454, calcul sur Insee Première n° 2135 (12 nov. 2026), figure 1, ménages fin 2025 : terrains bâtis 4 190 Md€ / (4 190 + logements 4 812 + autres bâtiments et génie civil 235). Bas 0,430 : même calcul sur Insee Première n° 2028 (11 déc. 2024), fin 2023. Haut 0,60 : choix de l'implémentation, car loyers, plus-values et IFI se concentrent dans les zones denses, où LVTShift mesure une part foncière de 60 % (Lyon) à 76 % (Paris) ; aucune part nationale propre à ces biens n'a été trouvée. LVTShift prend la même référence Insee (44 % pour les ménages fin 2023) et borne la part imputée de chaque parcelle entre 15 et 85 %. Statut « sourcé (calcul) ».
+- Symétrie : même part capitalisée dans les deux sens. Aucune estimation d'une asymétrie n'a été trouvée dans les sources de cette revue. Raison possible, non chiffrée, d'une capitalisation plus faible pour les plus-values : l'impôt n'est dû qu'à la vente et s'éteint avec la durée de détention.
+- S1 reste sans effet. La capitalisation inverse des impôts locaux supprimés (TF bâti, DMTO) n'est pas modélisée, pas plus que celle de la part locale de la nouvelle taxe.
+
+**2. Calendrier.** La capitalisation a lieu quand la réforme devient crédible : la perte nette est entière dès 2027 (`LVT_START_YEAR`), sans montée en charge. Cela suppose que la nouvelle taxe est assise sur des valeurs à jour ; si les valeurs n'étaient révisées que périodiquement, la perte de produit viendrait avec retard. Preuves de capitalisation : §4.2 (Palmon et Smith 1998 : 62 % ; Høj et al. 2018 : capitalisation complète au Danemark).
+
+Effet sur le consolidé dès 2027, en % du PIB (taux 3,5 %, part du sol 0,454) :
+
+| Variante | Brut (0,60 / 0,80 / 1,00) | Inverse | Net | Part nette effective |
+|---|---|---|---|---|
+| S2 sans IFI | −0,027 / −0,036 / −0,044 | +0,012 / +0,016 / +0,020 | −0,015 / −0,019 / −0,024 | 0,33 / 0,44 / 0,55 |
+| S2 avec IFI | −0,043 / −0,058 / −0,072 | +0,020 / +0,026 / +0,033 | −0,024 / −0,032 / −0,039 | 0,33 / 0,44 / 0,55 |
+| S3 sans IFI | −0,092 / −0,122 / −0,153 | +0,041 / +0,055 / +0,069 | −0,050 / −0,067 / −0,083 | 0,33 / 0,44 / 0,55 |
+| S3 avec IFI | −0,112 / −0,149 / −0,186 | +0,051 / +0,068 / +0,085 | −0,061 / −0,081 / −0,102 | 0,33 / 0,44 / 0,55 |
+
+Part nette effective = net / brut × part capitalisée. Le plancher ne joue dans aucun scénario ni aucun cas, ni sur la fourchette de la part du sol (0,43 à 0,60) ; il ne jouerait, avec IFI, que pour une part du sol de 1. Sensibilité, S3 avec IFI, part 0,80 : net −0,106 % du PIB pour une part du sol de 0,43 et −0,074 % pour 0,60.
+
+Tests : `src/engine/__tests__/lvt-module.test.js` (net = brut − inverse ≥ 0 par scénario et par cas ; plancher ; plein effet en 2027 ; référence inchangée module inactif ; gardes `toBe` sur les nouveaux paramètres ; `projectScenario` sans valeur non finie sur tous les horizons).

@@ -21,7 +21,7 @@ export function LvtModuleControl({ lvt, onChange }) {
           <span className="sb-info-sub"><strong>Sources :</strong> {LVT_MODULE.sources.join(' ; ')}</span>
         </InfoPopover>
       </div>
-      <p className="sb-help">Remplace des impôts existants par une taxe sur la valeur du sol, à rendement égal, dès {LVT_START_YEAR} (instantané LVTShift du {LVT_SNAPSHOT_META.date.split('-').reverse().join('/')}). Seule la capitalisation dans le prix du sol change le solde consolidé.</p>
+      <p className="sb-help">Remplace des impôts existants par une taxe sur la valeur du sol, à rendement égal, dès {LVT_START_YEAR} (instantané LVTShift du {LVT_SNAPSHOT_META.date.split('-').reverse().join('/')}). Seule la capitalisation nette dans les prix (baisse due à la nouvelle taxe moins hausse due aux impôts nationaux supprimés, part du sol seulement) change le solde consolidé, en entier dès {LVT_START_YEAR}.</p>
       <label htmlFor={selectId} className="sb-module-label">Scénario</label>
       <select id={selectId} className="sb-module-select" value={lvt.scenario}
         onChange={(e) => onChange({ ...lvt, scenario: parseInt(e.target.value, 10) })}>

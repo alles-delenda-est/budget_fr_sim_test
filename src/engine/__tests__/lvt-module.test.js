@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { LVT_MODULE, LVT_SCENARIO_CODES, LVT_CAPI_RAMP_YEARS, LVT_START_T, lvtComponents, capiRamp } from '../lvt-module.js'
-import { LVT_SCENARIOS, LVT_SCENARIO_BY_CODE, LVT_PRELEVEMENTS_SOCIAUX, LVT_LIGNES, LVT_SNAPSHOT_META } from '../lvt-snapshot.js'
+import { LVT_MODULE, LVT_SCENARIO_CODES, LVT_START_T, LVT_START_YEAR, LVT_PARAM_IDS, lvtComponents, impotsNationauxSupprimes } from '../lvt-module.js'
+import { LVT_SCENARIOS, LVT_SCENARIO_BY_CODE, LVT_PRELEVEMENTS_SOCIAUX, LVT_LIGNES, LVT_SNAPSHOT_META, LVT_IMPOTS_NATIONAUX_SUPPRIMES } from '../lvt-snapshot.js'
 import { validateModuleDefinition, runModule } from '../modules.js'
 import { resolveParams, PARAM_BY_ID } from '../params.js'
 import { projectScenario, HORIZONS, START_YEAR } from '../project.js'
@@ -16,6 +16,9 @@ function makeContext(params = P, nYears = 30) {
 const run = (scenario, offre_ocde = 0, params = P, nYears = 30) => runModule(LVT_MODULE, { scenario, offre_ocde }, makeContext(params, nYears))
 const consolidated = (inst, t) => BLOCKS.reduce((s, b) => s + inst.aBlocks[b][t], 0)
 const ACTIVE = [1, 2, 3, 4, 5]
+const NET = [2, 3, 4, 5] // scénarios avec capitalisation (S2, S2 avec IFI, S3, S3 avec IFI)
+/** Plein effet dès 2027 (D12, décision du 24 nov. 2026) : 0 en 2026, 1 ensuite. */
+const on = (t) => (t >= LVT_START_T ? 1 : 0)
 
 describe('instantané LVTShift (yields.json, commit 322190e, 12 nov. 2026) : gardes de non-régression', () => {
   it('métadonnées datées', () => {
@@ -59,6 +62,27 @@ describe('instantané LVTShift (yields.json, commit 322190e, 12 nov. 2026) : gar
       expect(BLOCKS).toContain(l.bloc)
     }
   })
+  it('impôts nationaux supprimés (capitalisation inverse, D12) : montants de yields.json, source et statut', () => {
+    const byId = Object.fromEntries(LVT_IMPOTS_NATIONAUX_SUPPRIMES.map((l) => [l.id, l]))
+    expect(Object.keys(byId)).toEqual(['pv_ir_ps', 'loyers_ir_ps', 'ifi'])
+    expect(byId.pv_ir_ps.montant).toBe((1374 + 2613) / 1000)
+    expect(byId.loyers_ir_ps.montant).toBe((4533 + 2590 + 1180) / 1000)
+    expect(byId.ifi.montant).toBe(2332 / 1000)
+    expect([byId.pv_ir_ps.drapeau, byId.loyers_ir_ps.drapeau, byId.ifi.drapeau]).toEqual(['plusValues', 'revenusLocatifs', 'ifi'])
+    for (const l of LVT_IMPOTS_NATIONAUX_SUPPRIMES) {
+      expect(l.source).toMatch(/322190e/)
+      expect(l.source).toMatch(/https:\/\//)
+      expect(['relu', 'LVTShift']).toContain(l.statut)
+    }
+    // Leur somme forme la part nationale additionnelle de chaque scénario, à l'arrondi de yields.json près (0,05 Md€).
+    for (const c of ACTIVE) {
+      const s = LVT_SCENARIO_BY_CODE[c]
+      const somme = impotsNationauxSupprimes(s).reduce((a, l) => a + l.montant, 0)
+      expect(Math.abs(somme - (s.national - LVT_SCENARIO_BY_CODE[1].national))).toBeLessThan(0.05)
+    }
+    expect(impotsNationauxSupprimes(LVT_SCENARIO_BY_CODE[1])).toEqual([])
+    expect(impotsNationauxSupprimes(LVT_SCENARIO_BY_CODE[5]).map((l) => l.id)).toEqual(['pv_ir_ps', 'loyers_ir_ps', 'ifi'])
+  })
 })
 
 describe('paramètres du module : gardes de non-régression', () => {
@@ -75,8 +99,25 @@ describe('paramètres du module : gardes de non-régression', () => {
     expect(q('lvt.ps.cle_etat').status).toBe('non validé')
     expect([q('lvt.ys.ocde_par_point').value, q('lvt.ys.ocde_par_point').low, q('lvt.ys.ocde_par_point').high]).toEqual([1.0, 0.25, 1.0])
     expect(q('lvt.ys.ocde_par_point').status).toBe('non validé')
-    expect(LVT_CAPI_RAMP_YEARS).toBe(3)
     expect(LVT_START_T).toBe(1)
+    expect(LVT_START_YEAR).toBe(2027)
+  })
+  it('part du sol dans la valeur des biens (capitalisation inverse) : valeurs, fourchette, statut, source', () => {
+    const q = PARAM_BY_ID['lvt.capi.part_sol']
+    expect(q.value).toBe(4190 / (4190 + 4812 + 235))
+    expect(q.low).toBe(3829 / (3829 + 4847 + 233))
+    expect(q.high).toBe(0.60)
+    expect(q.value).toBeCloseTo(0.454, 3)
+    expect(q.low).toBeCloseTo(0.430, 3)
+    expect(q.unit).toBe('part')
+    expect(q.status).toBe('sourcé (calcul)')
+    expect(q.source).toMatch(/Insee Première n° 2135/)
+    expect(q.source).toMatch(/Insee Première n° 2028/)
+    expect(q.source).toMatch(/15 et 85 %/)
+    expect(q.source).toMatch(/choix de l'implémentation/)
+    expect(P['lvt.capi.part_sol']).toBe(q.value)
+    expect(LVT_PARAM_IDS).toContain('lvt.capi.part_sol')
+    expect(PARAM_BY_ID['lvt.capi.part'].source).toMatch(/symétrie, décision du 24 nov. 2026/)
   })
 })
 
@@ -122,11 +163,11 @@ describe('D11 et rendement égal : a par bloc', () => {
       // Avec la capitalisation centrale : l'écart au consolidé est exactement la capitalisation.
       const full = run(c)
       const k = lvtComponents(c, P)
-      full.aBlocks.centrales.forEach((_, t) => expect(consolidated(full, t)).toBeCloseTo(k.capitalisation / PIB * capiRamp(t), 12))
+      full.aBlocks.centrales.forEach((_, t) => expect(consolidated(full, t)).toBeCloseTo(k.capitalisation / PIB * on(t), 12))
       // Capitalisation par niveau, au prorata du produit : locales = (local + départemental) / total, centrales = national / total.
       const s = LVT_SCENARIO_BY_CODE[c]
       const tot = s.local + s.departemental + s.national
-      full.aBlocks.locales.forEach((v, t) => expect(v).toBeCloseTo(k.capitalisation * (s.local + s.departemental) / tot / PIB * capiRamp(t), 12))
+      full.aBlocks.locales.forEach((v, t) => expect(v).toBeCloseTo(k.capitalisation * (s.local + s.departemental) / tot / PIB * on(t), 12))
       expect(k.capiLocales + k.capiCentrales).toBeCloseTo(k.capitalisation, 12)
       if (c >= 2) expect(full.aBlocks.locales[5]).toBeLessThan(0)
       else expect(full.aBlocks.locales.every((v) => v === 0)).toBe(true)
@@ -175,36 +216,113 @@ describe('flux bruts (affichage seulement)', () => {
   }
 })
 
-describe('D12 : capitalisation', () => {
-  it('S1 : aucun effet ; S2, S3 : a(centrales) négatif, croissant avec la part nationale', () => {
-    expect(lvtComponents(1, P).capitalisation).toBe(0)
-    const caps = [2, 3, 4, 5].map((c) => lvtComponents(c, P).capitalisation)
+describe('D12 : capitalisation nette (décision du 24 nov. 2026)', () => {
+  const CASES = [['bas', 0.60], ['central', 0.80], ['haut', 1.00]]
+  it('S1 : aucun effet (ni brut, ni inverse) ; S2, S3 : perte brute croissante avec la part nationale', () => {
+    const k1 = lvtComponents(1, P)
+    expect([k1.capiBrute, k1.capiInverse, k1.capitalisation, k1.impotsSupprimes]).toEqual([0, 0, 0, 0])
+    const caps = NET.map((c) => lvtComponents(c, P).capiBrute)
     caps.forEach((v) => expect(v).toBeLessThan(0))
     for (let i = 1; i < caps.length; i++) expect(caps[i]).toBeLessThan(caps[i - 1])
   })
-  it('S3 : borne haute (capitalisation 100 %, taux 3 à 4 %) de l\'ordre de −0,13 à −0,22 % du PIB, comme la revue (§4.4)', () => {
+  for (const c of NET) {
+    it(`${LVT_SCENARIO_BY_CODE[c].id} : perte nette = brute − inverse, ≥ 0, cas bas / central / haut`, () => {
+      const s = LVT_SCENARIO_BY_CODE[c]
+      const tot = s.local + s.departemental + s.national
+      const sol = P['lvt.capi.part_sol']
+      const r = P['lvt.capi.taux_actualisation'] / 100
+      const base = P['lvt.base_fonciere.2025']
+      const supp = impotsNationauxSupprimes(s).reduce((a, l) => a + l.montant, 0)
+      for (const [, part] of CASES) {
+        const k = lvtComponents(c, P, { capiPart: part })
+        // Formule de la décision : part × [nouvelle taxe / r − part du sol × impôts supprimés / r] / assiette × produit total.
+        const attendu = part * ((s.national - LVT_SCENARIO_BY_CODE[1].national) / r - sol * supp / r) / base * tot
+        expect(k.capiBrute).toBeCloseTo(-part * (s.national - LVT_SCENARIO_BY_CODE[1].national) / r / base * tot, 9)
+        expect(k.capiInverse).toBeCloseTo(part * sol * supp / r / base * tot, 9)
+        expect(k.capiInverse).toBeGreaterThan(0)
+        expect(-k.capitalisation).toBeCloseTo(attendu, 9)
+        expect(k.capitalisation).toBeCloseTo(k.capiBrute + k.capiInverse, 9)
+        expect(k.capitalisation).toBeLessThan(0) // perte nette > 0 : le plancher ne joue pas
+        expect(k.plancher).toBe(false)
+        expect(k.capitalisation).toBeGreaterThan(k.capiBrute)
+        // Les deux parts (locales, État) somment à la perte nette, au prorata du produit.
+        expect(k.capiLocales + k.capiCentrales).toBeCloseTo(k.capitalisation, 12)
+        expect(k.capiLocales).toBeCloseTo(k.capitalisation * (s.local + s.departemental) / tot, 12)
+      }
+      // Fourchette de la part du sol (0,43 à 0,60) : le plancher ne joue dans aucun cas.
+      const q = PARAM_BY_ID['lvt.capi.part_sol']
+      for (const partSol of [q.low, q.value, q.high]) {
+        for (const [, part] of CASES) expect(lvtComponents(c, P, { capiPart: part, partSol }).plancher).toBe(false)
+      }
+    })
+  }
+  it('valeurs centrales (part 0,80, taux 3,5 %, part du sol 0,45) : brut, inverse, net en % du PIB', () => {
+    const pct = (c, k) => lvtComponents(c, P)[k] / PIB * 100
+    expect([2, 3, 4, 5].map((c) => pct(c, 'capiBrute'))).toEqual([2, 3, 4, 5].map((c) => expect.closeTo([-0.036, -0.058, -0.122, -0.149][c - 2], 3)))
+    expect(pct(2, 'capitalisation')).toBeCloseTo(-0.019, 3)
+    expect(pct(3, 'capitalisation')).toBeCloseTo(-0.032, 3)
+    expect(pct(4, 'capitalisation')).toBeCloseTo(-0.067, 3)
+    expect(pct(5, 'capitalisation')).toBeCloseTo(-0.081, 3)
+    // Les impôts supprimés égalent la taxe nationale additionnelle à l'arrondi près : net / brut ≈ 1 − part du sol.
+    for (const c of NET) {
+      const k = lvtComponents(c, P)
+      expect(k.capitalisation / k.capiBrute).toBeCloseTo(1 - P['lvt.capi.part_sol'], 2)
+    }
+  })
+  it('S3 : borne haute brute (capitalisation 100 %, taux 3 à 4 %) de −0,13 à −0,22 % du PIB, comme la revue (§4.4) ; nette plus faible', () => {
     for (const c of [4, 5]) {
       for (const tauxPct of [3, 4]) {
-        const pct = lvtComponents(c, P, { capiPart: 1, tauxPct }).capitalisation / PIB * 100
-        expect(pct).toBeLessThan(-0.13)
-        expect(pct).toBeGreaterThan(-0.22)
+        const k = lvtComponents(c, P, { capiPart: 1, tauxPct })
+        expect(k.capiBrute / PIB * 100).toBeLessThan(-0.13)
+        expect(k.capiBrute / PIB * 100).toBeGreaterThan(-0.22)
+        expect(k.capitalisation).toBeGreaterThan(k.capiBrute)
       }
     }
-    // S3 avec IFI, taux 3 % : ≈ −6,5 Md€ ; taux 4 % : ≈ −4,9 Md€ (revue : 4,5 à 6 Md€)
-    expect(lvtComponents(5, P, { capiPart: 1, tauxPct: 3 }).capitalisation).toBeCloseTo(-14.6 / 0.03 / 6122 * 81.8, 9)
+    expect(lvtComponents(5, P, { capiPart: 1, tauxPct: 3 }).capiBrute).toBeCloseTo(-14.6 / 0.03 / 6122 * 81.8, 9)
   })
-  it('valeurs centrales (part 0,80, taux 3,5 %) et rampe sur trois ans', () => {
-    const pct = (c) => lvtComponents(c, P).capitalisation / PIB * 100
-    expect(pct(2)).toBeCloseTo(-0.036, 3)
-    expect(pct(3)).toBeCloseTo(-0.058, 3)
-    expect(pct(4)).toBeCloseTo(-0.122, 3)
-    expect(pct(5)).toBeCloseTo(-0.149, 3)
-    expect([0, 1, 2, 3, 4, 10].map(capiRamp)).toEqual([0, 1 / 3, 2 / 3, 1, 1, 1])
-    const inst = run(4, 0, P)
-    const k = lvtComponents(4, P)
-    const capiAt = (t) => consolidated(inst, t) * PIB
-    expect(capiAt(1)).toBeCloseTo(k.capitalisation / 3, 9)
-    expect(capiAt(3)).toBeCloseTo(k.capitalisation, 9)
+  it('plancher : si la capitalisation inverse l\'emporte, perte nette nulle, aucun gain inscrit', () => {
+    // Part du sol de 1 : S2 avec IFI, impôts supprimés (6,319) > taxe additionnelle (6,3) -> plancher.
+    const k = lvtComponents(3, P, { partSol: 1 })
+    expect(k.capiInverse).toBeGreaterThan(-k.capiBrute)
+    expect(k.plancher).toBe(true)
+    expect(k.capitalisation).toBe(0)
+    expect(k.capiLocales).toBe(0)
+    expect(k.capiCentrales).toBe(0)
+    expect(k.partAssiettePerdue).toBe(0)
+    const Pfloor = resolveParams({ 'lvt.capi.part_sol': 1 })
+    const inst = run(3, 0, Pfloor)
+    expect(inst.aBlocks.locales.every((v) => v === 0)).toBe(true)
+    inst.aBlocks.centrales.forEach((_, t) => expect(consolidated(inst, t)).toBeCloseTo(0, 15))
+    // Part du sol hors bornes : ramenée dans [0, 1].
+    expect(lvtComponents(3, P, { partSol: 5 }).capitalisation).toBe(0)
+    expect(lvtComponents(3, P, { partSol: -1 }).capitalisation).toBeCloseTo(lvtComponents(3, P, { partSol: 0 }).capiBrute, 12)
+    // Part du sol nulle : perte nette = perte brute.
+    for (const c of NET) expect(lvtComponents(c, P, { partSol: 0 }).capitalisation).toBe(lvtComponents(c, P).capiBrute)
+  })
+  it('plein effet dès 2027, sans montée en charge ; rien en 2026', () => {
+    for (const c of NET) {
+      const inst = run(c, 0, P)
+      const k = lvtComponents(c, P)
+      expect(consolidated(inst, 0)).toBe(0)
+      for (const t of [1, 2, 3, 10, 30]) expect(consolidated(inst, t) * PIB).toBeCloseTo(k.capitalisation, 9)
+      expect(inst.aBlocks.locales[1]).toBeCloseTo(inst.aBlocks.locales[5], 15)
+      expect(inst.aBlocks.centrales[1]).toBeCloseTo(inst.aBlocks.centrales[5], 15)
+    }
+    const text = run(4).explications.join(' ')
+    expect(text).toMatch(new RegExp(`dès ${LVT_START_YEAR}`))
+    expect(LVT_MODULE.explications.join(' ')).toMatch(/anticipent/)
+    expect(LVT_MODULE.explications.join(' ')).toMatch(/Høj et al\. 2018/)
+    expect(LVT_MODULE.explications.join(' ')).toMatch(/Palmon et Smith 1998/)
+    expect(LVT_MODULE.explications.join(' ')).not.toMatch(/montée en charge sur/)
+  })
+  it('explications : capitalisation nette, symétrie, part du sol, plancher et impôts locaux non modélisés', () => {
+    const text = LVT_MODULE.explications.join(' ')
+    expect(text).toMatch(/capitalisation nette/)
+    expect(text).toMatch(/même part dans les deux sens/)
+    expect(text).toMatch(/aucun gain n'est inscrit/)
+    expect(text).toMatch(/impôts locaux supprimés \(taxe foncière sur le bâti, DMTO\) n'est pas modélisée/)
+    expect(text).not.toMatch(/ce qui n'est pas modélisé/)
+    expect(run(5).explications.join(' ')).toMatch(/plus-values immobilières, revenus locatifs, IFI/)
   })
   it('aucun multiplicateur de demande, même avec capitalisation (effet de richesse non modélisé)', () => {
     for (const c of ACTIVE) expect(run(c).mByYear.every((m) => m === 0)).toBe(true)
