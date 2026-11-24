@@ -21,7 +21,7 @@ src/
 │   ├── Navigation.jsx/.css     # Barre d'onglets
 │   └── ReviewBanner.jsx/.css   # Bandeau « Version de relecture »
 ├── engine/                     # Moteur de projection v2 (pur JavaScript, sans dépendance React)
-│   ├── params.js               # Catalogue unique des 171 paramètres (PARAMS, PARAM_BY_ID, resolveParams, interpolateSeries)
+│   ├── params.js               # Catalogue unique des 175 paramètres (PARAMS, PARAM_BY_ID, resolveParams, interpolateSeries)
 │   ├── levers.js               # 14 leviers actifs (LEVERS) + 3 leviers structurels désactivés (STRUCTURAL_LEVERS)
 │   ├── supply.js               # Effets d'offre E5 (σ calculé fiscal + σ décidé) et θ_non_réel
 │   ├── modules.js              # Contrat de module autonome (validateModuleDefinition, runModule, TEST_MODULE)
@@ -83,7 +83,7 @@ Le modèle couvre l'ensemble des **administrations publiques (APU)** en comptabi
 ## 3. Flux de calcul du moteur (`projectScenario`)
 
 ### 3.1 Résolution des paramètres et instruments
-1. `resolveParams(overrides)` résout les 171 paramètres de `PARAMS` en validant les identifiants et la finitude des valeurs.
+1. `resolveParams(overrides)` résout les 175 paramètres de `PARAMS` en validant les identifiants et la finitude des valeurs.
 2. `leversToInstruments(levers, P, N, ramp, { sigma, ysCase })` convertit les 14 leviers actifs (`LEVERS`) en séries annuelles par bloc `aBlocks[bloc][t]` (fraction du PIB de référence) et `theta[t]`.
 3. Chaque module passé dans `options.modules` est exécuté par `runModule(mod, values, context)` avec un `context` profondément gelé (`deepFreeze`). Le contrat impose qu'un module ne renvoie que `{ annees, flux, explications }`, ne touche jamais à la dette ni aux intérêts, et fournisse `a` par bloc, `theta ∈ [0, 1]`, `categorie` ou `m`, et un `yS` optionnel `{ bas, central, haut }`.
 4. `coreSupplyLines` calcule les séries d'effets d'offre E5 des leviers natifs pour les trois cas (`bas`, `central`, `haut`), auxquelles s'ajoutent celles des modules et d'un éventuel chemin `options.yS` externe.

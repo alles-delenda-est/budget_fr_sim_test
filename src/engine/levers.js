@@ -33,9 +33,9 @@ export function thetaAtRate(theta0, tau0, tau1, form = 'elasticite') {
 const ALL_CENTRAL = { centrales: 1, securiteSociale: 0, locales: 0 }
 const ALL_SECU = { centrales: 0, securiteSociale: 1, locales: 0 }
 
-// Répartition de fonctions de dépense entre État et collectivités : proxy (paramètres bloc.part_hors_secu.*, à collecter).
-const stateLocal = (P) => ({
-  centrales: P['bloc.part_hors_secu.centrales'], securiteSociale: 0, locales: P['bloc.part_hors_secu.locales'],
+// Répartition de fonctions de dépense entre État/ODAC (S1311) et collectivités locales (S1313) : Eurostat COFOG 2024 (gov_10a_exp).
+const cofogBlocks = (slug) => (P) => ({
+  centrales: P[`bloc.cofog.${slug}.centrales`], securiteSociale: 0, locales: P[`bloc.cofog.${slug}.locales`],
 })
 
 /**
@@ -57,22 +57,22 @@ export const LEVERS = [
     blocs: () => ALL_CENTRAL, statut: 'sourcé', aide: 'Variation proportionnelle du barème : 1 % du produit vaut environ 1 Md€ (FIPECO).' },
   { id: 'is', titre: 'Impôt sur les sociétés', unite: 'points de taux', min: -10, max: 10, type: 'recette', signe: 1,
     rendement: (P) => P['rend.is'], categorie: 'is', theta: { id: 'comp.theta.is', tau0: 'comp.tau0.is', mode: 'point', form: 'is' },
-    blocs: () => ALL_CENTRAL, statut: 'à collecter', aide: 'Rendement par point : valeur provisoire (aucun chiffre officiel trouvé).' },
+    blocs: () => ALL_CENTRAL, statut: 'calculé (estimation)', aide: 'Rendement par point estimé à 2,3 Md€ (IS net 58,2 / 25 % ; brut DGFiP jusqu\'à ≈ 2,6–2,8 Md€/pt, sans étalon officiel DG Trésor).' },
   { id: 'cotis_patronales', titre: 'Cotisations patronales', unite: 'points de taux', min: -5, max: 5, type: 'recette', signe: 1,
     rendement: (P) => P['rend.cotis'], categorie: 'cotisations', theta: { id: 'comp.theta.cotis', tau0: 'comp.tau0.cotis', mode: 'point', form: 'elasticite' },
-    blocs: () => ALL_SECU, statut: 'à collecter', aide: 'Un point de cotisations : de 7 à 10 Md€ selon les sources secondaires (valeur provisoire).' },
+    blocs: () => ALL_SECU, statut: 'à valider', aide: 'Un point de cotisations employeurs : ≈ 7,3–7,5 Md€ sur la masse salariale privée (6,2–7,5 Md€ net des allègements) ; centre actuel 8,5 Md€ à valider.' },
   { id: 'dep_enseignement', titre: 'Dépenses d\'enseignement', unite: '% de la ligne', min: -30, max: 30, type: 'depense', signe: -1,
-    rendement: (P) => P['base.cofog.enseignement'] / 100, categorie: 'remunerations', blocs: stateLocal,
-    statut: 'sourcé', aide: '1 % de la fonction « enseignement » (COFOG 2024) : environ 1,5 Md€.' },
+    rendement: (P) => P['base.cofog.enseignement'] / 100, categorie: 'remunerations', blocs: cofogBlocks('enseignement'),
+    statut: 'sourcé', aide: '1 % de la fonction « enseignement » (COFOG 2024) : environ 1,5 Md€ (69,8 % État / 30,2 % collectivités, Eurostat 2024).' },
   { id: 'dep_defense', titre: 'Dépenses de défense', unite: '% de la ligne', min: -30, max: 30, type: 'depense', signe: -1,
     rendement: (P) => P['base.cofog.defense'] / 100, categorie: 'achats_invest', blocs: () => ALL_CENTRAL,
     statut: 'sourcé', aide: '1 % de la fonction « défense » (COFOG 2024).' },
   { id: 'dep_ordre_securite', titre: 'Ordre et sécurité publics', unite: '% de la ligne', min: -30, max: 30, type: 'depense', signe: -1,
-    rendement: (P) => P['base.cofog.ordre_securite'] / 100, categorie: 'remunerations', blocs: stateLocal,
-    statut: 'sourcé', aide: '1 % de la fonction « ordre et sécurité publics » (COFOG 2024).' },
+    rendement: (P) => P['base.cofog.ordre_securite'] / 100, categorie: 'remunerations', blocs: cofogBlocks('ordre_securite'),
+    statut: 'sourcé', aide: '1 % de la fonction « ordre et sécurité publics » (COFOG 2024 : 80,3 % État / 19,7 % collectivités, Eurostat 2024).' },
   { id: 'dep_affaires_eco', titre: 'Affaires économiques', unite: '% de la ligne', min: -30, max: 30, type: 'depense', signe: -1,
-    rendement: (P) => P['base.cofog.affaires_economiques'] / 100, categorie: 'achats_invest', blocs: stateLocal,
-    statut: 'sourcé', aide: '1 % de la fonction « affaires économiques » (COFOG 2024).' },
+    rendement: (P) => P['base.cofog.affaires_economiques'] / 100, categorie: 'achats_invest', blocs: cofogBlocks('affaires_economiques'),
+    statut: 'sourcé', aide: '1 % de la fonction « affaires économiques » (COFOG 2024 : 68,7 % État / 31,3 % collectivités, Eurostat 2024).' },
   { id: 'ondam', titre: 'ONDAM (dépenses de santé)', unite: '% de la ligne', min: -10, max: 10, type: 'depense', signe: -1,
     rendement: (P) => P['base.cofog.sante'] / 100, categorie: 'prestations', blocs: () => ALL_SECU,
     statut: 'sourcé', aide: '1 % de la fonction « santé » (COFOG 2024, proxy de l\'ONDAM).' },
