@@ -14,15 +14,15 @@ Version en ligne : **https://budget-fr-sim-test.vercel.app**
   - Effets de demande en niveau qui s'estompent (`λ = 0,7`) et effets d'offre permanents explicites (`yS` bas / central / haut) passant au solde via deux coefficients distincts (`ε = 0,6` pour la demande ; `ε_offre = 0,436` pour l'offre, taux de prélèvements obligatoires 2025).
   - Charge d'intérêts aux taux de marché (`i*` pondéré BTF / OAT 2–8 ans / OAT 10 ans+ ≈ `4,38 %`), prime de risque `β = 3 pb/pt` (fourchette `1–5`) et inertie du stock de dette (`M = 8,45 ans`).
   - Avertissements « hors expérience historique » : **palier 1** (`260 %` du PIB, record Japon 2020) et **palier 2** (`500 %` du PIB ou intérêts `> 50 %` des recettes publiques).
-- **Simulateur budgétaire** : 6 scénarios types **neutres** (dont le comparateur macroéconomique RESF 2027), décomposition exacte de l'écart de solde par cause, ventilation sur les 3 blocs APU, **URL partageables** et **export CSV** (séparateur `;`, protection anti-injection).
-- **Simulateur retraites** : variantes de productivité du **COR (juin 2026)** et de dérive santé/dépendance (**Commission européenne 2024**), leviers retenus pour la version 0.9 (`age_legal` 62–67 ans recalibré sur sources primaires avec effet d'offre emploi seniors et 20 % de reports sociaux, `indexation_pensions`), préréglage **Comptes notionnels (NDC, dès 2028)** (`NDC_MODULE`, forme réduite `non validé`, confiance basse, décision D8) et mesure désactivée (`plafonnement_pensions`).
-- **Onglet Hypothèses & Paramètres** : source unique de vérité lisant 100 % des 162 paramètres, statuts (`sourcé`, `de mémoire`, `à collecter`, `non validé`, etc.), fourchettes et questions ouvertes aux relecteurs directement dans le catalogue du moteur.
+- **Simulateur budgétaire** : 6 scénarios types **neutres** (dont le comparateur macroéconomique RESF 2027), module minimal **Taxe sur la valeur du sol (LVT)** (`non validé`, inactif par défaut, `yields.json` LVTShift importé à un commit épinglé), décomposition exacte de l'écart de solde par cause, ventilation sur les 3 blocs APU, **URL partageables** et **export CSV** (séparateur `;`, protection anti-injection).
+- **Simulateur retraites** : variantes de productivité du **COR (juin 2026)** et de dérive santé/dépendance (**Commission européenne 2024**), leviers retenus pour la version 0.9 (`age_legal` 62–67 ans recalibré sur sources primaires avec effet d'offre emploi seniors, emplois implicites et 20 % de reports sociaux, `indexation_pensions`), préréglage **Comptes notionnels (NDC, dès 2028)** (`NDC_MODULE`, forme réduite `non validé`, confiance basse, décision D8) et mesure désactivée (`plafonnement_pensions`).
+- **Onglet Hypothèses & Paramètres** : source unique de vérité lisant 100 % des 171 paramètres, statuts (`sourcé`, `de mémoire`, `à collecter`, `non validé`, `à valider`, etc.), fourchettes et questions ouvertes aux relecteurs directement dans le catalogue du moteur.
 
 ## Pile technique
 
 - React 19 + Vite 7 + Recharts 3
 - CSS pur (mobile d'abord, sans framework)
-- Vitest (13 fichiers, 267 tests) + ESLint 9
+- Vitest (15 fichiers, 354 tests) + ESLint 9
 
 ## Lancer en local
 
@@ -40,13 +40,16 @@ npm run sync:lvt -- <commit>   # réimporte yields.json de LVTShift à un commit
 ```text
 src/
 ├── engine/                     # Moteur de projection v2 (pur JS, sans React)
-│   ├── params.js               # Catalogue unique des 162 paramètres (PARAMS)
+│   ├── params.js               # Catalogue unique des 171 paramètres (PARAMS)
 │   ├── levers.js               # 14 leviers actifs + 3 leviers structurels désactivés
 │   ├── supply.js               # Effets d'offre E5 (σ calculé fiscal + σ décidé) et θ_non_réel
 │   ├── modules.js              # Contrat de module autonome
 │   ├── ndc-module.js           # Module Comptes notionnels (forme réduite, non validé, D8)
+│   ├── lvt-module.js           # Module Taxe sur la valeur du sol (minimal, non validé, D11–D12)
+│   ├── lvt-snapshot.js         # Rendements dérivés de data/lvt-yields.json (commit épinglé LVTShift)
+│   ├── lvt-yields-schema.js    # Validation structurelle de yields.json
 │   ├── project.js              # Boucle de projection E1–E12 (projectScenario, HORIZONS)
-│   └── __tests__/              # engine.test.js, benchmarks.test.js, ndc-module.test.js
+│   └── __tests__/              # engine, benchmarks, ndc-module, lvt-module, lvt-yields
 ├── pages/                      # IntroPage, SimulateurBudgetPage, SimulateurRetraitesPage, HypothesesPage
 ├── components/                 # Navigation, ReviewBanner
 ├── config.js                   # Seuils WARNING_THRESHOLDS et configuration relecture

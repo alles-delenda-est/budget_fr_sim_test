@@ -13,7 +13,7 @@ import { LvtModuleControl, LvtModuleResults } from './budget/LvtModule'
 import { LVT_MODULE, LVT_PARAM_IDS } from '../engine/lvt-module.js'
 import { LVT_SCENARIO_BY_CODE } from '../engine/lvt-snapshot.js'
 import { InfoPopover, ParamInfo, StatusBadge } from './budget/InfoPopover'
-import { buildSeries, snapshotAt, decomposeAtYear, hasSupplyEffect, blocksAt, paramIdsFor, extremeLevers, fmt, SUPPLY_CASES } from './budget/helpers'
+import { buildSeries, snapshotAt, decomposeAtYear, hasSupplyEffect, blocksAt, paramIdsFor, extremeLevers, fmt, SUPPLY_CASES, FLAGGED_STATUSES } from './budget/helpers'
 import { NEUTRAL_SCENARIOS, MACRO_VARIANT_BY_ID, overridesForMacro, matchesScenario } from './budget/presets'
 import './SimulateurBudgetPage.css'
 
@@ -81,13 +81,14 @@ export default function SimulateurBudgetPage() {
   const applyScenario = (scenario) => {
     setValues({ ...scenario.levers })
     setMacroId(scenario.macroId ?? null)
+    setLvt(DEFAULT_LVT)
   }
 
   return (
     <div className="sb-page">
       <header>
         <h1 className="sb-title">Simulateur budgétaire</h1>
-        <p className="sb-help">Moteur v2 : trois blocs (État et ODAC, sécurité sociale, collectivités), effets d'offre explicites, référence sans levier. Les paramètres « de mémoire », « à collecter » ou « non validé » sont signalés : ils ne sont pas encore sourcés.</p>
+        <p className="sb-help">Moteur v2 : trois blocs (État et ODAC, sécurité sociale, collectivités), effets d'offre explicites, référence sans levier. Les paramètres portant un statut à vérifier ({FLAGGED_STATUSES.map((s) => `« ${s} »`).join(', ')}) sont signalés par une pastille dédiée.</p>
       </header>
 
       <section className="sb-section" aria-labelledby="sb-options">
@@ -124,7 +125,7 @@ export default function SimulateurBudgetPage() {
         <p className="sb-help">Points de départ illustratifs, sans programme partisan. Cliquer un scénario règle les curseurs correspondants (ou active un comparateur macroéconomique) ; vous pouvez ensuite ajuster librement chaque levier.</p>
         <div className="sb-presets" role="group" aria-label="Scénarios types neutres">
           {NEUTRAL_SCENARIOS.map((sc) => {
-            const active = matchesScenario(sc, values, macroId)
+            const active = matchesScenario(sc, values, macroId, Boolean(lvtSetting))
             return (
               <button key={sc.id} type="button" className={`sb-preset${active ? ' sb-preset-active' : ''}`}
                 aria-pressed={active} onClick={() => applyScenario(sc)}>

@@ -1,0 +1,3 @@
+# Preserve exact LF line endings on vendored JSON files verified by SHA-256 across OSes (Windows/macOS/Linux).
+src/engine/data/*.json text eol=lf
+src/engine/__tests__/fixtures/*.json text eol=lf

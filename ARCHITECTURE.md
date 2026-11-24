@@ -118,7 +118,7 @@ Le modèle couvre l'ensemble des **administrations publiques (APU)** en comptabi
 - **Module sur la page Budget, inactif par défaut (`LVT_MODULE`, `src/engine/lvt-module.js`)** :
   - `id: 'taxe_valeur_sol'`, `statut: 'non validé'` ; leviers `scenario` (0 = inactif, 1 = S1, 2 = S2, 3 = S2 avec IFI, 4 = S3, 5 = S3 avec IFI) et `offre_ocde` (0 par défaut).
   - Données : `yields.json` de LVTShift importé à un commit épinglé (`src/engine/data/lvt-yields.json`, provenance `lvt-yields.source.json`, mise à jour `npm run sync:lvt -- <commit>` puis PR ; contrôle hebdomadaire `.github/workflows/lvt-yields-watch.yml`), dérivé par `src/engine/lvt-snapshot.js` et converti en part du PIB 2025 ; paramètres `lvt.*` hors `yields.json` dans `params.js`.
-  - Flux bruts affichés par bloc (D9) ; D11 : `a(securiteSociale) < 0`, `a(centrales) > 0` du même montant ; D12 : capitalisation négative pour S2 et S3, répartie au prorata du produit (local + départemental en `a(locales)`, national en `a(centrales)`), rampe de 3 ans ; `θ = 0`, `m = 0` ; `yS` bas = central = 0, haut = borne OCDE si `offre_ocde = 1`.
+  - Flux bruts affichés par bloc (D9) ; D11 : `a(securiteSociale) < 0`, `a(centrales) > 0` du même montant ; D12 : capitalisation nette (nouvelle taxe nationale moins capitalisation inverse des impôts nationaux supprimés, part du sol seulement, plancher à 0) pour S2 et S3, plein effet dès 2027, répartie au prorata du produit (local + départemental en `a(locales)`, national en `a(centrales)`) ; `θ = 0`, `m = 0` ; `yS` bas = central = 0, haut = borne OCDE si `offre_ocde = 1`.
 
 ---
 
@@ -140,7 +140,7 @@ Pour toute année `t`, `decomposeAtYear(result, reference, t, eps, epsOffre)` d�
 - **Scénarios types neutres (`src/pages/budget/presets.js`)** : 6 points de départ non partisans (`reference`, `previsions_gouv` comparateur RESF 2027, `equilibre`, `depenses`, `recettes`, `tva_sociale`).
 - **URL partageables (`src/pages/budget/share.js`)** : sérialisation dans le hash `#/budget?h=…&cas=…&m=…&levier=…`, décodage strict borné aux plages valides.
 - **Export CSV (`src/pages/budget/exportCsv.js`)** : séparateur `;`, virgule décimale, horodatage de version, protection contre l'injection de formules tableur.
-- **Statuts de validation** : `StatusBadge` et `InfoPopover` mettent en évidence tout paramètre dont le statut appartient à `FLAGGED_STATUSES` (`de mémoire`, `à collecter`, `non validé`, `calculé (estimation)`).
+- **Statuts de validation** : `StatusBadge` et `InfoPopover` mettent en évidence tout paramètre dont le statut appartient à `FLAGGED_STATUSES` (`de mémoire`, `à collecter`, `non validé`, `calculé (estimation)`, `à valider`).
 
 ---
 
@@ -148,7 +148,7 @@ Pour toute année `t`, `decomposeAtYear(result, reference, t, eps, epsOffre)` d�
 
 Commandes de vérification (toutes requises sans erreur ni avertissement) :
 - `npm run lint` : ESLint 9 (`eslint.config.js`).
-- `npm test` : Vitest (`vitest run`), couvrant le moteur v2 (`engine.test.js`, `benchmarks.test.js`, `ndc-module.test.js`), D13 (`eps-offre.test.js`), les propriétés aléatoires à graine fixe (`randomized.test.js`), les helpers des 4 pages et l'empreinte de version (`version.test.js`).
+- `npm test` : Vitest (`vitest run`), couvrant le moteur v2 (`engine.test.js`, `benchmarks.test.js`, `ndc-module.test.js`, `lvt-module.test.js`, `lvt-yields.test.js`), D13 (`eps-offre.test.js`), les propriétés aléatoires à graine fixe (`randomized.test.js`), les helpers des 4 pages et l'empreinte de version (`version.test.js`).
 - `npm run build` : build de production Vite (`dist/`) avec injection de `__APP_VERSION__`, `__GIT_COMMIT__` et `__BUILD_DATE__`.
 
 ---

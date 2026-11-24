@@ -3,7 +3,7 @@ import { projectScenario, issuanceRate, HORIZONS, RATE_MAX, START_YEAR } from '.
 import { resolveParams, PARAM_BY_ID } from '../engine/params.js'
 import { LEVERS, STRUCTURAL_LEVERS, LEVER_BY_ID } from '../engine/levers.js'
 import { WARNING_THRESHOLDS as W } from '../config.js'
-import { fmt } from './budget/helpers'
+import { fmt, FLAGGED_STATUSES } from './budget/helpers'
 import { evaluateWarnings } from './budget/warnings'
 import { macroGrowthSourceLabel } from './hypotheses/helpers'
 import { LEGAL_AGE_BASE } from './retraites/helpers'
@@ -252,8 +252,8 @@ export default function IntroPage({ navigateTo }) {
             taux à l'émission étant plafonné à {fmt(RATE_MAX * 100, 0)} %, d'où les avertissements explicites au-delà de l'expérience historique.
           </li>
           <li>
-            <strong>Transparence des statuts :</strong> chaque paramètre « de mémoire », « à collecter », « non validé » ou
-            « calculé (estimation) » est signalé par une pastille dédiée dans toute l'interface.
+            <strong>Transparence des statuts :</strong> chaque paramètre portant un statut à vérifier (
+            {FLAGGED_STATUSES.map((s) => `« ${s} »`).join(', ')}) est signalé par une pastille dédiée dans toute l'interface.
           </li>
         </ul>
         <p className="intro-links-row">

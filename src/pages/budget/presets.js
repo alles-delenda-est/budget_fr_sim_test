@@ -116,9 +116,10 @@ export const SCENARIO_BY_ID = Object.fromEntries(NEUTRAL_SCENARIOS.map((s) => [s
 
 const numOrZero = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
 
-/** Vrai si l'état courant (valeurs de leviers + variante macroéconomique) correspond exactement au scénario type. */
-export function matchesScenario(scenario, values, macroId = null) {
+/** Vrai si l'état courant (valeurs de leviers, variante macroéconomique, module LVT inactif) correspond exactement au scénario type. */
+export function matchesScenario(scenario, values, macroId = null, lvtActive = false) {
   if (!scenario) return false
+  if (lvtActive) return false
   if ((scenario.macroId ?? null) !== (macroId ?? null)) return false
   return LEVERS.every((l) => Math.abs(numOrZero(scenario.levers?.[l.id]) - numOrZero(values?.[l.id])) < 1e-9)
 }
