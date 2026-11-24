@@ -33,9 +33,12 @@
 .sb-lever-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.25rem 0.75rem; font-size: 0.875rem; }
 .sb-lever-value { font-variant-numeric: tabular-nums; }
 .sb-lever-yield { color: var(--color-ink-light, #4a4a4a); }
+.sb-lever-note { margin: 0.35rem 0 0; font-size: 0.8125rem; line-height: 1.45; color: var(--color-ink-muted, #6b6b6b); overflow-wrap: anywhere; }
 
 .sb-badge { display: inline-block; font-size: 0.75rem; padding: 0.1rem 0.45rem; border-radius: 999px; border: 1px solid var(--color-border, #e0e0e0); color: var(--color-ink-light, #4a4a4a); background: #fff; white-space: nowrap; }
 .sb-badge-flag { border-color: var(--color-warning, #bf4000); color: var(--color-warning, #bf4000); background: #fff6f0; }
+/* À 320 px, un badge long dans l'en-tête d'un levier passe à la ligne au lieu de déborder. */
+.sb-lever-head .sb-badge { max-width: 100%; white-space: normal; }
 .sb-badge-override { border-color: var(--color-accent, #5c6bc0); color: var(--color-accent, #3949ab); background: var(--color-accent-light, #eef0fb); }
 
 .sb-info { position: relative; display: inline-block; }

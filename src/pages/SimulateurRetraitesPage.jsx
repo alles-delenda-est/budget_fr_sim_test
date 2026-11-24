@@ -28,6 +28,7 @@ import {
 import { evaluateWarnings, splitSeriesAtYear, visibleDomain } from './budget/warnings'
 import { WarningBanner, DecompositionTable, BlocksTable } from './budget/Results'
 import { InfoPopover, ParamInfo, StatusBadge } from './budget/InfoPopover'
+import JobsNote from './budget/JobsNote'
 import {
   LEGAL_AGE_BASE,
   SOURCE_LINKS,
@@ -364,6 +365,10 @@ export default function SimulateurRetraitesPage() {
                     <strong>offre.sigma.age_legal</strong>
                     <ParamInfo param={PARAM_BY_ID['offre.sigma.age_legal']} />
                   </span>
+                  <span className="sb-info-sub">
+                    <strong>offre.emplois_par_pt_pib.age_legal</strong>
+                    <ParamInfo param={PARAM_BY_ID['offre.emplois_par_pt_pib.age_legal']} />
+                  </span>
                 </InfoPopover>
               </div>
               <input
@@ -393,6 +398,7 @@ export default function SimulateurRetraitesPage() {
                 Offre emploi seniors : <strong>{fmt(AGE_SIGMA.value, 2, { signed: true })} %</strong> PIB/an (
                 {fmt(AGE_SIGMA.low, 2, { signed: true })} / {fmt(AGE_SIGMA.high, 2, { signed: true })} %).
               </p>
+              <JobsNote leverId="age_legal" x={ageDelta} P={activeP} ysCase={ysCase} className="ret-lever-note" />
             </div>
 
             {/* INDEXATION DES PENSIONS */}

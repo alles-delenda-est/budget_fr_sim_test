@@ -3,7 +3,7 @@
 
 import { LEVERS, LEVER_BY_ID, BLOCKS } from '../../engine/levers.js'
 import { PARAM_BY_ID } from '../../engine/params.js'
-import { SUPPLY_BY_LEVER } from '../../engine/supply.js'
+import { SUPPLY_BY_LEVER, impliedJobs, roundJobs, supplyForCase } from '../../engine/supply.js'
 import { MACRO_VARIANT_BY_ID } from './presets.js'
 
 const NF = (d) => new Intl.NumberFormat('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d })
@@ -235,12 +235,46 @@ export function paramIdsFor(values, result, macroId = null) {
     if (l.categorie) ids.push(`dem.m.${l.categorie}`)
     const reg = SUPPLY_BY_LEVER[l.id]
     if (reg) ids.push(...(reg.sigma ? [reg.sigma] : reg.sigmaParams), reg.L, reg.t0)
+    if (reg?.emplois) ids.push(reg.emplois)
   }
   for (const line of result?.supply?.lignes ?? []) {
     const reg = SUPPLY_BY_LEVER[line.id]
     if (reg) ids.push(...(reg.sigma ? [reg.sigma] : reg.sigmaParams), reg.L, reg.t0)
   }
   return [...new Set(ids)].filter((id) => PARAM_BY_ID[id])
+}
+
+/** Nombre d'emplois arrondi, au format français avec séparateur de milliers (« 160 000 », « -90 000 », même signe que `fmt`) ; « — » si non fini. */
+const NF_JOBS = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 })
+export function fmtJobs(v, { signed = false } = {}) {
+  if (typeof v !== 'number' || !Number.isFinite(v)) return '—'
+  const s = NF_JOBS.format(v === 0 ? 0 : v)
+  return signed && v > 0 ? `+${s}` : s
+}
+
+/**
+ * Données de la note « emplois implicites » d'un levier doté d'une conversion emplois (registre `emplois`, ex. âge légal), ou null.
+ * Tout est lu dans les paramètres : σ retenu par le moteur pour le cas `ysCase` dans le sens de `x` (hausse si x ≥ 0, baisse sinon :
+ * « bas » = PIB le plus bas), emplois par unité (en valeur absolue) et pour la valeur choisie `x`, arrondis à 10 000, fourchette
+ * externe éventuelle (comparateur).
+ */
+export function jobsNote(leverId, x, P, ysCase = 'central') {
+  const reg = SUPPLY_BY_LEVER[leverId]
+  if (!reg?.emplois) return null
+  const dir = Number.isFinite(x) && x < 0 ? -1 : 1
+  const unit = supplyForCase(leverId, dir, P, undefined, ysCase)
+  const jobsDir = impliedJobs(leverId, dir, P, ysCase)
+  const perUnit = jobsDir === null ? null : Math.abs(jobsDir)
+  if (!unit || perUnit === null) return null
+  const forX = Number.isFinite(x) ? impliedJobs(leverId, x, P, ysCase) : null
+  const cmp = reg.emploisComparateur
+  return {
+    caseLabel: SUPPLY_CASES.find((c) => c.id === ysCase)?.label.toLowerCase() ?? ysCase,
+    sigma: unit.sigma,
+    jobsPerUnit: roundJobs(perUnit),
+    jobsForX: forX === null ? null : roundJobs(forX),
+    range: cmp ? { low: P[cmp.bas], high: P[cmp.haut], libelle: cmp.libelle } : null,
+  }
 }
 
 /** Statuts qui signalent une valeur non sourcée : mis en évidence pour les relecteurs. */

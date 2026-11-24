@@ -138,7 +138,7 @@ export default function SimulateurBudgetPage() {
       </section>
 
       <div className="sb-layout">
-        <LeverPanel values={values} onChange={setLever} onReset={() => { setValues({}); setLvt(DEFAULT_LVT) }} onExtreme={(w) => setValues(extremeLevers(w))} P={P}>
+        <LeverPanel values={values} onChange={setLever} onReset={() => { setValues({}); setLvt(DEFAULT_LVT) }} onExtreme={(w) => setValues(extremeLevers(w))} P={P} ysCase={ysCase}>
           <LvtModuleControl lvt={lvt} onChange={setLvt} />
         </LeverPanel>
         <div className="sb-results">
