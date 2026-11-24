@@ -435,7 +435,7 @@ export default function SimulateurRetraitesPage() {
               </div>
               <p className="ret-lever-note">
                 −1 = 1 point sous l'inflation ({fmt(staticYield(INDEX_LEVER, -1, activeP), 1, { signed: true })} Md€/an),
-                effet de niveau permanent. Décalage <code>comp.offset.prestations</code> à {fmt(activeP['comp.offset.prestations'], 1)} par défaut.
+                effet de niveau permanent. Décalage <code>comp.offset.prestations</code> à {fmt(activeP['comp.offset.prestations'] * 100, 0)} % par défaut.
               </p>
             </div>
           </fieldset>

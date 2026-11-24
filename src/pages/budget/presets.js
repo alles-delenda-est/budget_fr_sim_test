@@ -102,11 +102,11 @@ export const NEUTRAL_SCENARIOS = [
   {
     id: 'tva_sociale',
     titre: 'Bascule TVA sociale (neutre ex ante)',
-    resume: '≈ +0,1 Md€ ex ante · transfert entre blocs',
-    description: 'Hausse de 1,5 point de TVA sur tous les taux (+17,1 Md€ pour l\'État) compensée par une baisse de 2 points de cotisations patronales (−17,0 Md€ pour la sécurité sociale). Illustre le transfert entre blocs et le léger gain d\'offre net sur le PIB au cas central.',
+    resume: '≈ +0,3 Md€ ex ante · transfert entre blocs',
+    description: 'Hausse de 1 point de TVA sur tous les taux (+11,4 Md€ pour l\'État) compensée par une baisse de 1,5 point de cotisations patronales (−11,1 Md€ pour la sécurité sociale). Illustre le transfert entre blocs et le léger gain d\'offre net sur le PIB au cas central.',
     levers: {
-      tva_tous_taux: 1.5,
-      cotis_patronales: -2,
+      tva_tous_taux: 1,
+      cotis_patronales: -1.5,
     },
     macroId: null,
   },

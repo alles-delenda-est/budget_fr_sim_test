@@ -99,8 +99,12 @@ describe('NDC_MODULE : rampe 15 ans dès 2028 et ancrage exact sur COR 2026', ()
     expect(a56('haute')).toBeGreaterThan(0)
   })
 
-  it('respecte comp.offset.prestations (0 par défaut, propagé dans theta)', () => {
-    const P0 = resolveParams()
+  it('respecte comp.offset.prestations (0,20 par défaut, surchargeable dans theta)', () => {
+    const Pdef = resolveParams()
+    const idef = runModule(NDC_MODULE, { actif: 1 }, makeContext(Pdef, 10))
+    expect(idef.theta.every((v) => v === 0.20)).toBe(true)
+
+    const P0 = resolveParams({ 'comp.offset.prestations': 0 })
     const i0 = runModule(NDC_MODULE, { actif: 1 }, makeContext(P0, 10))
     expect(i0.theta.every((v) => v === 0)).toBe(true)
 

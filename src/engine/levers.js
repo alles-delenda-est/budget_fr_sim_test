@@ -60,7 +60,7 @@ export const LEVERS = [
     blocs: () => ALL_CENTRAL, statut: 'calculé (estimation)', aide: 'Rendement par point estimé à 2,3 Md€ (IS net 58,2 / 25 % ; brut DGFiP jusqu\'à ≈ 2,6–2,8 Md€/pt, sans étalon officiel DG Trésor).' },
   { id: 'cotis_patronales', titre: 'Cotisations patronales', unite: 'points de taux', min: -5, max: 5, type: 'recette', signe: 1,
     rendement: (P) => P['rend.cotis'], categorie: 'cotisations', theta: { id: 'comp.theta.cotis', tau0: 'comp.tau0.cotis', mode: 'point', form: 'elasticite' },
-    blocs: () => ALL_SECU, statut: 'à valider', aide: 'Un point de cotisations employeurs : ≈ 7,3–7,5 Md€ sur la masse salariale privée (6,2–7,5 Md€ net des allègements) ; centre actuel 8,5 Md€ à valider.' },
+    blocs: () => ALL_SECU, statut: 'sourcé (fourchette), centre choisi', aide: 'Un point de cotisations employeurs : environ 7,4 Md€ sur la masse salariale privée consolidée APU (fourchette 6,2–10 Md€).' },
   { id: 'dep_enseignement', titre: 'Dépenses d\'enseignement', unite: '% de la ligne', min: -30, max: 30, type: 'depense', signe: -1,
     rendement: (P) => P['base.cofog.enseignement'] / 100, categorie: 'remunerations', blocs: cofogBlocks('enseignement'),
     statut: 'sourcé', aide: '1 % de la fonction « enseignement » (COFOG 2024) : environ 1,5 Md€ (69,8 % État / 30,2 % collectivités, Eurostat 2024).' },
