@@ -13,7 +13,7 @@
 | `bloc.cofog.enseignement.*` (remplace proxy `bloc.part_hors_secu.*`) | `à collecter` (67,0 / 33,0 %) | **`sourcé (calcul)`** | **69,8 % État / 30,2 % locales** | **`read`** — Eurostat `gov_10a_exp` (2024, France, GF09) |
 | `bloc.cofog.ordre_securite.*` | `à collecter` (67,0 / 33,0 %) | **`sourcé (calcul)`** | **80,3 % État / 19,7 % locales** | **`read`** — Eurostat `gov_10a_exp` (2024, France, GF03) |
 | `bloc.cofog.affaires_economiques.*` | `à collecter` (67,0 / 33,0 %) | **`sourcé (calcul)`** | **68,7 % État / 31,3 % locales** | **`read`** — Eurostat `gov_10a_exp` (2024, France, GF04) |
-| `fisc.eps` | `de mémoire` | **`sourcé (fourchette), centre choisi`** | **0,60** (`[0,50 ; 0,65]`, inchangé) | **`read`** — Commission européenne, Mourre, Poissonnier & Lausegger (2019), `dp098_en.pdf` : France = **0,630** (Tableau I.3 p. 43), sensibilité **0,60–0,63** (Tableau V.1 p. 52) |
+| `fisc.eps` | `de mémoire` | **`sourcé (fourchette), centre choisi`** | **0,60** (`[0,50 ; 0,65]`, inchangé) | **`read`** — Commission européenne, Mourre, Poissonnier & Lausegger (2019), `dp098_en.pdf` : France = **0,630** (Tableau I.3 p. 41), sensibilité **0,60–0,63** (Tableau V.1 p. 50) |
 | `comp.tau0.tva` | `de mémoire` | **`sourcé`** | **20 %** (inchangé) | **`read`** (texte légal) — CGI art. 278 (Légifrance) |
 | `comp.tau0.csg` | `de mémoire` | **`sourcé`** | **9,2 %** (inchangé) | **`read`** (texte légal) — CSS art. L. 136-8 (Légifrance) |
 | `offre.csg.tmi_salarie` | `de mémoire` | **`sourcé`** | **30 %** (inchangé) | **`read`** — Barème officiel IR 2026 (`service-public.gouv.fr` : 29 580 € à 84 577 € / part) |
@@ -30,15 +30,15 @@
 
 **Source (`read`) :** `https://economy-finance.ec.europa.eu/system/files/2019-05/dp098_en.pdf` (*The Semi-Elasticities Underlying the Cyclically-Adjusted Budget Balance: An Update and Further Analysis*, European Economy Discussion Paper 098, 60 pages).
 
-- **Semi-élasticité globale France (`ε`)** : **`0,630`** (plus élevée de l'UE, moyenne UE `0,50`, étendue `0,29` Bulgarie à `0,63` France — p. 18 et **Tableau I.3, p. 43**).
-- **Décomposition France (Tableau I.3, p. 43)** :
+- **Semi-élasticité globale France (`ε`)** : **`0,630`** (plus élevée de l'UE, moyenne UE `0,50`, étendue `0,29` Bulgarie à `0,63` France — p. 16 et **Tableau I.3, p. 41** ; pagination imprimée du rapport).
+- **Décomposition France (Tableau I.3, p. 41)** :
   - Élasticité des recettes au PIB : `1,01` (semi-élasticité recettes : **`+0,004`** ; poids recettes `51,99 %` du PIB).
   - Élasticité des dépenses au PIB : `−0,11` (semi-élasticité dépenses : **`−0,626`** ; poids dépenses `56,50 %` du PIB).
   - Somme : `0,004 − (−0,626) = 0,630`.
-- **Élasticités détaillées France (Tableau I.1, p. 41 ; Tableau I.2, p. 42)** : IR `1,86` (part `18,73 %`), IS `2,76` (`4,87 %`), impôts indirects `1,00` (`29,93 %`), cotisations sociales `0,63` (`35,98 %`), dépenses de chômage `−3,23` (`3,34 %` des dépenses).
+- **Élasticités détaillées France (Tableau I.1, p. 39 ; Tableau I.2, p. 40)** : IR `1,86` (part `18,73 %`), IS `2,76` (`4,87 %`), impôts indirects `1,00` (`29,93 %`), cotisations sociales `0,63` (`35,98 %`), dépenses de chômage `−3,23` (`3,34 %` des dépenses).
 - **Évolution et sensibilité** :
-  - Millésime précédent (2014) : **`0,603`** (**Tableau IV.3, p. 51**).
-  - Analyse de sensibilité sur les fenêtres de pondération : **`0,60` à `0,63`** (`0,60 / 0,63 / 0,62 / 0,61` — **Tableau V.1, p. 52**).
+  - Millésime précédent (2014) : **`0,603`** (**Tableau IV.3, p. 49**).
+  - Analyse de sensibilité sur les fenêtres de pondération : **`0,60` à `0,63`** (`0,60 / 0,63 / 0,62 / 0,61` — **Tableau V.1, p. 50**).
 - **Conclusion pour le moteur :** Conserver `fisc.eps = 0,60` au centre dans la fourchette `[0,50 ; 0,65]` est pleinement cohérent avec les bornes empiriques de la Commission (`0,60–0,63`, moyenne UE `0,50`). Le statut passe de `de mémoire` à **`sourcé (fourchette), centre choisi`**.
 
 ---
@@ -76,10 +76,10 @@ Pour éviter tout double compte avec la dérive démographique `dA` (retraites C
 
 | Fenêtre (hors point Covid 2020–2021) | Croissance réelle hors vieillissement (déflateur PIB) | Croissance réelle du PIB | Dérive observée (% PIB / an) | Dérive implicite face à `g_pot = 1,0 %` (`0,327 × (g_dep − 1,0 %)`) |
 |---|---:|---:|---:|---:|
-| **1995–2024 (29 ans)** | +1,34 % / an | +1,55 % / an | −0,071 pt / an | **+0,111 pt / an** |
-| **2000–2024 (24 ans)** | +1,32 % / an | +1,26 % / an | +0,020 pt / an | **+0,105 pt / an** |
-| **2011–2024 (13 ans)** | +1,01 % / an | +1,11 % / an | −0,033 pt / an | **+0,003 pt / an** |
-| **2011–2019 (8 ans)** | +0,91 % / an | +1,20 % / an | −0,094 pt / an | **−0,029 pt / an** |
+| **1995–2024 (29 ans)** | +1,34 % / an | +1,55 % / an | −0,071 pt / an | **+0,110 pt / an** |
+| **2000–2024 (24 ans)** | +1,32 % / an | +1,26 % / an | +0,020 pt / an | **+0,104 pt / an** |
+| **2011–2024 (13 ans)** | +1,01 % / an | +1,11 % / an | −0,033 pt / an | **+0,002 pt / an** |
+| **2011–2019 (8 ans)** | +0,91 % / an | +1,20 % / an | −0,094 pt / an | **−0,028 pt / an** |
 
 **Constat pour Patrick (décision D7) :**
 - Quasi toute la hausse historique du ratio de dépenses primaires depuis 1995 (+4,4 pts de PIB) vient de la santé et des retraites (déjà dans `dA`).

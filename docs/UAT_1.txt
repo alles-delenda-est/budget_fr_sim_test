@@ -2,8 +2,8 @@ USER ACCEPTANCE TESTS — Simulateur Budget France (moteur v2, version 0.9 / Day
 =================================================================================
 
 Checklist manuelle (navigateur) pour les comportements visuels, interactifs et
-responsives que la suite automatisée Vitest (15 fichiers, 354 tests) ne couvre pas.
-Source de vérité des chiffres : src/engine/params.js (171 paramètres).
+responsives que la suite automatisée Vitest (15 fichiers, 356 tests) ne couvre pas.
+Source de vérité des chiffres : src/engine/params.js (175 paramètres).
 
 
 1. NAVIGATION, BANDEAU & PIED DE PAGE
