@@ -129,7 +129,7 @@ export default function SimulateurBudgetPage() {
       </section>
 
       <div className="sb-layout">
-        <LeverPanel values={values} onChange={setLever} onReset={() => setValues({})} onExtreme={(w) => setValues(extremeLevers(w))} P={P} />
+        <LeverPanel values={values} onChange={setLever} onReset={() => setValues({})} onExtreme={(w) => setValues(extremeLevers(w))} P={P} ysCase={ysCase} />
         <div className="sb-results">
           {macroVariant && (
             <div className="sb-macro-banner" role="status">

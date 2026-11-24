@@ -3,7 +3,7 @@ import { PARAMS, PARAM_BY_ID, STATUSES, resolveParams } from '../params.js'
 import { LEVERS, LEVER_BY_ID, STRUCTURAL_LEVERS, staticYield, thetaElasticity, leverTheta, BLOCKS } from '../levers.js'
 import { projectScenario, HORIZONS, issuanceRate, deepFreeze } from '../project.js'
 import { TEST_MODULE, validateModuleDefinition } from '../modules.js'
-import { supplyPhase, sigmaFiscal, sigmaFiscalCase, partReelle, supplyForCase, coutUsageParPoint } from '../supply.js'
+import { supplyPhase, sigmaFiscal, sigmaFiscalCase, partReelle, supplyForCase, coutUsageParPoint, impliedJobs, roundJobs, SUPPLY_BY_LEVER } from '../supply.js'
 
 const P = resolveParams()
 const Y0 = P['base.pib.2025']
@@ -887,5 +887,51 @@ describe('âge légal de départ en retraite (recalibré sur sources primaires l
     const totalApuDn25 = (downC.total[9].byInstrument.age_legal.exPost + P['fisc.eps_offre'] * downC.total[9].yS * downC.total[9].gdpBase) / downC.total[9].gdpBase * Y0
     expect(totalApuDn25).toBeCloseTo(-3.90 * 0.8 - P['fisc.eps_offre'] * 0.005 * Y0, 6)
     expect(totalApuUp25).toBeGreaterThan(Math.abs(totalApuDn25))
+  })
+})
+
+describe('emplois implicites de l\'effet d\'offre de l\'âge légal (affichage seulement)', () => {
+  const PC = resolveParams()
+  it('paramètres : conversion DG Trésor (Tableau 4) et fourchette du COR (Tableau 2.10)', () => {
+    const q = PARAM_BY_ID['offre.emplois_par_pt_pib.age_legal']
+    expect(q.value).toBe(315000)
+    expect(q.low).toBe(300000)
+    expect(q.high).toBe(330000)
+    expect(q.status).toBe('sourcé (calcul)')
+    expect(q.source).toMatch(/Tableau 4/)
+    expect(q.source).toMatch(/élasticité unitaire/)
+    // bornes = ratios emplois / PIB de la DG Trésor à 20 et 10 ans
+    expect(210000 / 0.7).toBeCloseTo(q.low, 6)
+    expect(198000 / 0.6).toBeCloseTo(q.high, 6)
+    expect(PARAM_BY_ID['cmp.cor.emplois.age_legal_10ans.bas'].value).toBe(160000)
+    expect(PARAM_BY_ID['cmp.cor.emplois.age_legal_10ans.haut'].value).toBe(250000)
+    expect(SUPPLY_BY_LEVER.age_legal.emplois).toBe('offre.emplois_par_pt_pib.age_legal')
+  })
+  it('σ(cas) × années × conversion : central, bas, haut pour +1 an', () => {
+    expect(impliedJobs('age_legal', 1, PC, 'central')).toBeCloseTo(0.50 * 315000, 0) // 157 500
+    expect(impliedJobs('age_legal', 1, PC, 'bas')).toBeCloseTo(0.30 * 315000, 0) // 94 500
+    expect(impliedJobs('age_legal', 1, PC, 'haut')).toBeCloseTo(0.70 * 315000, 0) // 220 500
+    expect(impliedJobs('age_legal', 2, PC)).toBeCloseTo(2 * 157500, 0)
+  })
+  it('0 pour x = 0, négatif pour x < 0 (même règle de cas que le moteur), null hors registre ou si non fini', () => {
+    expect(impliedJobs('age_legal', 0, PC)).toBe(0)
+    expect(impliedJobs('age_legal', -1, PC)).toBeCloseTo(-157500, 0)
+    expect(impliedJobs('age_legal', -1, PC, 'bas')).toBeCloseTo(-220500, 0) // « bas » = PIB le plus bas
+    expect(impliedJobs('age_legal', -1, PC, 'haut')).toBeCloseTo(-94500, 0)
+    expect(impliedJobs('tva_normal', 1, PC)).toBeNull()
+    expect(impliedJobs('age_legal', NaN, PC)).toBeNull()
+  })
+  it('suit les remplacements de paramètres', () => {
+    const PO = resolveParams({ 'offre.emplois_par_pt_pib.age_legal': 300000, 'offre.sigma.age_legal': 0.6 })
+    expect(impliedJobs('age_legal', 1, PO)).toBeCloseTo(180000, 0)
+  })
+  it('arrondi au multiple de 10 000 le plus proche, symétrique, sans −0', () => {
+    expect(roundJobs(157500)).toBe(160000)
+    expect(roundJobs(94500)).toBe(90000)
+    expect(roundJobs(220500)).toBe(220000)
+    expect(roundJobs(-157500)).toBe(-160000)
+    expect(roundJobs(4000)).toBe(0)
+    expect(Object.is(roundJobs(-4000), 0)).toBe(true)
+    expect(roundJobs(Infinity)).toBeNull()
   })
 })
