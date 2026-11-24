@@ -47,12 +47,20 @@ const partsBlocs = [
       obs(`bloc.part_recettes.${k}`, [550.8, 319.9, 796.5][i] / recSum, 'part', CALC, `Part des recettes du bloc « ${k} » (sert à répartir l'effet des stabilisateurs).`),
     ]
   }),
-  p('bloc.part_hors_secu.centrales', 681.1 / (681.1 + 335.5), null, null, 'part',
-    'Calcul (proxy) : dépenses centrales / (centrales + locales)', 'à collecter',
-    PLACEHOLDER + 'répartition des fonctions de dépense (enseignement, ordre public, affaires économiques) entre État et collectivités, faute de ventilation COFOG par bloc.'),
-  p('bloc.part_hors_secu.locales', 335.5 / (681.1 + 335.5), null, null, 'part',
-    'Calcul (proxy) : dépenses locales / (centrales + locales)', 'à collecter',
-    PLACEHOLDER + 'idem, part des collectivités locales.'),
+  // Ventilation État/ODAC (S1311) vs collectivités locales (S1313) par fonction COFOG 2024 (Eurostat gov_10a_exp, France, TE, M€) :
+  // Enseignement (GF09) : S1311 106 078,3 / S1313 45 962,7 (S1314 = 0) ; Ordre et sécurité (GF03) : 42 175,9 / 10 325,0 (S1314 = 0) ;
+  // Affaires économiques (GF04) : 123 826,5 / 56 428,3 (S1314 = 560,0, soit 0,3 % négligé). Normalisées pour sommer à 1.
+  ...([
+    ['enseignement', 'enseignement (GF09)', 106078.3, 45962.7],
+    ['ordre_securite', 'ordre et sécurité publics (GF03)', 42175.9, 10325.0],
+    ['affaires_economiques', 'affaires économiques (GF04)', 123826.5, 56428.3],
+  ]).flatMap(([slug, lib, c, l]) => {
+    const src = `Eurostat, gov_10a_exp (France, 2024, TE, M€, API officielle lue le 24 nov. 2026) : ${lib} — S1311 ${c.toFixed(1)} M€ / S1313 ${l.toFixed(1)} M€ (normalisé à 1 ; docs/review-day0-parameters.md)`
+    return [
+      obs(`bloc.cofog.${slug}.centrales`, c / (c + l), 'part', src, `Part des administrations centrales (État et ODAC) dans la fonction « ${lib} ».`, 'sourcé (calcul)'),
+      obs(`bloc.cofog.${slug}.locales`, l / (c + l), 'part', src, `Part des collectivités locales (APUL) dans la fonction « ${lib} ».`, 'sourcé (calcul)'),
+    ]
+  }),
 ]
 
 const baseMacro = [
@@ -129,11 +137,11 @@ const table = [
     'Hausse annuelle des prix en 2026 : médiane de 3 sources seulement, mélange IPCH et IPC.'),
   p('macro.pi.2027', 1.85, 1.8, 1.9, '%', 'Médiane de 2 sources : CE 1,8 ; BdF (IPCH) 1,9 (baseline-data, collecte du 17 nov.)', 'non validé',
     'Hausse annuelle des prix en 2027 : moyenne de 2 sources seulement, ce n\'est pas une médiane de quatre sources.'),
-  p('macro.pi.long', 1.85, 1.3, 2.3, '%', 'La note est silencieuse après 2027 ; maintien de la valeur 2027. BdF 2028 (IPCH) : 1,6 %', 'à collecter',
-    PLACEHOLDER + 'inflation à partir de 2028, tenue égale à celle de 2027 (la note ne dit rien au-delà ; plage arbitraire).'),
+  p('macro.pi.long', 1.85, 1.3, 2.3, '%', 'La note est silencieuse après 2027 ; maintien de la valeur 2027. Repères : Banque de France, projections macroéconomiques sept. 2026 (IPCH 2028 : 1,6 % total, 1,9 % sous-jacent) ; cible d\'inflation BCE : 2,0 % (docs/review-day0-parameters.md)', 'à collecter',
+    PLACEHOLDER + 'inflation à partir de 2028, tenue égale à celle de 2027 (la note ne dit rien au-delà ; encadrée entre 1,6 % BdF 2028 et 2,0 % cible BCE, plage 1,3–2,3 arbitraire).'),
   p('dem.lambda', 0.7, 0.5, 0.85, 'part', 'Hypothèse de calibration, sans source directe', 'non validé',
     'Part de l\'effet sur l\'activité qui subsiste l\'année suivante.'),
-  p('dem.m.achats_invest', 0.9, 0.5, 1.3, 'multiplicateur', 'Coenen et al. 2012 ; Ramey 2019 (de mémoire)', 'de mémoire',
+  p('dem.m.achats_invest', 0.9, 0.5, 1.3, 'multiplicateur', 'Ramey (2019, Journal of Economic Perspectives 33(2), pp. 89–114 : achats publics 0,6–1,0) ; Gechert (2015, Oxford Economic Papers 67(3), méta-régression de 104 études : dépense publique ≈ 1,0, investissement public +0,5 au-dessus) ; Coenen et al. (2012, AEJ: Macro) — synthèses lues (docs/review-day0-parameters.md)', 'sourcé (secondaire)',
     '1 € de commande publique en moins retire environ 0,9 € d\'activité la première année.'),
   p('dem.m.remunerations', 0.8, 0.5, 1.2, 'multiplicateur', 'De mémoire', 'de mémoire',
     'Idem pour la masse salariale publique.'),
@@ -153,9 +161,9 @@ const table = [
     'Idem, assiette large.'),
   p('comp.theta.cotis', 0.15, 0.05, 0.30, 'part', 'De mémoire', 'de mémoire',
     'Idem, via l\'emploi et les salaires.'),
-  p('comp.theta.tva', 0.03, 0, 0.08, 'part', 'De mémoire', 'de mémoire',
+  p('comp.theta.tva', 0.03, 0, 0.08, 'part', 'Commission européenne, VAT Gap in Europe 2025 (données 2023, lu via synthèse) : écart de conformité TVA France = 5,6 % de la TVA théorique (12,1 Md€ ; 5,1 % en 2022), qui borne par le haut la fuite marginale lors d\'une hausse de taux ; centre 0,03 (0–0,08) : choix prudent (docs/review-day0-parameters.md)', 'sourcé (secondaire)',
     'Fraude et achats transfrontaliers.'),
-  p('comp.theta.is', 0.25, 0.20, 0.38, 'part', 'Formule 3.2 ; η = 0,8 à 1,5 de mémoire (Beer, de Mooij, Liu 2018)', 'de mémoire',
+  p('comp.theta.is', 0.25, 0.20, 0.38, 'part', 'Formule 3.2 (θ = η × τ à τ = 25 %) ; Beer, de Mooij et Liu (2020, Journal of Economic Surveys 34(3), pp. 660–688, méta-analyse internationale, lu via synthèse) : semi-élasticité des bénéfices déclarés η ≈ 1,0 à 1,5 (soit θ = 0,25 au centre et 0,375 ≈ 0,38 en borne haute ; bas 0,20 pour η = 0,8) (docs/review-day0-parameters.md)', 'sourcé (secondaire)',
     'Bénéfices déplacés vers d\'autres pays.'),
   p('offre.sigma.defaut', 0, null, null, 'part du PIB par % de PIB de levier', 'Décision D2 ; revue de preuves en cours (docs/brief-supply-effects.md)', 'non validé',
     'Effet durable sur le niveau du PIB ; non nul seulement si les preuves le justifient, sur une ligne distincte avec fourchette.'),
@@ -163,8 +171,8 @@ const table = [
     PLACEHOLDER + '0 par défaut (aucun décalage) ; haut = 0,3 arbitraire. Part de l\'économie sur une prestation (indexation des pensions, module NDC) qui revient par d\'autres dépenses ou des recettes perdues.'),
   p('comp.offset.age_legal', 0.20, 0.15, 0.33, 'part', 'DREES / DARES (janv. 2022), cité dans Cour des comptes, « Situation financière et perspectives du système de retraites », 20 févr. 2025, p. 67 et note 123 (PDF primaire 297428.pdf lu directement) ; recoupé par Rabaté et Rochut (2020, J. Pension Economics & Finance, lu via résumé). Ventilation : 52 % Unédic (ARE/AREF), 36 % indemnités journalières maladie, 12 % minima sociaux (RSA/ASS), 0 % invalidité/AAH (l\'âge d\'ouverture invalidité reste à 62 ans) ; COR, Rapport annuel juin 2026, partie 2, chapitre 6, pp. 119–120, citant Drees/Dares (séance COR de janvier 2022) : « près d\'un tiers des économies réalisées sur les dépenses de retraite grâce à un recul de l\'âge d\'ouverture des droits serait compensé à court terme par une hausse des dépenses sociales hors retraite ». Centre 0,20 : estimation stabilisée Cour des comptes / Drees-Dares sur la réforme de 2010 ; bas 0,15 : incertitude à la marge 64–65 ans ; haut 0,33 : effet de court terme selon le COR (décision de Patrick, 23 nov. 2026 ; docs/review-age-legal.md)', 'sourcé',
     'Part des économies (ou surcoûts) brutes de pensions d\'une variation de l\'âge légal compensée par des effets de report vers d\'autres prestations sociales (chômage 52 %, maladie 36 %, minima sociaux 12 %, invalidité 0 % tant que son seuil reste à 62 ans). Le centre (0,20) est l\'estimation stabilisée sur la réforme de 2010 ; le haut (0,33, « près d\'un tiers ») correspond à l\'effet de court terme cité par le COR. Appliquée dans E3 au seul levier age_legal.'),
-  p('fisc.eps', 0.6, 0.5, 0.65, 'point de PIB par point d\'écart', 'Commission européenne, Mourre et al. 2019, France ≈ 0,63 (de mémoire ; non relu)', 'de mémoire',
-    'Quand le PIB baisse de 1 %, le solde se dégrade d\'environ 0,6 point.'),
+  p('fisc.eps', 0.6, 0.5, 0.65, 'point de PIB par point d\'écart', 'Commission européenne (DG ECFIN), Mourre, Poissonnier et Lausegger (mai 2019), European Economy Discussion Paper 098, PDF primaire dp098_en.pdf lu directement : semi-élasticité du solde public de la France = 0,630 (Tableau I.3 p. 43 : recettes +0,004, dépenses −0,626 ; précédente estimation 2014 : 0,603, Tableau IV.3 p. 51 ; sensibilité par pondérations : 0,60–0,63, Tableau V.1 p. 52 ; moyenne UE 0,50, p. 18). Centre 0,60 conservé dans la fourchette 0,50–0,65 (docs/review-day0-parameters.md)', 'sourcé (fourchette), centre choisi',
+    'Quand le PIB baisse de 1 %, le solde se dégrade d\'environ 0,6 point (estimation Commission européenne 2019 pour la France : 0,60–0,63).'),
   p('fisc.eps_offre', 0.436, 0.436, 0.522, 'point de PIB par point d\'écart d\'offre', 'Insee, taux de prélèvements obligatoires 2025 : 43,6 % du PIB (comptes nationaux, provisoire, publié le 28/08/2026) ; haut : recettes APU / PIB = (1 714,2 − 152,5) / 2 991 ≈ 0,522 (docs/baseline-data.md)', 'sourcé',
     'Quand le PIB baisse durablement par l\'offre (moins de travail ou de capital), les recettes proportionnelles au PIB baissent, mais aucune dépense cyclique ne se déclenche : le solde se dégrade du taux de prélèvements obligatoires, soit environ 0,44 point par point de PIB.'),
   p('dette.M', 8.45, 8, 9, 'années', 'AFT, bulletin mensuel d\'août 2026 : 8 ans 163 jours [S12]', 'sourcé',
@@ -202,15 +210,15 @@ const table = [
     + 'Limites : la Banque de France ne trouve pas d\'effet significatif dans la zone euro après 2008 (β = 0 est donc plausible) ; les estimations portent sur des ratios de 40 à 200 % du PIB, le modèle prolonge la pente linéairement jusqu\'à 300-900 % sur 30 ans.',
     'sourcé (fourchette), centre choisi',
     'Hausse du taux d\'émission quand la dette dépasse son niveau de 2026 : 3 points de base par point de PIB au centre (1 à 5). Hypothèse du modèle : les estimations empiriques sont dispersées et faibles pour la zone euro ; cette pente décide du chemin de dette à 30 ans (voir la note de modèle, E9).'),
-  p('emploi.kappa', 0.4, 0.3, 0.5, 'point de chômage par % de PIB', 'Ball, Leigh, Loungani 2017 (de mémoire)', 'de mémoire',
-    '1 % de PIB en moins : 0,4 point de chômage en plus.'),
+  p('emploi.kappa', 0.4, 0.3, 0.5, 'point de chômage par % de PIB', 'Ball, Leigh et Loungani (2017, Journal of Money, Credit and Banking 49(7), « Okun\'s Law: Fit at 50? », lu via synthèses académiques) : coefficient d\'Okun estimé pour la France = −0,37 (arrondi à 0,4 au centre, fourchette 0,3–0,5 ; docs/review-day0-parameters.md)', 'sourcé (secondaire)',
+    '1 % de PIB en moins : 0,4 point de chômage en plus (Ball, Leigh et Loungani 2017 : 0,37 pour la France).'),
   // ref.derive (D7)
   p('ref.derive.a_retraites', COR, { ...COR, 2070: 14.5 }, { ...COR, 2070: 16.1 }, '% du PIB, par année', 'COR, rapport annuel de juin 2026 [S23] ; 2040 et 2050 non trouvés : interpolation linéaire', 'sourcé',
     'Dépenses de retraites à droit en vigueur ; le vieillissement est l\'écart avec 2025. Bas/haut : productivité 1,0 % / 0,4 % en 2070 (2045 inchangé).'),
   p('ref.derive.a_sante', 0.3 / 48, 0, 1.0 / 48, 'points de PIB par an', 'Commission européenne, 2024 Ageing Report, Institutional Paper 279, tableau 5 (p. 12) et tableau 1 (p. 5), scénario de référence : dépense publique de santé de la France 8,8 % du PIB en 2022, +0,3 pt d\'ici 2070 (≈ 9,1 %), soit 0,3 / 48 ans ; soins de longue durée 1,9 % (+0,7 pt). Lu sur une copie du document (mefop.it), non sur le site de la Commission ; fiche France (partie III, p. 273) non lue. Haut = santé + longue durée (+1,0 pt / 48 ans). Bas = 0 : absence de dérive (choix, non publié). Estimation plus ancienne : DG Trésor, Cahiers n° 2009-11, effet du vieillissement ≈ 1,5 pt d\'ici 2050 (0,6 à 2,3)', 'sourcé (secondaire)',
     'Dérive annuelle de la dépense publique de santé due au vieillissement, en points de PIB par an (linéaire, scénario de référence de la Commission, hors soins de longue durée). Hypothèse de coûts unitaires de la Commission : le haut de la fourchette ajoute la longue durée, et les estimations françaises plus anciennes sont plus élevées. Pas de double comptage dans le moteur : les retraites (COR) et les autres dépenses (ref.derive.b_autres, à 0 pour l\'instant) ne portent pas la longue durée ; si b_autres devient non nul, il devra l\'exclure tant que le haut de cette fourchette l\'inclut.'),
-  p('ref.derive.b_autres', 0, null, null, 'points de PIB par an', 'D7 : max(projection officielle ; tendance longue de la dépense primaire réelle). Non trouvé : aucune croissance en volume de la dépense primaire hors 2020–2021 publiée. Plus proche : FIPECO, « Cinquante ans de dépenses publiques » (https://fipeco.fr/pdf/Depenses50ans.pdf, p. 2), dépense publique TOTALE (intérêts inclus, 2020–2021 inclus), volume déflaté par le prix du PIB : 1991–2010 +2,4 %/an ; 2011–2023 +1,0 %/an ; ce n\'est pas la mesure demandée. Rapport Cour des comptes de juin 2026 : illisible (erreur serveur). Reste à calculer sur les séries Insee', 'à collecter',
-    PLACEHOLDER + '0 (aucune dérive des autres dépenses), faute de projection officielle et de tendance calculée : la référence est donc plus favorable que le choix délibéré de la note (D7).'),
+  p('ref.derive.b_autres', 0, 0, 0.11, 'points de PIB par an', 'Calcul sur séries officielles Eurostat (gov_10a_exp, gov_10a_main, nama_10_gdp, France S13, 1995–2024, API lue le 24 nov. 2026 ; docs/review-day0-parameters.md) : dépense primaire hors vieillissement (TOTAL − intérêts D41 − santé GF07 − vieillesse GF1002 = 34,7 % PIB en 1995, 32,2 % en 2000, 33,1 % en 2011, 32,3 % en 2019, 32,7 % en 2024). En part de PIB observé : −0,07 pt/an (1995–2024) à +0,02 pt/an (2000–2024). En volume (déflaté prix du PIB) face à g_pot = 1,0 % : +1,01 %/an sur 2011–2024 (≈ 0,00 pt/an, bas) à +1,34 %/an sur 1995–2024 (≈ +0,11 pt/an, haut). Valeur centrale 0 à valider par le propriétaire au regard de la règle D7', 'à valider',
+    'Dérive annuelle des dépenses primaires hors vieillissement (retraites et santé déjà dans dA) : tenue à 0 au centre (à valider), fourchette sourcée Eurostat 1995–2024 de 0 à +0,11 point de PIB par an face à une croissance potentielle de 1,0 %.'),
   p('ref.spb_2026', -2.8, -2.9, -2.7, '% du PIB', 'Calcul : solde −5,4 % + intérêts 2,6 % du RESF 2027 [S17] ; soldes par bloc 2026 non trouvés', 'sourcé',
     'Solde primaire de 2026 en point de départ (le solde hors intérêts, avant toute mesure nouvelle).'),
 ]
@@ -277,8 +285,8 @@ const offreFiscal = [
     'Conversion du revenu imposable en salaire brut (× 0,76 environ) : le taux marginal d\'IR sur le revenu imposable vaut 0,76 fois son poids sur le salaire brut.'),
   p('offre.csg.part_deductible', 6.8 / 9.2, null, null, 'part', 'Code de la sécurité sociale : CSG de 9,2 % sur les revenus d\'activité, dont 6,8 points déductibles de l\'impôt sur le revenu', 'sourcé',
     'Part de la CSG déductible de l\'assiette de l\'impôt sur le revenu (6,8 sur 9,2) : un point de CSG en plus coûte moins cher au salarié imposé.'),
-  p('offre.csg.tmi_salarie', 30, null, null, '%', 'Taux marginal de l\'impôt sur le revenu du salarié moyen (tranche de 30 %), choix de l\'implémentation indiqué dans docs/sigma-fiscal.md ; barème non relu', 'de mémoire',
-    'Taux marginal d\'impôt sur le revenu auquel est déduite la part déductible de la CSG, pour le salarié moyen.'),
+  p('offre.csg.tmi_salarie', 30, null, null, '%', 'Barème officiel de l\'impôt sur le revenu 2026 (CGI art. 197 ; service-public.gouv.fr) : tranche marginale de 30 % pour un revenu net imposable par part de 29 580 € à 84 577 €, couvrant le salarié célibataire au salaire moyen OCDE', 'sourcé',
+    'Taux marginal d\'impôt sur le revenu auquel est déduite la part déductible de la CSG, pour le salarié moyen (tranche de 30 %).'),
   p('offre.csg.assiette', 0.9825, null, null, 'part', 'Code de la sécurité sociale, art. L. 136-2 : abattement de 1,75 % (assiette = 98,25 % du salaire brut)', 'sourcé',
     'Part du salaire brut qui entre dans l\'assiette de la CSG sur les revenus d\'activité.'),
   obs('base.conso_menages', 1545.9, 'Md€', 'Insee, comptes nationaux annuels 2025 (base 2020), publiés le 29 mai 2026 : dépense de consommation finale des ménages 1 545,9 Md€ (tableau « Le PIB et les opérations sur les biens et les services »)', 'Consommation finale des ménages en valeur : sert à convertir un point de TVA en variation du prix à la consommation (rendement du point / consommation).', 'sourcé'),
@@ -327,11 +335,11 @@ const rend = [
     'Cour des comptes, « Situation financière et perspectives du système de retraites », 20 févr. 2025, PDF primaire 297428.pdf lu directement (Tableau n° 6 et texte qui l\'accompagne, p. 71–73 ; annexe 2 p. 92) + décision de Patrick du 23 nov. 2026 (bornes carrières longues translatées symétriquement de −1 an avec l\'âge légal). La Cour attribue l\'écart d\'environ 50 % entre les économies d\'un relèvement de l\'âge et le coût d\'un arrêt à 63 ans au traitement des carrières longues (bornes relevées d\'un an dans le scénario AOD 65, inchangées dans le scénario AOD 63). Son chiffrage à bornes fixes (−4,3 Md€ A+B en 2045, dont 2,61 Md€ de pensions ramenés au PIB 2025) est donc multiplié par ≈ 1,5 lorsque les bornes bougent symétriquement : 2,61 × 1,5 ≈ 3,90 Md€ (0,130 % PIB). Bas 2,60 : chiffrage de la Cour à bornes carrières longues fixes ; haut 4,95 : symétrie complète avec la hausse. Remplace l\'hypothèse de +30 % retenue dans la PR #23 (3,40 Md€) ; le ratio résiduel hausse/baisse passe de 1,46 à ≈ 1,27. Détail : docs/review-age-legal.md',
     'sourcé (fourchette), centre choisi',
     'Surcoût statique brut de régime permanent (pensions supplémentaires seules, hors perte de cotisations retraites déjà comptée par E7) d\'un abaissement d\'un an de l\'âge légal (64 → 63 ans, bornes carrières longues translatées symétriquement de −1 an par décision du 23 nov. 2026), ramené au PIB 2025 (0,130 % PIB). Reste inférieur à une hausse symétrique (4,95 Md€, ratio ≈ 1,27) car la durée d\'assurance requise de 172 trimestres empêche une part croissante des générations nées après 1970 de liquider à taux plein dès 63 ans. Net de 20 % de moindres reports (comp.offset.age_legal), le coût direct avant offre vaut −3,12 Md€ (−0,104 % PIB).'),
-  // Taux avant réforme, pour évaluer θ au taux après réforme (3.2). Non fournis par la note : placeholders.
-  p('comp.tau0.tva', 20, null, null, '%', 'Taux normal de TVA (de mémoire)', 'de mémoire', 'Taux de TVA avant réforme, pour évaluer θ au taux après réforme.'),
+  // Taux avant réforme, pour évaluer θ au taux après réforme (3.2).
+  p('comp.tau0.tva', 20, null, null, '%', 'Code général des impôts, art. 278 (Légifrance) : « Le taux normal de la taxe sur la valeur ajoutée est fixé à 20 % »', 'sourcé', 'Taux normal légal de TVA avant réforme, pour évaluer θ au taux après réforme.'),
   p('comp.tau0.ir', 21, 18, 23, '%', 'Calcul docs/sigma-fiscal.md §7 (18 nov. 2026) : taux marginal moyen de l\'impôt sur le revenu pondéré par les revenus, à partir des statistiques DGFiP 2026 (impôt 2026 sur les revenus 2025 : foyers et impôt moyen par taux marginal 0 / 11 / 30 / 41 / 45 %) ; revenu par tranche estimé avec des nombres de parts supposés (1,7 à 2,5), soit ≈ 1 290 Md€ au total ; 20 % au barème, 21–22 % avec la décote (FIPECO). Point faible : les nombres de parts. À ne pas confondre avec le taux marginal IR + cotisations salariales de l\'OCDE (43,0 %, Taxing Wages 2026, tableau 3.7)', 'calculé (estimation)',
     'Taux marginal moyen de l\'impôt sur le revenu, pondéré par les revenus, en % du revenu imposable (≈ 16 % du salaire brut après l\'abattement de 10 % et la CSG déductible). Calcul : docs/sigma-fiscal.md, section 7. Il sert à évaluer θ au taux après réforme et l\'effet d\'offre de l\'IR ; estimation à resserrer avec les tableaux de la DGFiP.'),
-  p('comp.tau0.csg', 9.2, null, null, '%', 'Taux de CSG sur les revenus d\'activité (de mémoire)', 'de mémoire', 'Taux de CSG avant réforme, pour évaluer θ au taux après réforme.'),
+  p('comp.tau0.csg', 9.2, null, null, '%', 'Code de la sécurité sociale, art. L. 136-8 (Légifrance) : taux de CSG de 9,2 % sur les revenus d\'activité', 'sourcé', 'Taux légal de CSG sur les revenus d\'activité avant réforme, pour évaluer θ au taux après réforme.'),
   p('comp.tau0.cotis', 36.4, 20, 45, '%', 'OCDE, Taxing Wages 2026 (lien du tableau 3.7), célibataire sans enfant au salaire moyen, 2025 : coin fiscal marginal 58,2 % du coût du travail (tableau 3.6) ; taux marginal IR + cotisations salariales 43,0 % du salaire brut (tableau 3.7). Calcul : e = (0,582 − 0,430) / (1 − 0,582) = 36,4 % du salaire brut. Taux marginal au salaire moyen (après allègements), non un taux moyen sur l\'ensemble des salaires ; aucun taux patronal publié séparément dans le texte lu', 'sourcé (calcul)',
     'Taux de cotisations patronales marginal au salaire moyen, déduit de deux tableaux de l\'OCDE par le calcul 1 + e = (1 − 0,430) / (1 − 0,582), soit e = 36,4 % du salaire brut ; il varie fortement selon le niveau de salaire à cause des allègements.'),
   p('comp.tau0.is', 25, null, null, '%', 'PLF 2026, Voies et moyens, tome I, p. 18', 'sourcé', 'Taux normal de l\'impôt sur les sociétés avant réforme.'),

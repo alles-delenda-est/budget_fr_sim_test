@@ -749,6 +749,37 @@ describe('σ des leviers fiscaux : calculé depuis les paramètres (docs/sigma-f
   })
 })
 
+describe('vérification primaire Day 0 : ventilation COFOG Eurostat 2024 et paramètres vérifiés (docs/review-day0-parameters.md)', () => {
+  it('ventilation COFOG par sous-secteur (Eurostat 2024) : somme à 1, ordre et sécurité à ≈ 80,3 % État', () => {
+    expect(PARAM_BY_ID['bloc.part_hors_secu.centrales']).toBeUndefined()
+    expect(PARAM_BY_ID['bloc.part_hors_secu.locales']).toBeUndefined()
+    for (const [slug, expectedCentral] of [
+      ['enseignement', 0.698],
+      ['ordre_securite', 0.803],
+      ['affaires_economiques', 0.687],
+    ]) {
+      const c = P[`bloc.cofog.${slug}.centrales`]
+      const l = P[`bloc.cofog.${slug}.locales`]
+      expect(c + l).toBeCloseTo(1, 10)
+      expect(c).toBeCloseTo(expectedCentral, 2)
+      expect(PARAM_BY_ID[`bloc.cofog.${slug}.centrales`].status).toBe('sourcé (calcul)')
+    }
+    const r = projectScenario({ levers: { dep_ordre_securite: -10 }, overrides: { 'fisc.eps': 0, 'fisc.eps_offre': 0 } })
+    const c1 = r.blocks.centrales[1].leversExAnte
+    const l1 = r.blocks.locales[1].leversExAnte
+    expect(c1 / (c1 + l1)).toBeCloseTo(P['bloc.cofog.ordre_securite.centrales'], 8)
+  })
+  it('fisc.eps, taux légaux (TVA, CSG, TMI 30 %) et ref.derive.b_autres : statuts et fourchettes mis à jour sans changer les centres', () => {
+    expect(PARAM_BY_ID['fisc.eps'].status).toBe('sourcé (fourchette), centre choisi')
+    expect(PARAM_BY_ID['fisc.eps'].source).toMatch(/Discussion Paper 098.*0,630/)
+    expect(PARAM_BY_ID['comp.tau0.tva'].status).toBe('sourcé')
+    expect(PARAM_BY_ID['comp.tau0.csg'].status).toBe('sourcé')
+    expect(PARAM_BY_ID['offre.csg.tmi_salarie'].status).toBe('sourcé')
+    expect(PARAM_BY_ID['ref.derive.b_autres'].status).toBe('à valider')
+    expect([PARAM_BY_ID['ref.derive.b_autres'].low, PARAM_BY_ID['ref.derive.b_autres'].value, PARAM_BY_ID['ref.derive.b_autres'].high]).toEqual([0, 0, 0.11])
+  })
+})
+
 describe('indexation des pensions : unité et signe cohérents', () => {
   it('unité « points par rapport à l\'inflation » et signe conservé (−1 améliore le solde de +4,217 Md€)', () => {
     const l = LEVER_BY_ID.indexation_pensions
