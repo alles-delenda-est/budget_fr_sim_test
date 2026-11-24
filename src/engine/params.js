@@ -1,6 +1,7 @@
 // Paramètres du moteur v2 — note de modèle v0.3 (docs/model-note.md), §1, §4 et docs/baseline-data.md.
 // Chaque paramètre : { id, value (central), low, high, unit, source, status, explanation }.
-// status : "sourcé" | "calculé (estimation)" | "sourcé (calcul)" | "sourcé (secondaire)" | "sourcé (fourchette), centre choisi" | "de mémoire" | "à collecter" | "non validé".
+// status : "sourcé" | "calculé (estimation)" | "sourcé (calcul)" | "sourcé (secondaire)" | "sourcé (fourchette), centre choisi" | "de mémoire" | "à collecter" | "non validé"
+//          | "à valider" (fourchette sourcée, valeur centrale proposée mais pas encore fixée par le propriétaire).
 // Convention d'unités : chaque `unit` dit comment lire `value` (ex. "%" = 2,1 pour 2,1 %). Le moteur convertit.
 // Un paramètre « à collecter » porte une VALEUR PROVISOIRE (placeholder) : ne jamais la présenter comme sourcée.
 
@@ -239,7 +240,8 @@ const offre = [
   lag('age_legal', 6, 'montée en charge des cohortes concernées'), t0('age_legal', 0, 'effet dès l\'entrée en vigueur'),
   p('offre.sigma.lvt', 0.20, 0.10, 0.45, '% du PIB (niveau), remplacement complet', `${GEM}, n° 15 (Gemini : +0,10 / +0,30 / +0,60 pour le remplacement des DMTO et de la taxe foncière) ; Patrick (17 nov.) : taxe foncière seule, sans les DMTO, +0,10 / +0,20 / +0,45`, 'sourcé (fourchette), centre choisi',
     'Effet de long terme sur le niveau du PIB du remplacement intégral de la taxe foncière par une taxe sur la valeur du sol, à rendement égal et sans toucher aux droits de mutation. Paramètre destiné au module LVT. La moitié haute de la fourchette suppose un assouplissement des règles d\'urbanisme.'),
-  lag('lvt', 12, 'ajustement du bâti et de l\'usage des sols'), t0('lvt', 1, 'effet à partir de la deuxième année'),
+  lag('lvt', 12, 'ajustement du bâti et de l\'usage des sols ; calibré pour offre.sigma.lvt, que le module LVT ne lit pas : le module ne reprend que ce délai pour la borne OCDE de son cas haut'),
+  t0('lvt', 1, 'effet à partir de la deuxième année ; calibré pour offre.sigma.lvt, non lu par le module LVT, qui ne reprend que ce délai'),
   p('offre.sigma.assurance_chomage', -0.012, -0.005, -0.022, '% du PIB (niveau) par % de la ligne (plus de générosité)', `${GEM}, n° 10 ; Le Barbanchon, Rathelot et Roulet (2019) ; Le Bihan et Fabre (2026, non vérifié). Gemini : +0,05 / +0,12 / +0,22 par resserrement de 10 % ; divisé par 10 et de signe opposé pour 1 % de générosité en plus`, 'sourcé (fourchette), centre choisi',
     'Effet de long terme sur le niveau du PIB de 1 % de générosité en plus de l\'assurance chômage (durée ou taux de remplacement) : −0,012 au centre, donc +0,12 % du PIB pour un resserrement de 10 %. L\'effet passe par le retour plus rapide à l\'emploi, net de l\'effet d\'éviction entre demandeurs d\'emploi. Symétrique : un assouplissement réduit le PIB. Les cas bas / haut se lisent sur le résultat (le plus faible et le plus fort effet).'),
   lag('assurance_chomage', 3, 'retour à l\'emploi des chômeurs'), t0('assurance_chomage', 0, 'effet dès l\'entrée en vigueur'),
@@ -284,6 +286,22 @@ const offreFiscal = [
   obs('base.is.produit_etat_2026', 59.0, 'Md€', 'PLF 2026, Voies et moyens, tome I, p. 6 : IS net de l\'État 59,0 Md€ en 2026', 'Produit net de l\'IS de l\'État en 2026 : recette propre qui varie avec le PIB (calcul de θ non réel).'),
 ]
 
+// ---------- 4quater. Module « taxe sur la valeur du sol » (src/engine/lvt-module.js ; docs/review-lvt-module.md, décisions D11 et D12) ----------
+// Les rendements de LVTShift sont dans l'instantané daté src/engine/lvt-snapshot.js ; ici, les paramètres du mécanisme.
+const LVTR = 'Revue du module taxe sur la valeur du sol, 17 nov. 2026 (docs/review-lvt-module.md) [S26]'
+const lvt = [
+  obs('lvt.base_fonciere.2025', 6122, 'Md€ 2025', `INSEE, patrimoine national 2025 (provisoire), valeur foncière imposable reprise par LVTShift (yields.json, commit 322190e du 12 nov. 2026) ; ${LVTR}, §1.3 et §4.4. Non relu dans la publication de l'INSEE`,
+    'Valeur du sol qui sert d\'assiette à la nouvelle taxe. La capitalisation de la taxe dans le prix du sol réduit cette assiette (D12).', 'sourcé (secondaire)'),
+  p('lvt.capi.part', 0.80, 0.60, 1.00, 'part', `${LVTR}, §4.2 et §4.4 : capitalisation de 60 à 100 % de la valeur actuelle d'une taxe récurrente (Palmon et Smith 1998 : 62 % ; Høj et al. 2018 : complète au Danemark ; LVTShift : 100 % en central, 60 % en sensibilité). Centre 0,80 proposé par l'implémentation (milieu de la fourchette) : valeur centrale NON fixée par le propriétaire (D12, « valeur centrale à fixer »)`, 'à valider',
+    'Part de la valeur actuelle de la nouvelle taxe nationale qui se reporte dans une baisse du prix du sol (D12). Plus elle est forte, plus l\'assiette et donc le produit de la taxe baissent à taux fixé. Le centre (0,80) est à valider : il n\'a pas été choisi par le propriétaire.'),
+  p('lvt.capi.taux_actualisation', 3.5, 3, 4, '% (réel)', `${LVTR}, §4.4 (calcul, non relu) ; LVTShift, capitalisation indicative à 3 % et 4 % réel. Centre 3,5 % : milieu de la fourchette (choix de l'implémentation)`, 'non validé',
+    'Taux d\'actualisation réel qui transforme une taxe annuelle en baisse de la valeur du sol : valeur capitalisée = taxe / taux. Un taux plus bas donne une capitalisation plus forte.'),
+  p('lvt.ps.cle_etat', 7.5 / 17.2, null, null, 'part', `${LVTR}, §2.3 : prélèvements sociaux sur les revenus du capital de 17,2 %, dont 7,5 points (prélèvement de solidarité) versés à l'État selon LVTShift ; le reste (CSG 9,2 et CRDS 0,5, calcul par différence) va à la sécurité sociale et à la Cades. Clé non vérifiée sur le texte ; le taux en vigueur en 2026 est à confirmer`, 'non validé',
+    'Part de l\'État dans les prélèvements sociaux sur les plus-values et les loyers (7,5 / 17,2). Le complément est la perte de la sécurité sociale quand la taxe nationale sur le sol, versée à l\'État (D11), remplace ces prélèvements.'),
+  p('lvt.ys.ocde_par_point', 1.0, 0.25, 1.0, '% du PIB (niveau) par point de recettes déplacé', `${LVTR}, §4.2 et §4.3 : OCDE, Arnold et al. (2011, Economic Journal 121), cité par O'Connor et al. (2016) et par la note dynamic-effects.md de LVTShift (non relu) : transférer 1 % des recettes fiscales des impôts sur le revenu vers la consommation et le patrimoine immobilier relève le PIB par habitant de 0,25 à 1 % à long terme. Ne résiste pas aux tests de robustesse (Xing 2012 ; Baiardi et al. 2019)`, 'non validé',
+    'Repère de l\'OCDE, utilisé seulement pour la borne haute de l\'effet d\'offre du module (cas « haut », désactivé par défaut) : la valeur utilisée est le haut de la fourchette (1 % du PIB par point de recettes déplacé). Le cas central reste nul (D2). Ne s\'applique pas à S1 (échange entre impôts fonciers).'),
+]
+
 // ---------- 3.1 Rendements statiques (étalons) et taux avant réforme ----------
 const rend = [
   p('rend.tva_normal', 7.5, null, null, 'Md€ par point', 'DG Trésor 2025, repris par Vie-publique [S9]', 'sourcé', 'Un point de TVA au taux normal rapporte environ 7,5 Md€.'),
@@ -312,12 +330,12 @@ const rend = [
   p('comp.tau0.is', 25, null, null, '%', 'PLF 2026, Voies et moyens, tome I, p. 18', 'sourcé', 'Taux normal de l\'impôt sur les sociétés avant réforme.'),
 ]
 
-export const PARAMS = [...baseMacro, ...baseBlocs, ...partsBlocs, ...COFOG, ...unedic, ...table, ...offre, ...offreFiscal, ...rend, ...comparators]
+export const PARAMS = [...baseMacro, ...baseBlocs, ...partsBlocs, ...COFOG, ...unedic, ...table, ...offre, ...offreFiscal, ...lvt, ...rend, ...comparators]
 
 export const PARAM_BY_ID = Object.fromEntries(PARAMS.map((q) => [q.id, q]))
 if (Object.keys(PARAM_BY_ID).length !== PARAMS.length) throw new Error('params: identifiants dupliqués')
 
-export const STATUSES = ['calculé (estimation)', 'sourcé', 'sourcé (calcul)', 'sourcé (secondaire)', 'sourcé (fourchette), centre choisi', 'de mémoire', 'à collecter', 'non validé']
+export const STATUSES = ['calculé (estimation)', 'sourcé', 'sourcé (calcul)', 'sourcé (secondaire)', 'sourcé (fourchette), centre choisi', 'de mémoire', 'à collecter', 'non validé', 'à valider']
 
 /** Valeurs centrales, avec remplacements éventuels { id: valeur }. Rejette les ids inconnus et les valeurs non finies. */
 export function resolveParams(overrides = {}) {

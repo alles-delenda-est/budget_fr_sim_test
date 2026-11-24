@@ -21,16 +21,19 @@ src/
 │   ├── Navigation.jsx/.css     # Barre d'onglets
 │   └── ReviewBanner.jsx/.css   # Bandeau « Version de relecture »
 ├── engine/                     # Moteur de projection v2 (pur JavaScript, sans dépendance React)
-│   ├── params.js               # Catalogue unique des 162 paramètres (PARAMS, PARAM_BY_ID, resolveParams, interpolateSeries)
+│   ├── params.js               # Catalogue unique des 167 paramètres (PARAMS, PARAM_BY_ID, resolveParams, interpolateSeries)
 │   ├── levers.js               # 14 leviers actifs (LEVERS) + 3 leviers structurels désactivés (STRUCTURAL_LEVERS)
 │   ├── supply.js               # Effets d'offre E5 (σ calculé fiscal + σ décidé) et θ_non_réel
 │   ├── modules.js              # Contrat de module autonome (validateModuleDefinition, runModule, TEST_MODULE)
 │   ├── ndc-module.js           # Module Comptes notionnels (NDC_MODULE, forme réduite, non validé, D8)
+│   ├── lvt-module.js           # Module Taxe sur la valeur du sol (LVT_MODULE, non validé, D11, D12)
+│   ├── lvt-snapshot.js         # Instantané daté de yields.json (LVTShift, commit 322190e, 12 nov. 2026)
 │   ├── project.js              # Boucle de projection E1–E12 (projectScenario, HORIZONS, issuanceRate)
 │   └── __tests__/
 │       ├── engine.test.js      # Invariants et tests unitaires E1–E12, modules, offres
 │       ├── benchmarks.test.js  # Comparateurs homogènes RESF 2027, CE 2026 / DSM 2025, Cour des comptes 2026
-│       └── ndc-module.test.js  # Contrat, rampe 15 ans, ancrage COR 2026, décomposition NDC
+│       ├── ndc-module.test.js  # Contrat, rampe 15 ans, ancrage COR 2026, décomposition NDC
+│       └── lvt-module.test.js  # Instantané, D11, flux, capitalisation D12, yS, intégration
 ├── pages/
 │   ├── IntroPage.jsx/.css      # Accueil pédagogique, référence 10 ans et sensibilité β à 30 ans
 │   ├── SimulateurBudgetPage.jsx/.css
@@ -74,7 +77,7 @@ Le modèle couvre l'ensemble des **administrations publiques (APU)** en comptabi
 ## 3. Flux de calcul du moteur (`projectScenario`)
 
 ### 3.1 Résolution des paramètres et instruments
-1. `resolveParams(overrides)` résout les 162 paramètres de `PARAMS` en validant les identifiants et la finitude des valeurs.
+1. `resolveParams(overrides)` résout les 167 paramètres de `PARAMS` en validant les identifiants et la finitude des valeurs.
 2. `leversToInstruments(levers, P, N, ramp, { sigma, ysCase })` convertit les 14 leviers actifs (`LEVERS`) en séries annuelles par bloc `aBlocks[bloc][t]` (fraction du PIB de référence) et `theta[t]`.
 3. Chaque module passé dans `options.modules` est exécuté par `runModule(mod, values, context)` avec un `context` profondément gelé (`deepFreeze`). Le contrat impose qu'un module ne renvoie que `{ annees, flux, explications }`, ne touche jamais à la dette ni aux intérêts, et fournisse `a` par bloc, `theta ∈ [0, 1]`, `categorie` ou `m`, et un `yS` optionnel `{ bas, central, haut }`.
 4. `coreSupplyLines` calcule les séries d'effets d'offre E5 des leviers natifs pour les trois cas (`bas`, `central`, `haut`), auxquelles s'ajoutent celles des modules et d'un éventuel chemin `options.yS` externe.
@@ -106,6 +109,10 @@ Le modèle couvre l'ensemble des **administrations publiques (APU)** en comptabi
 - **Module actif sur la page Retraites (`NDC_MODULE`, `src/engine/ndc-module.js`)** :
   - `id: 'comptes_notionnels_ndc'`, `statut: 'non validé'` (confiance basse, D8).
   - Démarre en janvier 2028 (`t = 2`), montée en charge linéaire sur 15 cohortes (`2028–2042`), stabilise sur le bloc `securiteSociale` la dérive `max(0, COR(y) − COR(2025))` de la série `ref.derive.a_retraites` active, avec `yS = 0` (effet d'offre emploi seniors porté uniquement par `age_legal`).
+- **Module sur la page Budget, inactif par défaut (`LVT_MODULE`, `src/engine/lvt-module.js`)** :
+  - `id: 'taxe_valeur_sol'`, `statut: 'non validé'` ; leviers `scenario` (0 = inactif, 1 = S1, 2 = S2, 3 = S2 avec IFI, 4 = S3, 5 = S3 avec IFI) et `offre_ocde` (0 par défaut).
+  - Données : instantané `src/engine/lvt-snapshot.js` converti en part du PIB 2025 ; paramètres `lvt.*` dans `params.js`.
+  - Flux bruts affichés par bloc (D9) ; D11 : `a(securiteSociale) < 0`, `a(centrales) > 0` du même montant ; D12 : capitalisation négative pour S2 et S3, répartie au prorata du produit (local + départemental en `a(locales)`, national en `a(centrales)`), rampe de 3 ans ; `θ = 0`, `m = 0` ; `yS` bas = central = 0, haut = borne OCDE si `offre_ocde = 1`.
 
 ---
 
@@ -146,4 +153,4 @@ Commandes de vérification (toutes requises sans erreur ni avertissement) :
 2. **Inflation exogène** : pas de boucle prix-salaires ni de réponse endogène de l'inflation.
 3. **Multiplicateurs d'expansion** : pas de basculement automatique en régime de récession.
 4. **Boucle dette–taux linéaire** : prolongement de `β` jusqu'au plafond de 25 %, d'où l'encadrement visuel par les paliers 1 et 2 et la question ouverte aux relecteurs sur le calibrage de `β` en zone euro.
-5. **Modules en attente** : le module LVT (taxe sur la valeur du sol, `docs/review-lvt-module.md`, décisions D11–D12) et le plafonnement des pensions restent hors activation jusqu'à validation ; le module `NDC_MODULE` reste en forme réduite `non validé` (confiance basse).
+5. **Modules en attente** : le module LVT (taxe sur la valeur du sol, `docs/review-lvt-module.md`, décisions D11–D12) est disponible en forme minimale `non validé`, inactif par défaut (capitalisation centrale 0,80 à valider) ; le plafonnement des pensions reste hors activation jusqu'à validation ; le module `NDC_MODULE` reste en forme réduite `non validé` (confiance basse).

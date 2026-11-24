@@ -55,13 +55,13 @@ function LeverSlider({ lever, value, onChange, P, ysCase }) {
   )
 }
 
-export default function LeverPanel({ values, onChange, onReset, onExtreme, P, ysCase = 'central' }) {
+export default function LeverPanel({ values, onChange, onReset, onExtreme, P, ysCase = 'central', children }) {
   return (
     <section className="sb-section" aria-labelledby="sb-leviers">
       <h2 id="sb-leviers">Leviers</h2>
       <p className="sb-help">Chaque curseur change une mesure à partir de 2027 (sauf l'âge légal de retraite : dès janvier 2028 en hausse ou 2029 en baisse selon le calendrier LFSS 2026). L'étalon statique est l'effet brut en régime permanent sur le solde, avant reports et réaction comportementale : signe positif = solde amélioré.</p>
       <div className="sb-toolbar">
-        <button type="button" className="sb-btn" onClick={onReset}>Remettre les leviers à zéro</button>
+        <button type="button" className="sb-btn" onClick={onReset}>Tout remettre à zéro</button>
         <button type="button" className="sb-btn" onClick={() => onExtreme('min')}>Tout au minimum</button>
         <button type="button" className="sb-btn" onClick={() => onExtreme('max')}>Tout au maximum</button>
       </div>
@@ -86,6 +86,7 @@ export default function LeverPanel({ values, onChange, onReset, onExtreme, P, ys
           </div>
         ))}
       </fieldset>
+      {children}
     </section>
   )
 }
