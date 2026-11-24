@@ -73,7 +73,7 @@ Le moteur projette les **administrations publiques consolidées (APU)** en compt
 
 ## 6. Limites connues (alignées sur `docs/model-note.md` §10–§12)
 
-- **Paramètres à vérifier / collecter** : plusieurs paramètres portent un statut signalé (notamment 9 `de mémoire` pour 6 multiplicateurs et 3 θ ; 5 `à collecter` pour `comp.offset.prestations`, `rend.is`, `rend.cotis`, `macro.pi.long`, `cmp.aft.taux_emission.2026` ; 2 `à valider` pour `lvt.capi.part` et `ref.derive.b_autres` ; `non validé` pour `macro.g/pi` 2026–2027, `dem.lambda`, délais `offre.lag/t0`, effet d'offre de l'IR, `NDC_MODULE`, `LVT_MODULE`). Voir `docs/review-day0-parameters.md`.
+- **Paramètres à vérifier / collecter** : **0 paramètre `de mémoire` restant** ; 1 seul `à collecter` (`cmp.aft.taux_emission.2026`, rapport annuel AFT 2026 attendu en 2027) ; 3 `calculé (estimation)` (`comp.tau0.ir`, `offre.ir.conv_brut`, `rend.is`) ; 5 `à valider` soumis à décision propriétaire (`lvt.capi.part`, `ref.derive.b_autres`, `comp.offset.prestations`, `comp.theta.csg`, `rend.cotis`) ; `non validé` pour `macro.g/pi` 2026–2027, `dem.lambda`, délais `offre.lag/t0`, effet d'offre de l'IR, `NDC_MODULE`, `LVT_MODULE`. Voir `docs/review-day0-parameters.md`.
 - **Hors périmètre Day 0** : modèle déterministe (pas de distribution probabiliste), inflation exogène (pas de boucle prix-salaires), régime unique de multiplicateurs d'expansion, prolongement linéaire de `β` jusqu'au plafond de 25 % (encadré par les paliers 1 et 2).
 - **Questions ouvertes aux relecteurs (§12)** : (1) rentabilité long terme d'une hausse uniforme d'IR (`e_L = 0,40`, `τ_m = 21 %`), (2) calibrage de `ε_offre = 0,436` (D13), (3) pente dette–taux `β = 3 pb/pt` en zone euro et comportement au-delà de 200 % de dette/PIB.
 

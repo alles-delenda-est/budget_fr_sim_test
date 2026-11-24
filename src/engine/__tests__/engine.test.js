@@ -778,6 +778,18 @@ describe('vérification primaire Day 0 : ventilation COFOG Eurostat 2024 et para
     expect(PARAM_BY_ID['ref.derive.b_autres'].status).toBe('à valider')
     expect([PARAM_BY_ID['ref.derive.b_autres'].low, PARAM_BY_ID['ref.derive.b_autres'].value, PARAM_BY_ID['ref.derive.b_autres'].high]).toEqual([0, 0, 0.11])
   })
+  it('plus aucun paramètre « de mémoire » et seul cmp.aft.taux_emission.2026 reste « à collecter »', () => {
+    expect(PARAMS.filter((q) => q.status === 'de mémoire')).toEqual([])
+    expect(PARAMS.filter((q) => q.status === 'à collecter').map((q) => q.id)).toEqual(['cmp.aft.taux_emission.2026'])
+    expect(PARAM_BY_ID['dem.m.ir_csg'].source).toMatch(/Mésange.*0,41/)
+    expect(PARAM_BY_ID['comp.theta.ir'].source).toMatch(/Neisser.*0,343/)
+    expect(PARAM_BY_ID['comp.theta.cotis'].source).toMatch(/Bozio, Breda et Grenet/)
+    expect(PARAM_BY_ID['comp.offset.prestations'].status).toBe('à valider')
+    expect(PARAM_BY_ID['comp.theta.csg'].status).toBe('à valider')
+    expect(PARAM_BY_ID['rend.cotis'].status).toBe('à valider')
+    expect(PARAM_BY_ID['rend.is'].status).toBe('calculé (estimation)')
+    expect(PARAM_BY_ID['macro.pi.long'].status).toBe('sourcé (fourchette), centre choisi')
+  })
 })
 
 describe('indexation des pensions : unité et signe cohérents', () => {
