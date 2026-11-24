@@ -3,9 +3,10 @@ import { projectScenario, HORIZONS } from '../../engine/project.js'
 import { LEVERS, STRUCTURAL_LEVERS } from '../../engine/levers.js'
 import { PARAM_BY_ID } from '../../engine/params.js'
 import { NDC_MODULE } from '../../engine/ndc-module.js'
+import { LVT_MODULE } from '../../engine/lvt-module.js'
 import {
   fmt, num, buildSeries, snapshotAt, decomposeAtYear, visibleLines, blocksAt, paramIdsFor, groupedLevers,
-  extremeLevers, hasSupplyEffect, deltaTone, isFlagged, paramRange, leverGroup, sliderStep, debtMovesAgainstBalance, niceAxis, YEAR1_PARADOX_TEXT,
+  extremeLevers, hasSupplyEffect, moduleBlockRows, deltaTone, isFlagged, paramRange, leverGroup, sliderStep, debtMovesAgainstBalance, niceAxis, YEAR1_PARADOX_TEXT,
 } from './helpers.js'
 import { overridesForMacro } from './presets.js'
 
@@ -288,5 +289,25 @@ describe('axe vertical « rond » (niceAxis)', () => {
       expect(a.ticks.length).toBeLessThanOrEqual(8)
       expect(a.ticks.every((t) => t % a.step === 0)).toBe(true)
     }
+  })
+})
+
+describe('sorties d\'un module par bloc (D9)', () => {
+  it('flux bruts et effet net par bloc, bloc local compris ; effet net = écart de leversExAnte', () => {
+    const r = projectScenario({ modules: [{ module: LVT_MODULE, levers: { scenario: 4 } }] })
+    const ref = projectScenario({})
+    const rows = moduleBlockRows(r, 5, LVT_MODULE.id)
+    expect(rows.map((b) => b.id)).toEqual(['centrales', 'securiteSociale', 'locales'])
+    const loc = rows.find((b) => b.id === 'locales')
+    expect(loc.flux.length).toBe(4)
+    expect(loc.net).toBe(0)
+    for (const b of rows) {
+      expect(b.net).toBeCloseTo(r.blocks[b.id][5].leversExAnte - ref.blocks[b.id][5].leversExAnte, 9)
+      for (const f of b.flux) expect(Number.isFinite(f.montant) && Number.isFinite(f.pct)).toBe(true)
+    }
+    expect(rows.find((b) => b.id === 'securiteSociale').net).toBeLessThan(0)
+    // 2026 : aucun flux (effet dès 2027) ; module absent : lignes vides et nettes nulles
+    expect(moduleBlockRows(r, 0, LVT_MODULE.id).every((b) => b.flux.length === 0)).toBe(true)
+    expect(moduleBlockRows(ref, 5, LVT_MODULE.id).every((b) => b.flux.length === 0 && b.net === 0)).toBe(true)
   })
 })

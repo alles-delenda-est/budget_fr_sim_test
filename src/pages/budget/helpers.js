@@ -208,6 +208,20 @@ export function blocksAt(result, reference, t) {
   })
 }
 
+/**
+ * Lignes d'un module par bloc l'année t (D9 : chaque bloc, y compris le bloc local, reçoit les sorties du module) :
+ * flux bruts (affichage seulement, n'entrent pas dans le solde) et effet net sur le solde du bloc (a), en Md€ et en % du PIB.
+ */
+export function moduleBlockRows(result, t, moduleId) {
+  return BLOCKS.map((b) => {
+    const row = result.blocks[b][t]
+    const flux = (row.moduleFlux ?? []).filter((f) => f.moduleId === moduleId)
+      .map((f) => ({ libelle: f.libelle, montant: num(f.montant), pct: pct(f.montantPibPct) }))
+    const net = (row.moduleExAnte ?? []).find((m) => m.moduleId === moduleId)
+    return { id: b, label: BLOCK_LABELS[b], flux, net: num(net?.montant ?? 0), netPct: pct(net?.montantPibPct ?? 0) }
+  })
+}
+
 /** Identifiants de paramètres à expliquer pour les leviers actifs, les effets d'offre et un éventuel comparateur macroéconomique. */
 export function paramIdsFor(values, result, macroId = null) {
   const ids = ['dem.lambda', 'fisc.eps', 'fisc.eps_offre', 'emploi.kappa', 'dette.M', 'dette.beta']
@@ -230,7 +244,7 @@ export function paramIdsFor(values, result, macroId = null) {
 }
 
 /** Statuts qui signalent une valeur non sourcée : mis en évidence pour les relecteurs. */
-export const FLAGGED_STATUSES = ['de mémoire', 'à collecter', 'non validé', 'calculé (estimation)']
+export const FLAGGED_STATUSES = ['de mémoire', 'à collecter', 'non validé', 'calculé (estimation)', 'à valider']
 export const isFlagged = (status) => FLAGGED_STATUSES.includes(status)
 
 /** Valeur centrale et fourchette d'un paramètre, avec son unité. */

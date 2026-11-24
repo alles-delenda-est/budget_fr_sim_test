@@ -197,6 +197,8 @@ export function projectScenario(options = {}) {
         // Affichage seulement : flux bruts des modules (% du PIB et Md€), jamais ajoutés au solde. Appliqués dès 2027 (leviers dès 2027, D1).
         moduleFlux: t === 0 ? [] : moduleRuns.flatMap((inst) => inst.flux.filter((f) => f.bloc === b)
           .map((f) => ({ moduleId: inst.id, libelle: f.libelle, montantPibPct: f.montant, montant: f.montant * Y }))),
+        // Effet net ex ante de chaque module sur ce bloc (Md€, déjà inclus dans leversExAnte) : ligne distincte du module (D9).
+        moduleExAnte: moduleRuns.map((inst) => ({ moduleId: inst.id, montantPibPct: inst.aBlocks[b][t], montant: inst.aBlocks[b][t] * Yb })),
       })
     }
     total.push({

@@ -289,7 +289,8 @@ export default function HypothesesPage() {
               <code>{lvt.id}</code> : <strong>{fmt(lvt.central, 2, { signed: true })} %</strong> du PIB (bas{' '}
               {fmt(lvt.low, 2, { signed: true })} / haut {fmt(lvt.high, 2, { signed: true })}, L = {fmt(lvt.L, 0)} ans, t0 ={' '}
               {fmt(lvt.t0, 0)} an) <StatusBadge status={lvt.status} />. Remplacement intégral de la taxe foncière hors DMTO
-              (module non encore branché en levier natif).
+              (paramètre non lu par le module minimal de la page Budget, qui applique D2 : effet d'offre central nul, borne de
+              l'OCDE en cas haut sur option ; écart à trancher).
             </p>
           </div>
           <div className="hyp-note-card">

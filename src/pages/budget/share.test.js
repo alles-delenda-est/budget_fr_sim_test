@@ -66,4 +66,14 @@ describe('liens de scénario', () => {
     expect(scenarioHash(s)).toBe('#/budget?h=dixAns&cas=central&ir=-10')
     expect(scenarioUrl({ origin: 'https://x.test', pathname: '/', search: '' }, s)).toBe('https://x.test/#/budget?h=dixAns&cas=central&ir=-10')
   })
+  it('module taxe sur la valeur du sol : encodé seulement s\'il est actif, aller-retour, valeurs invalides ignorées', () => {
+    expect(encodeScenario({ values: {}, lvt: { scenario: 0, ocde: 1 } })).toBe('h=dixAns&cas=central')
+    expect(encodeScenario({ values: {}, lvt: { scenario: 4, ocde: 0 } })).toBe('h=dixAns&cas=central&lvt=4')
+    const s = { values: { ir: 5 }, horizon: 'dixAns', ysCase: 'haut', macroId: null, lvt: { scenario: 5, ocde: 1 } }
+    expect(encodeScenario(s)).toBe('h=dixAns&cas=haut&ir=5&lvt=5&lvt_ocde=1')
+    expect(decodeScenario(encodeScenario(s))).toEqual(s)
+    for (const bad of ['lvt=0', 'lvt=6', 'lvt=2.5', 'lvt=abc', 'lvt=-1', 'lvt=', 'lvt_ocde=1']) expect(decodeScenario(bad)).not.toHaveProperty('lvt')
+    expect(decodeScenario('lvt=2&lvt_ocde=yes').lvt).toEqual({ scenario: 2, ocde: 0 })
+    expect(decodeScenario('lvt=3').values).toEqual({})
+  })
 })

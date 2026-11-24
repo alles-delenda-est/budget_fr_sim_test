@@ -191,6 +191,7 @@ export const PARAM_GROUP_DEFS = [
   { id: 'dem', titre: 'Demande et multiplicateurs (E4)', match: (id) => id.startsWith('dem.') },
   { id: 'comp', titre: 'Réaction comportementale et fiscalité (E3)', match: (id) => id.startsWith('comp.') },
   { id: 'offre', titre: 'Effets d\'offre (E5)', match: (id) => id.startsWith('offre.') },
+  { id: 'lvt', titre: 'Module taxe sur la valeur du sol (D11, D12)', match: (id) => id.startsWith('lvt.') },
   { id: 'fisc', titre: 'Stabilisateurs et prélèvements obligatoires (E7, D13)', match: (id) => id.startsWith('fisc.') },
   { id: 'dette', titre: 'Dette et taux d\'intérêt (E9–E10)', match: (id) => id.startsWith('dette.') },
   { id: 'rend', titre: 'Rendements statiques et étalons (§3.1)', match: (id) => id.startsWith('rend.') },

@@ -8,7 +8,10 @@ import { evaluateWarnings } from './budget/warnings'
 import ShareButton from './budget/ShareButton'
 import { buildCsv, buildExportRows, downloadCsv } from './budget/exportCsv'
 import { versionStamp } from '../version'
-import { decodeScenario, queryFromHash, scenarioHash, scenarioUrl } from './budget/share'
+import { decodeScenario, queryFromHash, scenarioHash, scenarioUrl, DEFAULT_LVT } from './budget/share'
+import { LvtModuleControl, LvtModuleResults } from './budget/LvtModule'
+import { LVT_MODULE, LVT_PARAM_IDS } from '../engine/lvt-module.js'
+import { LVT_SCENARIO_BY_CODE } from '../engine/lvt-snapshot.js'
 import { InfoPopover, ParamInfo, StatusBadge } from './budget/InfoPopover'
 import { buildSeries, snapshotAt, decomposeAtYear, hasSupplyEffect, blocksAt, paramIdsFor, extremeLevers, fmt, SUPPLY_CASES } from './budget/helpers'
 import { NEUTRAL_SCENARIOS, MACRO_VARIANT_BY_ID, overridesForMacro, matchesScenario } from './budget/presets'
@@ -26,14 +29,19 @@ export default function SimulateurBudgetPage() {
   const [horizon, setHorizon] = useState(initial.horizon)
   const [ysCase, setYsCase] = useState(initial.ysCase)
   const [macroId, setMacroId] = useState(initial.macroId)
+  const [lvt, setLvt] = useState(initial.lvt ?? DEFAULT_LVT)
   const [yearIdxRaw, setYearIdx] = useState(DEFAULT_YEAR_IDX)
 
   const macroVariant = macroId && Object.hasOwn(MACRO_VARIANT_BY_ID, macroId) ? MACRO_VARIANT_BY_ID[macroId] : null
   const overrides = useMemo(() => overridesForMacro(macroId), [macroId])
+  // Module « taxe sur la valeur du sol » : inactif par défaut (scénario 0) ; la borne OCDE n'a de sens qu'en S2 et S3.
+  const lvtScenario = LVT_SCENARIO_BY_CODE[lvt.scenario] ?? null
+  const lvtSetting = useMemo(() => (lvtScenario ? { scenario: lvtScenario.code, ocde: lvtScenario.code >= 2 && lvt.ocde === 1 ? 1 : 0 } : null), [lvtScenario, lvt.ocde])
+  const modules = useMemo(() => (lvtSetting ? [{ module: LVT_MODULE, levers: { scenario: lvtSetting.scenario, offre_ocde: lvtSetting.ocde } }] : []), [lvtSetting])
 
   // Référence (médiane des prévisionnistes indépendants, sans levier) et scénario : recalculés seulement si nécessaire.
   const reference = useMemo(() => projectScenario({ levers: {}, horizon, ysCase }), [horizon, ysCase])
-  const result = useMemo(() => projectScenario({ levers: values, overrides, horizon, ysCase }), [values, overrides, horizon, ysCase])
+  const result = useMemo(() => projectScenario({ levers: values, overrides, horizon, ysCase, modules }), [values, overrides, horizon, ysCase, modules])
 
   const N = result.years.length - 1
   const yearIdx = Math.min(Math.max(yearIdxRaw, 1), N)
@@ -47,7 +55,7 @@ export default function SimulateurBudgetPage() {
   ], [result, reference, N])
   const decomposition = useMemo(() => decomposeAtYear(result, reference, yearIdx, EPS, EPS_OFFRE), [result, reference, yearIdx])
   const blocks = useMemo(() => blocksAt(result, reference, yearIdx), [result, reference, yearIdx])
-  const paramIds = useMemo(() => paramIdsFor(values, result, macroId), [values, result, macroId])
+  const paramIds = useMemo(() => [...new Set([...paramIdsFor(values, result, macroId), ...(lvtSetting ? LVT_PARAM_IDS : [])])].filter((id) => PARAM_BY_ID[id]), [values, result, macroId, lvtSetting])
 
   // Aucune ligne d'offre non nulle dans le résultat du moteur : le choix bas / central / haut ne change rien.
   const noSupplyEffect = !hasSupplyEffect(result)
@@ -55,17 +63,18 @@ export default function SimulateurBudgetPage() {
   // Adresse du scénario mise à jour sans entrée d'historique, avec un délai pour ne pas écrire à chaque cran de curseur.
   useEffect(() => {
     const timer = setTimeout(() => {
-      window.history.replaceState(window.history.state, '', scenarioHash({ values, horizon, ysCase, macroId }))
+      window.history.replaceState(window.history.state, '', scenarioHash({ values, horizon, ysCase, macroId, lvt: lvtSetting }))
     }, 300)
     return () => clearTimeout(timer)
-  }, [values, horizon, ysCase, macroId])
+  }, [values, horizon, ysCase, macroId, lvtSetting])
 
   const exportCsv = () => {
     const csv = buildCsv({
-      stamp: versionStamp(), url: scenarioUrl(window.location, { values, horizon, ysCase, macroId }),
+      stamp: versionStamp(), url: scenarioUrl(window.location, { values, horizon, ysCase, macroId, lvt: lvtSetting }),
       horizonLabel: HORIZONS[horizon].label, ysCase, macroLabel: macroVariant?.label ?? null, values, rows: buildExportRows(result, reference, EPS, EPS_OFFRE),
+      modules: lvtScenario ? [[`Module ${LVT_MODULE.titre}`, `${lvtScenario.libelle}${lvtSetting.ocde ? ' ; borne haute OCDE incluse dans le cas « haut »' : ''}`]] : [],
     })
-    downloadCsv(csv, `simulateur-budget-${horizon}-${ysCase}${macroId ? `-${macroId}` : ''}.csv`)
+    downloadCsv(csv, `simulateur-budget-${horizon}-${ysCase}${macroId ? `-${macroId}` : ''}${lvtScenario ? `-lvt-${lvtScenario.id}` : ''}.csv`)
   }
 
   const setLever = (id, x) => setValues((v) => ({ ...v, [id]: x }))
@@ -103,9 +112,9 @@ export default function SimulateurBudgetPage() {
 
       <section className="sb-section" aria-labelledby="sb-partage">
         <h2 id="sb-partage">Partager et exporter</h2>
-        <p className="sb-help">Le lien reprend les leviers, l'horizon, le cas des effets d'offre et l'éventuel comparateur macroéconomique ; il rouvre exactement ce scénario. L'export CSV (séparateur « ; », virgule décimale, ouverture directe dans Excel) donne, année par année, le scénario, la référence et la décomposition par cause.</p>
+        <p className="sb-help">Le lien reprend les leviers, l'horizon, le cas des effets d'offre, l'éventuel comparateur macroéconomique et le module « taxe sur la valeur du sol » s'il est actif ; il rouvre exactement ce scénario. L'export CSV (séparateur « ; », virgule décimale, ouverture directe dans Excel) donne, année par année, le scénario, la référence et la décomposition par cause.</p>
         <div className="sb-toolbar">
-          <ShareButton getUrl={() => scenarioUrl(window.location, { values, horizon, ysCase, macroId })} />
+          <ShareButton getUrl={() => scenarioUrl(window.location, { values, horizon, ysCase, macroId, lvt: lvtSetting })} />
           <button type="button" className="sb-btn" onClick={exportCsv}>Exporter (CSV)</button>
         </div>
       </section>
@@ -129,7 +138,9 @@ export default function SimulateurBudgetPage() {
       </section>
 
       <div className="sb-layout">
-        <LeverPanel values={values} onChange={setLever} onReset={() => setValues({})} onExtreme={(w) => setValues(extremeLevers(w))} P={P} />
+        <LeverPanel values={values} onChange={setLever} onReset={() => { setValues({}); setLvt(DEFAULT_LVT) }} onExtreme={(w) => setValues(extremeLevers(w))} P={P}>
+          <LvtModuleControl lvt={lvt} onChange={setLvt} />
+        </LeverPanel>
         <div className="sb-results">
           {macroVariant && (
             <div className="sb-macro-banner" role="status">
@@ -145,6 +156,7 @@ export default function SimulateurBudgetPage() {
           <Charts data={series} tier1={warnings.tier1} tier2={warnings.tier2} hasMacroOverride={Boolean(macroVariant)} />
           <DecompositionTable decomposition={decomposition} years={result.years} yearIdx={yearIdx} onYear={setYearIdx} />
           <BlocksTable blocks={blocks} year={result.years[yearIdx]} />
+          <LvtModuleResults result={result} yearIdx={yearIdx} />
           <section className="sb-section" aria-labelledby="sb-params">
             <h2 id="sb-params">Hypothèses utilisées</h2>
             <p className="sb-help">Paramètres qui pèsent sur le scénario affiché, avec leur source et leur statut.</p>

@@ -91,3 +91,15 @@ describe('buildCsv', () => {
     expect(out).not.toMatch(/NaN|Infinity|undefined/)
   })
 })
+
+describe('buildCsv : module actif', () => {
+  it('écrit le réglage du module dans l\'en-tête et ne dit pas « identique à la référence »', () => {
+    const { r, ref } = scen({})
+    const csv = buildCsv({ stamp: 'v', url: 'u', horizonLabel: '10 ans', ysCase: 'central', values: {}, rows: buildExportRows(r, ref, EPS, EPS_OFFRE),
+      modules: [['Module Taxe sur la valeur du sol (non validé)', 'S3 avec IFI']] })
+    const lines = csv.slice(1).split('\r\n')
+    expect(lines).toContain('Module Taxe sur la valeur du sol (non validé);S3 avec IFI')
+    expect(lines).toContain('Aucun levier actif (modules seuls)')
+    expect(csv).not.toMatch(/identique à la référence/)
+  })
+})

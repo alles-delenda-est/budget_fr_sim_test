@@ -5,15 +5,22 @@
 
 import { LEVERS, LEVER_BY_ID } from '../../engine/levers.js'
 import { HORIZONS } from '../../engine/project.js'
+import { LVT_SCENARIO_CODES } from '../../engine/lvt-module.js'
 import { MACRO_VARIANT_BY_ID } from './presets.js'
 
 export const DEFAULT_HORIZON = 'dixAns'
 export const DEFAULT_CASE = 'central'
 const CASES = ['bas', 'central', 'haut']
-const RESERVED = new Set(['h', 'cas', 'm'])
+const RESERVED = new Set(['h', 'cas', 'm', 'lvt', 'lvt_ocde'])
+/** Module « taxe sur la valeur du sol » inactif (défaut) : scénario 0, borne OCDE non incluse. */
+export const DEFAULT_LVT = Object.freeze({ scenario: 0, ocde: 0 })
+const lvtActive = (lvt) => Number.isInteger(lvt?.scenario) && lvt.scenario > 0 && LVT_SCENARIO_CODES.includes(lvt.scenario)
 
-/** Chaîne de requête (sans « ? ») d'un scénario. Seuls les leviers non nuls (et une éventuelle variante macroéconomique valide) sont écrits. */
-export function encodeScenario({ values = {}, horizon = DEFAULT_HORIZON, ysCase = DEFAULT_CASE, macroId = null } = {}) {
+/**
+ * Chaîne de requête (sans « ? ») d'un scénario. Seuls les leviers non nuls, une éventuelle variante macroéconomique valide et le module
+ * « taxe sur la valeur du sol » s'il est actif (lvt = 1 à 5, lvt_ocde = 1) sont écrits.
+ */
+export function encodeScenario({ values = {}, horizon = DEFAULT_HORIZON, ysCase = DEFAULT_CASE, macroId = null, lvt = null } = {}) {
   const q = new URLSearchParams()
   q.set('h', horizon)
   q.set('cas', ysCase)
@@ -22,13 +29,17 @@ export function encodeScenario({ values = {}, horizon = DEFAULT_HORIZON, ysCase 
     const v = values[l.id]
     if (typeof v === 'number' && Number.isFinite(v) && v !== 0) q.set(l.id, String(v))
   }
+  if (lvtActive(lvt)) {
+    q.set('lvt', String(lvt.scenario))
+    if (lvt.ocde === 1) q.set('lvt_ocde', '1')
+  }
   return q.toString()
 }
 
 /**
  * Lit une chaîne de requête et renvoie un scénario valide. Clés inconnues ignorées ; horizon, cas et variante macroéconomique
  * inconnus remplacés par les valeurs par défaut ; valeurs non numériques ou non finies ignorées ; valeurs bornées au min / max du levier.
- * Ne lève jamais d'exception.
+ * La clé `lvt` n'est présente que si le module est actif (code entier 1 à 5) : { scenario, ocde }. Ne lève jamais d'exception.
  */
 export function decodeScenario(query) {
   const out = { values: {}, horizon: DEFAULT_HORIZON, ysCase: DEFAULT_CASE, macroId: null }
@@ -52,6 +63,8 @@ export function decodeScenario(query) {
     const clamped = Math.min(lever.max, Math.max(lever.min, x))
     if (clamped !== 0) out.values[key] = clamped
   }
+  const lvt = { scenario: Number(q.get('lvt')), ocde: q.get('lvt_ocde') === '1' ? 1 : 0 }
+  if (lvtActive(lvt)) out.lvt = lvt
   return out
 }
 

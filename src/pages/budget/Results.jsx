@@ -91,7 +91,7 @@ export function BlocksTable({ blocks, year }) {
   return (
     <section className="sb-section" aria-labelledby="sb-blocs">
       <h2 id="sb-blocs">Trois blocs en {year}</h2>
-      <p className="sb-help">Solde de chaque bloc après charge d'intérêts. Le bloc local ne reçoit pas de levier propre : il reçoit sa part des fonctions de dépense partagées avec l'État (clé de répartition provisoire).</p>
+      <p className="sb-help">Solde de chaque bloc après charge d'intérêts. Le bloc local n'a pas de levier propre : il reçoit sa part des fonctions de dépense partagées avec l'État (clé de répartition provisoire) et les sorties des modules actifs, détaillées sur une ligne distincte.</p>
       <table className="sb-table">
         <thead><tr><th scope="col">Bloc</th><th scope="col" className="sb-num">Solde (Md€)</th><th scope="col" className="sb-num">% PIB</th><th scope="col" className="sb-num">vs réf. (Md€)</th></tr></thead>
         <tbody>

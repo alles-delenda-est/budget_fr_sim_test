@@ -258,3 +258,28 @@ D2 n'est pas modifiée : `yS` central = 0, bloc optionnel non validé.
 ### 5.6 Ce qui n'a pas été fait
 
 Le code de LVTShift n'a pas été exécuté ; `METHODOLOGIE.md` (1 585 lignes), les notes `site-value-2026-11` (imputation de la valeur du sol) et les données des communes n'ont pas été relus ; les références académiques de la section 4 viennent de `dynamic-effects.md`, sauf celles notées « relu ». La valeur du sol imputée, base de tous les taux, est le maillon faible de LVTShift et n'a pas été auditée ici.
+
+## 6. Mise en œuvre minimale (24 nov. 2026)
+
+Branche `module/lvt-minimal`, sur `review/day0`. Module `LVT_MODULE` (`src/engine/lvt-module.js`), statut « non validé », **inactif par défaut** sur la page Budget. Ce qui diffère de la recommandation 5.2 tient aux décisions D11 et D12 prises depuis : `a` n'est plus nul dans chaque bloc.
+
+- **Données** : instantané `src/engine/lvt-snapshot.js` (commit 322190e, 12 nov. 2026) : les cinq variantes de 1.3 (total, local, départemental, national, taux indicatif), les lignes de 2.2 avec URL et statut, les prélèvements sociaux de 2.3 (1,92 Md€ en 2024 sur plus-values ; 3,5 Md€ en 2022 sur loyers). Conversion par `base.pib.2025` (2 991 Md€). Aucun appel à LVTShift. Le produit de la nouvelle taxe est la somme des trois niveaux ; il diffère du total publié de 0,1 Md€ en S2 et S3 sans IFI (arrondis de `yields.json`).
+- **Leviers** : `scenario` (0 inactif ; 1 S1 ; 2 S2 ; 3 S2 avec IFI ; 4 S3 ; 5 S3 avec IFI) et `offre_ocde` (0 par défaut). Effet dès 2027.
+- **D11** : `a(sécurité sociale)` = −(1 − 7,5/17,2) × prélèvements sociaux remplacés ; `a(centrales)` = + le même montant ; nul au consolidé. `a(locales)` = 0, les flux bruts du bloc local s'affichent (D9).
+- **D12** : taxe nationale additionnelle = part nationale moins celle de S1 (1,8 Md€ de frais de gestion, déjà sur l'avis de taxe foncière). Pour S3 sans IFI, 12,3 Md€ au lieu des « 14 Md€ » de 4.4 : la borne haute passe de −0,15 / −0,2 % à −0,13 / −0,18 % du PIB (taux de 4 % / 3 %) ; S3 avec IFI donne −0,16 / −0,22 %. Paramètres : `lvt.capi.part` 0,80 (0,60–1,00, **à valider**), `lvt.capi.taux_actualisation` 3,5 % (3–4 %), `lvt.base_fonciere.2025` 6 122 Md€. Montée en charge sur trois ans (hypothèse). Toute la perte est inscrite en `a(centrales)`, y compris celle qui porte sur le produit local (simplification).
+- **yS** : bas = central = 0 (D2) ; haut = borne de 4.3 si `offre_ocde` = 1 (prélèvements obligatoires = `fisc.eps_offre` × PIB ≈ 1 304 Md€ au lieu de ≈ 1 290 : +0,31 % en S2, +1,12 % en S3 avec IFI), montée en charge `offre.lag.lvt` (12 ans) et `offre.t0.lvt` (1 an). Le paramètre `offre.sigma.lvt` (+0,10 / +0,20 / +0,45) n'est pas lu par le module.
+- **Multiplicateur** : `θ` = 0 ; `m` = 0 sauf en S2 et S3, où la capitalisation rend le consolidé non nul : catégorie `ir_csg` (moindre impôt payé par des propriétaires, surtout des ménages).
+
+Effet à plein régime (2029 et après), en % du PIB :
+
+| Variante | Capitalisation | Centrales | Sécurité sociale | Locales | Consolidé |
+|---|---|---|---|---|---|
+| S1 | — | 0 | 0 | 0 | 0 |
+| S2 sans IFI | 0,80 / 1,00 | +0,001 / −0,008 | −0,036 | 0 | −0,036 / −0,044 |
+| S2 avec IFI | 0,80 / 1,00 | −0,022 / −0,036 | −0,036 | 0 | −0,058 / −0,072 |
+| S3 sans IFI | 0,80 / 1,00 | −0,020 / −0,050 | −0,102 | 0 | −0,122 / −0,153 |
+| S3 avec IFI | 0,80 / 1,00 | −0,047 / −0,084 | −0,102 | 0 | −0,149 / −0,186 |
+
+Taux d'actualisation 3,5 % dans les deux cas. Le consolidé est la seule capitalisation.
+
+Reste à faire avant le portillon du 30 novembre : fixer la part capitalisée centrale ; vérifier la clé 7,5/17,2 et le taux des prélèvements sociaux en vigueur en 2026 ; trancher l'écart entre `offre.sigma.lvt` et D2.

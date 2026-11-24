@@ -6,7 +6,7 @@ Instructions de travail pour les agents et contributeurs sur **Simulateur Budget
 
 - **Spécification du modèle** : `docs/model-note.md` (note de modèle v0.3, équations E1–E12, décisions D1–D13, limites §10–§12).
 - **Données et collecte** : `docs/baseline-data.md`, `docs/sigma-fiscal.md`, `docs/review-supply-effects-gemini.md`, `docs/review-age-legal.md`, `docs/review-comptes-notionnels.md`, `docs/review-lvt-module.md`, `docs/citations.md`.
-- **Catalogue unique des paramètres** : `src/engine/params.js` (162 paramètres avec valeur centrale, fourchette `low`/`high`, unité, source, statut et explication). Ne jamais dupliquer de constante économique dans les pages UI.
+- **Catalogue unique des paramètres** : `src/engine/params.js` (167 paramètres avec valeur centrale, fourchette `low`/`high`, unité, source, statut et explication). Ne jamais dupliquer de constante économique dans les pages UI.
 - **Seuils d'avertissement** : `src/config.js` (`WARNING_THRESHOLDS`, source unique).
 
 ## 2. Architecture du moteur v2 (`src/engine/`)
@@ -20,6 +20,8 @@ Le moteur projette les **administrations publiques consolidées (APU)** en compt
 | `src/engine/supply.js` | Effets d'offre E5 (`SUPPLY_EFFECTS`, `coreSupplyLines`, `supplyPhase`), `σ` calculé pour les 5 familles fiscales (cotisations, CSG, TVA, IR, IS) et `θ_non_réel` (`partReelle`, `thetaNonReel`) pour éviter tout double compte avec E5 + E7. |
 | `src/engine/modules.js` | Contrat de module autonome (`validateModuleDefinition`, `moduleLeverValues`, `runModule`, `TEST_MODULE`). Un module n'écrit **jamais** dans la dette ni dans les intérêts et reçoit un `contexte` profondément gelé (`deepFreeze`). |
 | `src/engine/ndc-module.js` | `NDC_MODULE` (`comptes_notionnels_ndc`, `statut: 'non validé'`, décision D8) : forme réduite stabilisant sur 15 cohortes (dès janvier 2028, `NDC_START_T = 2`, `NDC_RAMP_YEARS = 15`) la dérive post-2025 de `ref.derive.a_retraites` (COR juin 2026), avec `yS = 0` et respect de `comp.offset.prestations`. |
+| `src/engine/lvt-module.js` | `LVT_MODULE` (`taxe_valeur_sol`, `statut: 'non validé'`, décisions D11 et D12) : taxe sur la valeur du sol à rendement égal (S1, S2, S3, IFI en option), dès 2027 ; transfert sécurité sociale → État (D11), capitalisation en `a(centrales)` négatif (D12), `flux[]` par bloc, `yS` central 0 (borne OCDE en haut, option désactivée par défaut). Inactif par défaut sur la page Budget. |
+| `src/engine/lvt-snapshot.js` | Instantané daté de `yields.json` de LVTShift (commit 322190e, 12 nov. 2026) : `LVT_SCENARIOS`, `LVT_PRELEVEMENTS_SOCIAUX`, `LVT_LIGNES` (source et statut par ligne). |
 | `src/engine/project.js` | Boucle de projection E1–E12 (`projectScenario`, `HORIZONS` : 10 ans / 2040 / 30 ans, `issuanceRate`, `deepFreeze`, `DECOMPOSITION_LABELS`). |
 
 ### Équations clés (E1–E12)
@@ -42,13 +44,14 @@ Le moteur projette les **administrations publiques consolidées (APU)** en compt
 1. **`IntroPage.jsx`** : présentation pédagogique du moteur v2, chiffres 2025 lus depuis `PARAMS`, trajectoire de référence à 10 ans et sensibilité à `β` à 30 ans, limites assumées.
 2. **`SimulateurBudgetPage.jsx`** (`src/pages/budget/`) : 14 leviers actifs en 3 groupes (recettes, dépenses, prestations), 3 leviers structurels désactivés, **6 scénarios types neutres** (`presets.js`, dont le comparateur macroéconomique RESF 2027), 3 horizons, 3 cas d'offre, décomposition exacte par cause (`decomposeAtYear`, somme = écart au centième de milliard), 3 blocs APU, avertissements palier 1 (`260 %`, record Japon 2020) / palier 2 (`500 %` dette ou `50 %` intérêts/recettes), **URL partageables** (`share.js`), **export CSV** (`exportCsv.js`).
 3. **`SimulateurRetraitesPage.jsx`** (`src/pages/retraites/`) : variantes de productivité COR juin 2026 (`1,0 %` / `0,7 %` / `0,4 %`), variantes santé/dépendance Commission européenne 2024, leviers validés (`age_legal` 62–67 ans dès janv. 2028 avec effet d'offre emploi seniors, `indexation_pensions`), **préréglage Comptes notionnels (D8)** (`age_legal = 65 ans` + `NDC_MODULE`, `non validé`, confiance basse), mesure désactivée (`plafonnement_pensions`), 4 graphiques, décomposition exacte et 3 blocs.
-4. **`HypothesesPage.jsx`** (`src/pages/hypotheses/`) : lit 100 % de ses tableaux dans `PARAMS`, `LEVERS`, `STRUCTURAL_LEVERS`, `SUPPLY_EFFECTS` et `WARNING_THRESHOLDS` (comptes APU 2025, COFOG 2024, équations E1–E12, catalogue leviers/σ, table filtrable des 162 paramètres, 3 questions ouvertes aux relecteurs).
+4. **`HypothesesPage.jsx`** (`src/pages/hypotheses/`) : lit 100 % de ses tableaux dans `PARAMS`, `LEVERS`, `STRUCTURAL_LEVERS`, `SUPPLY_EFFECTS` et `WARNING_THRESHOLDS` (comptes APU 2025, COFOG 2024, équations E1–E12, catalogue leviers/σ, table filtrable des 167 paramètres, 3 questions ouvertes aux relecteurs).
 
 ## 4. Suite de tests (`npm test`)
 
 - `src/engine/__tests__/engine.test.js` : tests unitaires et d'invariants du moteur v2 (paramètres, leviers, θ, offre, E1–E12, modules, balayage aléatoire).
 - `src/engine/__tests__/benchmarks.test.js` : comparaisons à périmètre homogène contre RESF 2027, Commission européenne (printemps 2026 et DSM 2025) et Cour des comptes (juin 2026).
 - `src/engine/__tests__/ndc-module.test.js` : contrat de module, rampe 15 ans dès 2028, ancrage COR 2026 sur 3 variantes, `yS = 0`, préréglage complet et décomposition exacte.
+- `src/engine/__tests__/lvt-module.test.js` : instantané et paramètres (gardes `toBe`), contrat, D11 par bloc, flux, capitalisation D12, `yS`, intégration au moteur sur tous les horizons.
 - `src/__tests__/eps-offre.test.js` : vérification de D13 (`ε_offre` vs `ε`) et de la séparation demande/offre.
 - `src/__tests__/randomized.test.js` : tests de propriété déterministes (graines fixes) sur scénarios aléatoires, URL partageables, CSV et bornes numériques.
 - `src/pages/budget/*.test.js` (`helpers`, `presets`, `warnings`, `share`, `exportCsv`), `src/pages/retraites/helpers.test.js`, `src/pages/hypotheses/helpers.test.js`, `src/version.test.js`.
