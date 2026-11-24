@@ -32,6 +32,9 @@ export function supplyPhase(tau, L, t0 = 0) {
  * Registre : mesure du cœur => paramètres de l'effet d'offre.
  * `sigma` : id du paramètre (bas / central / haut) en % du PIB par unité du levier ; `sigmaBaisse` : id facultatif pour une baisse
  * du levier (sinon σ_baisse = σ) ; `scale(P)` : facteur de conversion appliqué à σ (défaut 1).
+ * `emplois` : id facultatif du nombre d'emplois par point de PIB (affichage seulement, voir `impliedJobs`), avec ses libellés
+ * `emploisParUnite` (« par année d'âge légal ») et `emploisUnite` ([singulier, pluriel]) ;
+ * `emploisComparateur` : ids facultatifs { bas, haut, libelle } d'une fourchette externe d'emplois à afficher en regard.
  */
 export const SUPPLY_EFFECTS = [
   { lever: 'dep_enseignement', libelle: 'Enseignement : capital humain à long terme',
@@ -45,7 +48,10 @@ export const SUPPLY_EFFECTS = [
   { lever: 'travail_assurance_chomage', libelle: 'Assurance chômage : retour à l\'emploi',
     sigma: 'offre.sigma.assurance_chomage', L: 'offre.lag.assurance_chomage', t0: 'offre.t0.assurance_chomage' },
   { lever: 'age_legal', libelle: 'Âge légal de départ en retraite : emploi des seniors',
-    sigma: 'offre.sigma.age_legal', L: 'offre.lag.age_legal', t0: 'offre.t0.age_legal' },
+    sigma: 'offre.sigma.age_legal', L: 'offre.lag.age_legal', t0: 'offre.t0.age_legal',
+    emplois: 'offre.emplois_par_pt_pib.age_legal',
+    emploisParUnite: 'par année d\'âge légal', emploisUnite: ['an', 'ans'],
+    emploisComparateur: { bas: 'cmp.cor.emplois.age_legal_10ans.bas', haut: 'cmp.cor.emplois.age_legal_10ans.haut', libelle: 'fourchette des modèles du COR à 10 ans' } },
   { lever: 'ir', libelle: 'Impôt sur le revenu : effet d\'offre',
     nomCourt: 'Effet d\'offre de l\'IR', statut: 'non validé',
     sigmaParams: ['offre.e_L', 'comp.tau0.ir', 'offre.ir.conv_brut', 'comp.coin.part_nette'], L: 'offre.lag.ir', t0: 'offre.t0.ir',
@@ -186,4 +192,29 @@ export function coreSupplyLines(instruments, P, nYears, explicit) {
     lines.push({ id: inst.id, libelle: spec.libelle, statut: spec.statut, nomCourt: spec.nomCourt, sigma: { hausse: spec.hausse, baisse: spec.baisse }, L: spec.L, t0: spec.t0, cas })
   }
   return lines
+}
+
+/**
+ * Emplois implicites de l'effet d'offre retenu (affichage seulement, n'entre pas dans le solde) :
+ *   emplois = σ(cas) × x × emplois par point de PIB,
+ * avec σ choisi par `supplyForCase` (même règle bas / central / haut que le moteur, signe compris).
+ * Renvoie 0 si x = 0, null si le levier n'a pas de conversion emplois (`emplois` du registre) ou si une entrée n'est pas finie.
+ */
+export function impliedJobs(leverId, x, P, ysCase = 'central') {
+  const reg = SUPPLY_BY_LEVER[leverId]
+  if (!reg?.emplois || !finite(x)) return null
+  const conv = P[reg.emplois]
+  if (!finite(conv)) return null
+  if (x === 0) return 0
+  const s = supplyForCase(leverId, x, P, undefined, ysCase)
+  if (!s || !finite(s.sigma)) return null
+  const v = s.sigma * x * conv
+  return finite(v) ? v : null
+}
+
+/** Arrondi d'un nombre d'emplois au multiple de `step` le plus proche (défaut 10 000), sans « −0 » ; null si non fini. */
+export function roundJobs(v, step = 10000) {
+  if (!finite(v) || !(step > 0)) return null
+  const r = Math.round(Math.abs(v) / step) * step
+  return r === 0 ? 0 : Math.sign(v) * r
 }

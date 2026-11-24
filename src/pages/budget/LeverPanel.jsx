@@ -5,12 +5,13 @@ import { SUPPLY_BY_LEVER } from '../../engine/supply.js'
 import { PARAM_BY_ID } from '../../engine/params.js'
 import { fmt, groupedLevers, sliderStep } from './helpers'
 import { InfoPopover, StatusBadge, ParamInfo } from './InfoPopover'
+import JobsNote from './JobsNote'
 
-function LeverSlider({ lever, value, onChange, P }) {
+function LeverSlider({ lever, value, onChange, P, ysCase }) {
   const id = useId()
   const yieldMd = staticYield(lever, value, P)
   const rendIds = lever.rendParams ?? [`rend.${lever.id}`]
-  const params = [...rendIds, lever.offsetParam, lever.theta?.id, lever.categorie && `dem.m.${lever.categorie}`].filter((p) => p && PARAM_BY_ID[p])
+  const params = [...rendIds, lever.offsetParam, lever.theta?.id, lever.categorie && `dem.m.${lever.categorie}`, SUPPLY_BY_LEVER[lever.id]?.emplois].filter((p) => p && PARAM_BY_ID[p])
   const activeRamp = defaultRampFor(lever, value)
   const startYear = activeRamp ? START_YEAR + activeRamp.start : null
   const fullYear = activeRamp ? startYear + activeRamp.years - 1 : null
@@ -49,11 +50,12 @@ function LeverSlider({ lever, value, onChange, P }) {
           Étalon statique : <strong>{fmt(yieldMd, 1, { signed: true })} Md€</strong>/an{rampShort}
         </span>
       </div>
+      <JobsNote leverId={lever.id} x={value} P={P} ysCase={ysCase} />
     </div>
   )
 }
 
-export default function LeverPanel({ values, onChange, onReset, onExtreme, P }) {
+export default function LeverPanel({ values, onChange, onReset, onExtreme, P, ysCase = 'central' }) {
   return (
     <section className="sb-section" aria-labelledby="sb-leviers">
       <h2 id="sb-leviers">Leviers</h2>
@@ -67,7 +69,7 @@ export default function LeverPanel({ values, onChange, onReset, onExtreme, P }) 
         <fieldset key={g.id} className="sb-group">
           <legend>{g.titre}</legend>
           <p className="sb-help">{g.aide}</p>
-          {g.leviers.map((l) => <LeverSlider key={l.id} lever={l} value={values[l.id] ?? 0} onChange={onChange} P={P} />)}
+          {g.leviers.map((l) => <LeverSlider key={l.id} lever={l} value={values[l.id] ?? 0} onChange={onChange} P={P} ysCase={ysCase} />)}
         </fieldset>
       ))}
       <fieldset className="sb-group sb-group-disabled">

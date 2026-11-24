@@ -6,6 +6,7 @@ import { NDC_MODULE } from '../../engine/ndc-module.js'
 import {
   fmt, num, buildSeries, snapshotAt, decomposeAtYear, visibleLines, blocksAt, paramIdsFor, groupedLevers,
   extremeLevers, hasSupplyEffect, deltaTone, isFlagged, paramRange, leverGroup, sliderStep, debtMovesAgainstBalance, niceAxis, YEAR1_PARADOX_TEXT,
+  fmtJobs, jobsNote,
 } from './helpers.js'
 import { overridesForMacro } from './presets.js'
 
@@ -288,5 +289,29 @@ describe('axe vertical « rond » (niceAxis)', () => {
       expect(a.ticks.length).toBeLessThanOrEqual(8)
       expect(a.ticks.every((t) => t % a.step === 0)).toBe(true)
     }
+  })
+})
+
+describe('note « emplois implicites » du levier âge légal', () => {
+  const P = Object.fromEntries(Object.values(PARAM_BY_ID).map((q) => [q.id, q.value]))
+  it('formate les emplois en français, signe facultatif, jamais NaN', () => {
+    expect(fmtJobs(160000)).toMatch(/^160\s000$/)
+    expect(fmtJobs(-90000)).toMatch(/^[-−]90\s000$/)
+    expect(fmtJobs(320000, { signed: true })).toMatch(/^\+320\s000$/)
+    expect(fmtJobs(0, { signed: true })).toBe('0')
+    expect(fmtJobs(NaN)).toBe('—')
+  })
+  it('lit σ, les emplois arrondis et la fourchette du COR dans les paramètres, selon le cas', () => {
+    const c = jobsNote('age_legal', 0, P, 'central')
+    expect(c).toMatchObject({ caseLabel: 'central', sigma: 0.5, jobsPerUnit: 160000, jobsForX: 0 })
+    expect(c.range).toMatchObject({ low: 160000, high: 250000 })
+    expect(jobsNote('age_legal', 1, P, 'bas')).toMatchObject({ caseLabel: 'bas', sigma: 0.3, jobsPerUnit: 90000 })
+    expect(jobsNote('age_legal', 1, P, 'haut')).toMatchObject({ caseLabel: 'haut', sigma: 0.7, jobsPerUnit: 220000 })
+    expect(jobsNote('age_legal', 2, P).jobsForX).toBe(320000)
+    expect(jobsNote('age_legal', -2, P).jobsForX).toBe(-320000)
+    // baisse : σ appliqué par le moteur dans ce sens (« haut » = PIB le plus haut = σ bas pour une baisse)
+    expect(jobsNote('age_legal', -2, P, 'haut')).toMatchObject({ sigma: 0.3, jobsPerUnit: 90000, jobsForX: -190000 })
+    expect(jobsNote('age_legal', -1, P, 'bas')).toMatchObject({ sigma: 0.7, jobsPerUnit: 220000, jobsForX: -220000 })
+    expect(jobsNote('tva_normal', 1, P)).toBeNull()
   })
 })
