@@ -782,15 +782,53 @@ describe('vérification primaire Day 0 : ventilation COFOG Eurostat 2024 et para
   it('plus aucun paramètre « de mémoire », seul cmp.aft.taux_emission.2026 « à collecter », et 3 centres calibrés (24 nov. 2026)', () => {
     expect(PARAMS.filter((q) => q.status === 'de mémoire')).toEqual([])
     expect(PARAMS.filter((q) => q.status === 'à collecter').map((q) => q.id)).toEqual(['cmp.aft.taux_emission.2026'])
-    expect(PARAMS.filter((q) => q.status === 'à valider').map((q) => q.id).sort()).toEqual(['lvt.capi.part', 'ref.derive.b_autres'])
+    expect(PARAMS.filter((q) => q.status === 'à valider').map((q) => q.id).sort()).toEqual(['dem.m.prestations', 'lvt.capi.part', 'ref.derive.b_autres'])
     expect(PARAM_BY_ID['dem.m.ir_csg'].source).toMatch(/Mésange.*0,41/)
-    expect(PARAM_BY_ID['comp.theta.ir'].source).toMatch(/Neisser.*0,343/)
     expect(PARAM_BY_ID['comp.theta.cotis'].source).toMatch(/Bozio, Breda et Grenet/)
     expect([PARAM_BY_ID['comp.offset.prestations'].value, PARAM_BY_ID['comp.offset.prestations'].status]).toEqual([0.20, 'sourcé (secondaire)'])
     expect([PARAM_BY_ID['comp.theta.csg'].value, PARAM_BY_ID['comp.theta.csg'].status]).toEqual([0.03, 'sourcé (fourchette), centre choisi'])
-    expect([PARAM_BY_ID['rend.cotis'].low, PARAM_BY_ID['rend.cotis'].value, PARAM_BY_ID['rend.cotis'].high, PARAM_BY_ID['rend.cotis'].status]).toEqual([6.2, 7.4, 10, 'sourcé (fourchette), centre choisi'])
     expect(PARAM_BY_ID['rend.is'].status).toBe('calculé (estimation)')
     expect(PARAM_BY_ID['macro.pi.long'].status).toBe('sourcé (fourchette), centre choisi')
+  })
+})
+
+describe('suivi de l\'audit Day 0 (PR #30/#32) : corrections de sources et fourchettes, centres inchangés', () => {
+  const range = (id) => [PARAM_BY_ID[id].low, PARAM_BY_ID[id].value, PARAM_BY_ID[id].high, PARAM_BY_ID[id].status]
+  it('fourchettes approuvées : θ CSG 0,01–0,05, θ IR 0,07–0,39 (dérivation par tranche), rend.cotis 7,0–10 ; centres inchangés', () => {
+    expect(range('comp.theta.csg')).toEqual([0.01, 0.03, 0.05, 'sourcé (fourchette), centre choisi'])
+    expect(range('comp.theta.ir')).toEqual([0.07, 0.15, 0.39, 'sourcé (fourchette), centre choisi'])
+    expect(range('rend.cotis')).toEqual([7.0, 7.4, 10, 'sourcé (fourchette), centre choisi'])
+    expect(range('rend.is')).toEqual([2.0, 2.3, 3.0, 'calculé (estimation)'])
+    expect(range('comp.theta.cotis')).toEqual([0.05, 0.15, 0.30, 'sourcé (fourchette), centre choisi'])
+    expect(range('dem.m.prestations')).toEqual([0.2, 0.5, 0.8, 'à valider'])
+    expect(range('dem.m.cotisations')).toEqual([0.2, 0.4, 0.7, 'sourcé (fourchette), centre choisi'])
+  })
+  it('sources corrigées : IS (DGFiP n° 51 : 257 Md€ à 25 %, 83,7/70,7 = IS + IR), cotisations (REPSS 7,3 / 6,9 ; 71,5 = total exonérations), prestations (FR-BDF 0,09)', () => {
+    expect(PARAM_BY_ID['rend.is'].source).toMatch(/257 Md€/)
+    expect(PARAM_BY_ID['rend.is'].source).toMatch(/83,7 Md€.*IS et IR/)
+    expect(PARAM_BY_ID['rend.is'].source).not.toMatch(/70,5 \/ 25/)
+    expect(PARAM_BY_ID['rend.cotis'].source).toMatch(/7,3 Md€ \(dont secteur privé 6,9 Md€/)
+    expect(PARAM_BY_ID['rend.cotis'].source).toMatch(/71,5 Md€ = coût total 2026 des exonérations/)
+    expect(PARAM_BY_ID['rend.cotis'].source).not.toMatch(/≈ 750/)
+    expect(PARAM_BY_ID['dem.m.prestations'].source).toMatch(/FR-BDF.*\+0,09 % de PIB an 1/)
+    expect(PARAM_BY_ID['dem.m.cotisations'].source).toMatch(/entre l'an 1 et l'an 2/)
+    expect(PARAM_BY_ID['comp.theta.cotis'].source).toMatch(/Source indirecte.*11 estimations/)
+    expect(PARAM_BY_ID['comp.theta.ir'].source).toMatch(/Cabannes, Houdré et Landais.*0,31/)
+  })
+  it('CSG : avec σ actif, θ_réel (0,049 au cas central) dépasse θ (0,034 au taux après réforme) et la part non réelle est bloquée à 0', () => {
+    const l = LEVER_BY_ID.csg
+    const th = leverTheta(l, 1, P)
+    expect(th).toBeCloseTo(0.0336, 4)
+    const s = supplyForCase('csg', 1, P, undefined, 'central')
+    const reel = partReelle('csg', s.sigma, l.rendement(P, 1), P)
+    expect(reel).toBeCloseTo(0.049, 3)
+    expect(Math.max(0, th - reel)).toBe(0)
+    const haut = supplyForCase('csg', 1, P, undefined, 'haut')
+    expect(Math.max(0, th - partReelle('csg', haut.sigma, l.rendement(P, 1), P))).toBeCloseTo(0.009, 3)
+  })
+  it('COFOG : parts nettes des transferts entre sous-secteurs affichées (GF04 66,9 % contre 68,7 % retenu), valeurs moteur inchangées', () => {
+    expect(P['bloc.cofog.affaires_economiques.centrales']).toBeCloseTo(123826.5 / (123826.5 + 56428.3), 10)
+    expect(PARAM_BY_ID['bloc.cofog.affaires_economiques.centrales'].source).toMatch(/14,7 Md€ de transferts.*66,9 % contre 68,7 %/)
   })
 })
 
