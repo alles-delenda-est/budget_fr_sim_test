@@ -301,7 +301,7 @@ describe('sorties d\'un module par bloc (D9)', () => {
     expect(rows.map((b) => b.id)).toEqual(['centrales', 'securiteSociale', 'locales'])
     const loc = rows.find((b) => b.id === 'locales')
     expect(loc.flux.length).toBe(4)
-    expect(loc.net).toBe(0)
+    expect(loc.net).toBeLessThan(0) // part locale de la capitalisation (D12, au prorata du produit)
     for (const b of rows) {
       expect(b.net).toBeCloseTo(r.blocks[b.id][5].leversExAnte - ref.blocks[b.id][5].leversExAnte, 9)
       for (const f of b.flux) expect(Number.isFinite(f.montant) && Number.isFinite(f.pct)).toBe(true)

@@ -112,7 +112,7 @@ Le modèle couvre l'ensemble des **administrations publiques (APU)** en comptabi
 - **Module sur la page Budget, inactif par défaut (`LVT_MODULE`, `src/engine/lvt-module.js`)** :
   - `id: 'taxe_valeur_sol'`, `statut: 'non validé'` ; leviers `scenario` (0 = inactif, 1 = S1, 2 = S2, 3 = S2 avec IFI, 4 = S3, 5 = S3 avec IFI) et `offre_ocde` (0 par défaut).
   - Données : instantané `src/engine/lvt-snapshot.js` converti en part du PIB 2025 ; paramètres `lvt.*` dans `params.js`.
-  - `a(locales) = 0` (flux bruts affichés, D9) ; D11 : `a(securiteSociale) < 0`, `a(centrales) > 0` du même montant ; D12 : capitalisation en `a(centrales) < 0` pour S2 et S3, rampe de 3 ans ; `θ = 0` ; `yS` bas = central = 0, haut = borne OCDE si `offre_ocde = 1`.
+  - Flux bruts affichés par bloc (D9) ; D11 : `a(securiteSociale) < 0`, `a(centrales) > 0` du même montant ; D12 : capitalisation négative pour S2 et S3, répartie au prorata du produit (local + départemental en `a(locales)`, national en `a(centrales)`), rampe de 3 ans ; `θ = 0`, `m = 0` ; `yS` bas = central = 0, haut = borne OCDE si `offre_ocde = 1`.
 
 ---
 

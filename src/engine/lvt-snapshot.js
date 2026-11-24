@@ -36,18 +36,20 @@ export const LVT_SCENARIO_BY_CODE = Object.freeze(Object.fromEntries(LVT_SCENARI
 /**
  * Prélèvements sociaux (CSG, CRDS, prélèvement de solidarité) sur les revenus remplacés en S2 et S3 (revue §2.2 et §2.3).
  * Sert à la décision D11 : la part sécurité sociale de ces montants est perdue par ce bloc et gagnée par l'État.
+ * Bas de la fourchette de la revue (§2.4 : 1,1 à 1,4 Md€ en S2, 3,1 à 3,4 Md€ en S3) : millésimes 2024 (plus-values) et 2022 (loyers),
+ * et non les moyennes sur cinq ans qui donnent le haut de la fourchette.
  */
 export const LVT_PRELEVEMENTS_SOCIAUX = Object.freeze({
   plusValues: Object.freeze({
     montant: 1.92, annee: 2024,
     libelle: 'Prélèvements sociaux sur les plus-values immobilières des particuliers',
-    source: 'Cour des comptes, « L\'imposition des plus-values immobilières des particuliers », 25 nov. 2025 (total 2,8 Md€ en 2024, relu) ; décomposition IR 0,91 + PS 1,92 de LVTShift : https://www.ccomptes.fr/fr/publications/limposition-des-plus-values-immobilieres-des-particuliers',
+    source: 'Cour des comptes, « L\'imposition des plus-values immobilières des particuliers », 25 nov. 2025 (total 2,8 Md€ en 2024, relu) ; décomposition IR 0,91 + PS 1,92 de LVTShift : https://www.ccomptes.fr/fr/publications/limposition-des-plus-values-immobilieres-des-particuliers. Millésime 2024 : bas de la fourchette de la revue (§2.4) ; la moyenne 2017–2023 donnerait plus',
     statut: 'LVTShift',
   }),
   revenusLocatifs: Object.freeze({
     montant: 3.5, annee: 2022,
     libelle: 'Prélèvements sociaux et CSG sur les revenus locatifs des particuliers (logement)',
-    source: 'Conseil des prélèvements obligatoires, déc. 2023 (PS 2,4 + CSG 1,1 ; donnée 2022, pas 2024) : https://www.vie-publique.fr/files/rapport/pdf/292676.pdf',
+    source: 'Conseil des prélèvements obligatoires, déc. 2023 (PS 2,4 + CSG 1,1 ; donnée 2022, pas 2024) : https://www.vie-publique.fr/files/rapport/pdf/292676.pdf. Avec les plus-values de 2024 : bas de la fourchette de la revue (§2.4, 3,1 à 3,4 Md€ en S3)',
     statut: 'LVTShift',
   }),
 })

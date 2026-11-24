@@ -123,6 +123,13 @@ describe('D11 et rendement égal : a par bloc', () => {
       const full = run(c)
       const k = lvtComponents(c, P)
       full.aBlocks.centrales.forEach((_, t) => expect(consolidated(full, t)).toBeCloseTo(k.capitalisation / PIB * capiRamp(t), 12))
+      // Capitalisation par niveau, au prorata du produit : locales = (local + départemental) / total, centrales = national / total.
+      const s = LVT_SCENARIO_BY_CODE[c]
+      const tot = s.local + s.departemental + s.national
+      full.aBlocks.locales.forEach((v, t) => expect(v).toBeCloseTo(k.capitalisation * (s.local + s.departemental) / tot / PIB * capiRamp(t), 12))
+      expect(k.capiLocales + k.capiCentrales).toBeCloseTo(k.capitalisation, 12)
+      if (c >= 2) expect(full.aBlocks.locales[5]).toBeLessThan(0)
+      else expect(full.aBlocks.locales.every((v) => v === 0)).toBe(true)
     })
   }
   it('signe et ampleur du transfert sécurité sociale → État', () => {
@@ -199,9 +206,9 @@ describe('D12 : capitalisation', () => {
     expect(capiAt(1)).toBeCloseTo(k.capitalisation / 3, 9)
     expect(capiAt(3)).toBeCloseTo(k.capitalisation, 9)
   })
-  it('catégorie de multiplicateur ir_csg seulement quand le consolidé est non nul', () => {
-    expect(run(1).mByYear.every((m) => m === 0)).toBe(true)
-    expect(run(4).mByYear.every((m) => m === P['dem.m.ir_csg'])).toBe(true)
+  it('aucun multiplicateur de demande, même avec capitalisation (effet de richesse non modélisé)', () => {
+    for (const c of ACTIVE) expect(run(c).mByYear.every((m) => m === 0)).toBe(true)
+    expect(LVT_MODULE.explications.join(' ')).toMatch(/effet de richesse/)
   })
 })
 
