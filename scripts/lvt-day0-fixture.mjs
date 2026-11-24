@@ -1,5 +1,7 @@
 // Génère src/engine/__tests__/fixtures/lvt-day0-outputs.json : sorties du module LVT (a par bloc, yS haut, composantes, flux).
 // Référence de non-régression de src/engine/__tests__/lvt-yields.test.js, figée avant l'import de yields.json (Day 0).
+// Note : la fixture actuelle a été produite sur le moteur d'avant l'import (commit 4e13b40) par une version de ce script
+// sans LVT_PROVENANCE ; ce script, qui importe LVT_PROVENANCE, ne tourne qu'à partir de l'import.
 // À ne régénérer que dans une PR qui change volontairement les sorties (nouvel import de yields.json, par exemple) et en documente
 // l'écart : node scripts/lvt-day0-fixture.mjs > src/engine/__tests__/fixtures/lvt-day0-outputs.json
 import { LVT_MODULE, lvtComponents } from '../src/engine/lvt-module.js'
