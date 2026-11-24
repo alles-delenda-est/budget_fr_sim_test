@@ -7,6 +7,7 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 export default defineConfig([
   globalIgnores(['dist']),
   { files: ['vite.config.js'], languageOptions: { globals: globals.node } },
+  { files: ['scripts/sync-lvt-yields.mjs', 'scripts/lvt-day0-fixture.mjs'], extends: [js.configs.recommended], languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: globals.node } },
   {
     files: ['**/*.{js,jsx}'],
     extends: [

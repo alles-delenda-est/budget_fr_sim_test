@@ -1,0 +1,559 @@
+{
+  "as_of": "2026-10-29",
+  "average_years": 5,
+  "price_basis": {
+    "year": 2025,
+    "source": "INSEE, indice annuel des prix à la consommation, ensemble des ménages, France, base 2015 (idbank 001764363)",
+    "url": "https://www.insee.fr/fr/statistiques/serie/001764363",
+    "cpi": {
+      "2020": 104.73,
+      "2021": 106.45,
+      "2022": 112.01,
+      "2023": 117.47,
+      "2024": 119.82,
+      "2025": 120.95
+    }
+  },
+  "taxes": [
+    {
+      "key": "tfpb",
+      "label_fr": "Taxe foncière sur les propriétés bâties",
+      "scenario": "S1",
+      "tier": "local",
+      "budget": "bloc communal",
+      "basis": "latest",
+      "status": "verified",
+      "values_meur": {
+        "2024": 41632,
+        "2025": 42776
+      },
+      "reference_years": [
+        2025
+      ],
+      "reference_meur": 42776,
+      "reference_nominal_meur": 42776,
+      "source": "DGFiP, REI 2024–2025, via OFGL (« MONTANT RÉEL », commune + intercommunalité)",
+      "url": "https://data.ofgl.fr/explore/dataset/rei/",
+      "scope": "Toutes les propriétés bâties ; parts commune et intercommunalité (périmètre du modèle). Syndicats, taxes spéciales d'équipement, GEMAPI et TASA : ligne « tf_annexes ». Hors TEOM.",
+      "note": ""
+    },
+    {
+      "key": "tfpnb",
+      "label_fr": "Taxe foncière sur les propriétés non bâties",
+      "scenario": "S1",
+      "tier": "local",
+      "budget": "bloc communal",
+      "basis": "latest",
+      "status": "derived",
+      "values_meur": {
+        "2024": 263.1,
+        "2025": 265.8
+      },
+      "reference_years": [
+        2025
+      ],
+      "reference_meur": 266,
+      "reference_nominal_meur": 266,
+      "source": "DGFiP, REI 2024–2025, via OFGL (FNB et taxe additionnelle, « MONTANT RÉEL » et bases TAFNB, commune par commune)",
+      "url": "https://data.ofgl.fr/explore/dataset/rei/",
+      "scope": "Terrains non bâtis hors terres agricoles et naturelles (carrières, terrains à bâtir, terrains d'agrément, voies ferrées, sols) : commune, intercommunalité et taxe additionnelle (TAFNB) ; syndicats dans « tf_annexes » ; hors chambres d'agriculture. Les terres agricoles et naturelles, hors de la réforme, gardent leur TFPNB (922 M€ en 2025 sur 1 188 M€).",
+      "note": "Part agricole et naturelle reconstituée commune par commune : la base de la TAFNB couvre exactement les groupes non agricoles (BOI-IF-AUT-80), d'où la part non agricole de chaque commune ; contrôle par la base de l'exonération agricole de 20 % (écart 0,6 %). La compensation par l'État de cette exonération (environ 131 M€) reste hors du calcul."
+    },
+    {
+      "key": "tf_annexes",
+      "label_fr": "Taxe foncière — syndicats, TSE, GEMAPI et TASA",
+      "scenario": "S1",
+      "tier": "local",
+      "budget": "bloc communal et établissements publics",
+      "basis": "latest",
+      "status": "derived",
+      "values_meur": {
+        "2024": 844.9,
+        "2025": 900.3
+      },
+      "reference_years": [
+        2025
+      ],
+      "reference_meur": 900,
+      "reference_nominal_meur": 900,
+      "source": "DGFiP, REI 2024–2025, via OFGL (« MONTANT RÉEL », bâti et non bâti)",
+      "url": "https://data.ofgl.fr/explore/dataset/rei/",
+      "scope": "Prélevés sur l'avis de taxe foncière, sur la même base : syndicats (191 M€ en 2025), taxes spéciales d'équipement (277 M€, établissements publics fonciers), GEMAPI (397 M€) et taxe additionnelle spéciale annuelle d'Île-de-France (58 M€).",
+      "note": "Ajoutée après la revue Gemini du 27 octobre 2026 : même base et même avis que la taxe foncière ; la spec 0005 (§ 2) range déjà les syndicats dans le niveau local. Parts non bâties diminuées de la part des terres agricoles et naturelles, qui gardent leur TFPNB (D6)."
+    },
+    {
+      "key": "tf_etat",
+      "label_fr": "Taxe foncière — frais de gestion (État)",
+      "scenario": "S1",
+      "tier": "national",
+      "budget": "État",
+      "basis": "latest",
+      "status": "derived",
+      "values_meur": {
+        "2024": 1301,
+        "2025": 1338
+      },
+      "reference_years": [
+        2025
+      ],
+      "reference_meur": 1338,
+      "reference_nominal_meur": 1338,
+      "source": "CGI art. 1641 (lu sur Légifrance le 27 oct. 2026) : 3 % (2 % de dégrèvement et non-valeurs, I-A, + 1 % d'assiette et recouvrement, II) sur la taxe foncière, les syndicats et la GEMAPI ; 8 % sur la TASA ; 9 % sur les TSE",
+      "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053546093",
+      "scope": "Frais d'assiette, de dégrèvement et de non-valeurs ajoutés par l'État à l'avis de taxe foncière, sur les lignes « tfpb », « tfpnb » et « tf_annexes ».",
+      "note": "Ordre de grandeur cohérent avec le REI 2025 (2 068 M€ de frais sur l'ensemble de l'avis, TEOM comprise à 8 %)."
+    },
+    {
+      "key": "thrs",
+      "label_fr": "Taxe d'habitation sur les résidences secondaires",
+      "scenario": "S1",
+      "tier": "local",
+      "budget": "bloc communal",
+      "basis": "latest",
+      "status": "verified",
+      "values_meur": {
+        "2024": 3691.4,
+        "2025": 2973.6
+      },
+      "reference_years": [
+        2025
+      ],
+      "reference_meur": 2974,
+      "reference_nominal_meur": 2974,
+      "source": "DGFiP, REI 2024–2025, via OFGL (« MONTANT RÉEL » THS et majoration MTMAJOTHRS)",
+      "url": "https://data.ofgl.fr/explore/dataset/rei/",
+      "scope": "Résidences secondaires et autres logements meublés non affectés à l'habitation principale : parts commune, intercommunalité et syndicats (2 583 M€ en 2025) et majoration en zone tendue (391 M€, CGI art. 1407 ter). Hors taxe sur les logements vacants.",
+      "note": "Ajoutée par décision du 27 octobre 2026 : c'est un impôt local sur la propriété résidentielle, payé dans la plupart des cas par le propriétaire. Baisse de 19 % entre 2024 (3 691 M€) et 2025, dans presque tous les départements, non expliquée (correction probable des déclarations d'occupation) ; 2025 est retenu, conformément à D1."
+    },
+    {
+      "key": "thrs_etat",
+      "label_fr": "Taxe d'habitation (résidences secondaires) — frais de gestion (État)",
+      "scenario": "S1",
+      "tier": "national",
+      "budget": "État",
+      "basis": "latest",
+      "status": "derived",
+      "values_meur": {
+        "2024": 111,
+        "2025": 89
+      },
+      "reference_years": [
+        2025
+      ],
+      "reference_meur": 89,
+      "reference_nominal_meur": 89,
+      "source": "CGI art. 1641 (lu sur Légifrance le 27 oct. 2026) : 2 % de dégrèvement et non-valeurs (I-A c) + 1 % d'assiette et recouvrement (II)",
+      "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053546093",
+      "scope": "Frais ajoutés par l'État à l'avis de taxe d'habitation sur les résidences secondaires, majoration comprise.",
+      "note": "Le REI 2025 donne 93 M€ de frais sur la taxe d'habitation (variable H01), proche des 89 M€ calculés ici."
+    },
+    {
+      "key": "dmto_communes",
+      "label_fr": "Droits de mutation — part communale",
+      "scenario": "S1",
+      "tier": "local",
+      "budget": "bloc communal",
+      "basis": "average",
+      "status": "derived",
+      "values_meur": {
+        "2021": 3643,
+        "2022": 3978,
+        "2023": 3356,
+        "2024": 2882,
+        "2025": 3155
+      },
+      "reference_years": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "reference_meur": 3591,
+      "reference_nominal_meur": 3403,
+      "source": "Comptes de gestion des communes, via OFGL (grand livre, tous budgets)",
+      "url": "https://data.ofgl.fr/explore/dataset/grand-livre/",
+      "scope": "Taxe additionnelle (c/7381 en M14, c/73123 en M57, c/7332) et fonds départemental pour les communes de moins de 5 000 habitants (c/73223, c/73224).",
+      "note": "Somme des comptes par exercice. Les prélèvements et attributions de péréquation (c/739225, c/73225) sont des transferts entre collectivités et ne sont pas comptés."
+    },
+    {
+      "key": "dmto_departements",
+      "label_fr": "Droits de mutation — part départementale",
+      "scenario": "S1",
+      "tier": "departmental",
+      "budget": "départements",
+      "basis": "average",
+      "status": "verified",
+      "values_meur": {
+        "2021": 16259,
+        "2022": 16538,
+        "2023": 12882,
+        "2024": 11145,
+        "2025": 13484
+      },
+      "reference_years": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "reference_meur": 14866,
+      "reference_nominal_meur": 14062,
+      "source": "Comptes des départements, via OFGL (agrégat « DMTO avant péreq. », budget principal)",
+      "url": "https://data.ofgl.fr/explore/dataset/ofgl-base-departements/",
+      "scope": "Droits départementaux avant péréquation, y compris la métropole de Lyon et les collectivités uniques de Corse, Martinique et Guyane ; hors part communale de Paris (comptée avec les communes).",
+      "note": "OFGL comptes des départements moins la part communale de Paris (≈ 335 M€ par an), plus les collectivités uniques (OFGL comptes des régions, ≈ 138 M€ par an)."
+    },
+    {
+      "key": "dmto_etat",
+      "label_fr": "Droits de mutation — frais d'assiette (État)",
+      "scenario": "S1",
+      "tier": "national",
+      "budget": "État",
+      "basis": "average",
+      "status": "derived",
+      "values_meur": {
+        "2021": 385,
+        "2022": 392,
+        "2023": 305,
+        "2024": 264,
+        "2025": 320
+      },
+      "reference_years": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "reference_meur": 352,
+      "reference_nominal_meur": 333,
+      "source": "CGI art. 1647 V (lu sur Légifrance le 27 oct. 2026) : 2,37 % en sus des droits départementaux (2,14 % là où le taux départemental est réduit à 0,70 %)",
+      "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054373998",
+      "scope": "Prélèvement de l'État pour frais d'assiette et de recouvrement, payé par l'acquéreur.",
+      "note": "Calculé au taux de 2,37 % sur l'ensemble des droits départementaux ; légère surestimation pour la part taxée au taux réduit."
+    },
+    {
+      "key": "gains_ir",
+      "label_fr": "Plus-values immobilières — impôt sur le revenu",
+      "scenario": "S2",
+      "tier": "national",
+      "budget": "État",
+      "basis": "average",
+      "status": "verified",
+      "values_meur": {
+        "2020": 1049.4,
+        "2021": 1422.1,
+        "2022": 1677.6,
+        "2023": 1278.1,
+        "2024": 907.6
+      },
+      "reference_years": [
+        2020,
+        2021,
+        2022,
+        2023,
+        2024
+      ],
+      "reference_meur": 1374,
+      "reference_nominal_meur": 1267,
+      "source": "Cour des comptes, L'imposition des plus-values immobilières des particuliers (25 nov. 2025), données ouvertes, graphiques 9-10 (2020–2023) et tableau 7 (2024)",
+      "url": "https://www.ccomptes.fr/fr/publications/limposition-des-plus-values-immobilieres-des-particuliers",
+      "scope": "Particuliers : IR à 19 %, surtaxe sur les plus-values élevées, taxes sur les terrains devenus constructibles. Hors impôt sur les sociétés (non publié, décision D3).",
+      "note": "2024 provisoire (tableau 7), dont la colonne IR inclut déjà la surtaxe et les taxes sur les terrains."
+    },
+    {
+      "key": "gains_ps",
+      "label_fr": "Plus-values immobilières — prélèvements sociaux",
+      "scenario": "S2",
+      "tier": "national",
+      "budget": "Sécurité sociale et État",
+      "basis": "average",
+      "status": "verified",
+      "values_meur": {
+        "2020": 2061,
+        "2021": 2702,
+        "2022": 3014,
+        "2023": 2347,
+        "2024": 1924.5
+      },
+      "reference_years": [
+        2020,
+        2021,
+        2022,
+        2023,
+        2024
+      ],
+      "reference_meur": 2613,
+      "reference_nominal_meur": 2410,
+      "source": "Cour des comptes (25 nov. 2025), données ouvertes, graphiques 9-10 (2020–2023) et tableau 7 (2024)",
+      "url": "https://www.ccomptes.fr/fr/publications/limposition-des-plus-values-immobilieres-des-particuliers",
+      "scope": "Prélèvements sociaux (17,2 %, dont 7,5 points de prélèvement de solidarité versés à l'État) sur les plus-values des particuliers.",
+      "note": "Rupture de série : pour 2023, le tableau 7 donne 2 583 M€ contre 2 347 dans les graphiques 9-10 (+10 %), écart non expliqué. Sensibilité de la moyenne : −54 à +317 M€ selon la série retenue."
+    },
+    {
+      "key": "ifi",
+      "label_fr": "Impôt sur la fortune immobilière (IFI)",
+      "scenario": "S2_IFI",
+      "tier": "national",
+      "budget": "État",
+      "basis": "latest",
+      "status": "verified",
+      "values_meur": {
+        "2022": 1800,
+        "2023": 1900,
+        "2024": 2159,
+        "2025": 2332
+      },
+      "reference_years": [
+        2025
+      ],
+      "reference_meur": 2332,
+      "reference_nominal_meur": 2332,
+      "source": "DGFiP Statistiques n° 15 (2022), n° 23 (2023) ; n° 45 (avril 2026), tableau 1 (2024–2025)",
+      "url": "https://www.impots.gouv.fr/dgfip-statistiques-limpot-sur-la-fortune-immobiliere-en-2025",
+      "scope": "Montant des avis d'IFI, tous redevables.",
+      "note": "Les recettes budgétaires sont plus élevées (ligne 1406 : 2 739 M€ en 2024, 2 771 M€ encaissés en 2025). Selon la DGFiP (Statistiques n° 45), elles incluent les restes d'avis antérieurs et le produit du contrôle fiscal ; la ligne comprend aussi les reliquats d'ISF."
+    },
+    {
+      "key": "rents_ir",
+      "label_fr": "Revenus locatifs — impôt sur le revenu",
+      "scenario": "S3",
+      "tier": "national",
+      "budget": "État",
+      "basis": "latest",
+      "status": "verified",
+      "values_meur": {
+        "2022": 4198
+      },
+      "reference_years": [
+        2022
+      ],
+      "reference_meur": 4533,
+      "reference_nominal_meur": 4198,
+      "source": "CPO, Pour une fiscalité du logement plus cohérente (déc. 2023), p. 23, et rapport particulier n° 1, p. 47 ; compte du logement 2022, partie 6, tableau 1",
+      "url": "https://www.vie-publique.fr/files/rapport/pdf/292676.pdf",
+      "scope": "IR sur les revenus locatifs de logements des particuliers, net des réductions d'impôt (Pinel, etc.). Locations meublées (BIC) non isolées (D7) ; locaux non résidentiels exclus ; hors IS (D3).",
+      "note": "Le total de 8,3 Md€ du CPO (8 264 M€) est la ligne « impositions sur les revenus immobiliers » du compte du logement : IR 4 198 + PS 2 399 + CSG 1 093 + CRL 107 + IS 467. La CRL et l'IS, payés par des sociétés, sont exclus (D3). Le compte du logement 2024 donne 8 895 M€ pour 2024, sans détail."
+    },
+    {
+      "key": "rents_ps",
+      "label_fr": "Revenus locatifs — prélèvements sociaux",
+      "scenario": "S3",
+      "tier": "national",
+      "budget": "Sécurité sociale et État",
+      "basis": "latest",
+      "status": "verified",
+      "values_meur": {
+        "2022": 2399
+      },
+      "reference_years": [
+        2022
+      ],
+      "reference_meur": 2590,
+      "reference_nominal_meur": 2399,
+      "source": "CPO (déc. 2023), rapport particulier n° 1, p. 47 et tableau 28 ; compte du logement 2022, partie 6, tableau 1",
+      "url": "https://www.vie-publique.fr/files/rapport/pdf/292676.pdf",
+      "scope": "Prélèvements sociaux sur les revenus locatifs de logements des particuliers, hors CSG (ligne « rents_csg »).",
+      "note": "Le partage entre « PS » et « CSG » du compte du logement suit une convention comptable (la CSG passe de 87 M€ en 2017 à 1 016 M€ en 2018) : seule la somme des deux lignes (3 492 M€) est fiable."
+    },
+    {
+      "key": "rents_csg",
+      "label_fr": "Revenus locatifs — CSG",
+      "scenario": "S3",
+      "tier": "national",
+      "budget": "Sécurité sociale",
+      "basis": "latest",
+      "status": "verified",
+      "values_meur": {
+        "2022": 1093
+      },
+      "reference_years": [
+        2022
+      ],
+      "reference_meur": 1180,
+      "reference_nominal_meur": 1093,
+      "source": "CPO (déc. 2023), p. 23, et rapport particulier n° 1, p. 47 et tableau 28 ; compte du logement 2022, partie 6, tableau 1",
+      "url": "https://www.vie-publique.fr/files/rapport/pdf/292676.pdf",
+      "scope": "CSG sur les revenus locatifs de logements des particuliers, en plus de la ligne « rents_ps ».",
+      "note": "Ajoutée après la revue Gemini du 27 octobre 2026 : le rapport particulier du CPO présente la CSG et les PS comme deux lignes qui s'additionnent."
+    }
+  ],
+  "land_base": {
+    "taxable_meur": 6122450,
+    "total_meur": 7032000,
+    "public_meur": 941000,
+    "year": 2025,
+    "companies_meur": 1901000,
+    "companies_share_pct": 31.2,
+    "source": "INSEE, Chiffres-clés « Patrimoine national par secteur institutionnel et grand type d'actif », données 2025 provisoires (30 juillet 2026)",
+    "url": "https://www.insee.fr/fr/statistiques/2830290",
+    "note": "Terrains bâtis hors administrations publiques (foncier public exonéré), plus une estimation des terrains à bâtir non bâtis, que l'INSEE range avec les terrains non bâtis sans les isoler. Terres agricoles et naturelles hors de la réforme (D6).",
+    "built_taxable_meur": 6091000,
+    "unbuilt": {
+      "value_meur": 31450,
+      "low_meur": 13050,
+      "high_meur": 80000,
+      "u_value_meur": 127500,
+      "u_high_meur": 300000,
+      "s1_rate_with_u_pct": 1.07,
+      "s1_rate_with_u_high_pct": 1.04,
+      "source": "Cerema, Consommation d'espaces et documents d'urbanisme (nov. 2023) ; SDES, Le prix des terrains et du bâti pour les maisons individuelles en 2024 (nov. 2025) ; INSEE, fiche méthodologique 24, base 2020 (juil. 2026)",
+      "url": "https://artificialisation.developpement-durable.gouv.fr/sites/artificialisation/files/inline-files/conso_enaf_docurba.pdf"
+    },
+    "farmland": {
+      "value_meur": 218257,
+      "low_meur": 203888,
+      "high_meur": 232627,
+      "area_ha": 25890657,
+      "vine_area_ha": 747976,
+      "price_free_eur_ha": 6460,
+      "price_let_eur_ha": 5350,
+      "vine_price_eur_ha": 87400,
+      "year": 2025,
+      "source": "Groupe Safer, Le prix des terres 2025 (mai 2026), et Agreste, Statistique agricole annuelle 2025 provisoire (SAU des exploitations, France hors DROM)",
+      "url": "https://www.le-prix-des-terres.fr/app/uploads/2026/05/2026-LPDT-synthese.pdf",
+      "insee_meur": 902100,
+      "forest_upper_meur": 86625,
+      "included": false,
+      "tfpnb_meur": 922,
+      "tfpnb_all_meur": 1188,
+      "s1_rate_if_included_pct": 1.07,
+      "pays_if_included_meur": 2345
+    }
+  },
+  "variants": [
+    {
+      "scenario": "S1",
+      "include_ifi": false,
+      "total_meur": 67152,
+      "tiers_meur": {
+        "local": 50507,
+        "departmental": 14866,
+        "national": 1779
+      },
+      "rate_pct": 1.1,
+      "company_land_meur": 0,
+      "lines": [
+        "tfpb",
+        "tfpnb",
+        "tf_annexes",
+        "tf_etat",
+        "thrs",
+        "thrs_etat",
+        "dmto_communes",
+        "dmto_departements",
+        "dmto_etat"
+      ]
+    },
+    {
+      "scenario": "S2",
+      "include_ifi": false,
+      "total_meur": 71139,
+      "tiers_meur": {
+        "local": 50507,
+        "departmental": 14866,
+        "national": 5766
+      },
+      "rate_pct": 1.16,
+      "company_land_meur": 1244,
+      "lines": [
+        "tfpb",
+        "tfpnb",
+        "tf_annexes",
+        "tf_etat",
+        "thrs",
+        "thrs_etat",
+        "dmto_communes",
+        "dmto_departements",
+        "dmto_etat",
+        "gains_ir",
+        "gains_ps"
+      ]
+    },
+    {
+      "scenario": "S2",
+      "include_ifi": true,
+      "total_meur": 73471,
+      "tiers_meur": {
+        "local": 50507,
+        "departmental": 14866,
+        "national": 8098
+      },
+      "rate_pct": 1.2,
+      "company_land_meur": 1972,
+      "lines": [
+        "tfpb",
+        "tfpnb",
+        "tf_annexes",
+        "tf_etat",
+        "thrs",
+        "thrs_etat",
+        "dmto_communes",
+        "dmto_departements",
+        "dmto_etat",
+        "gains_ir",
+        "gains_ps",
+        "ifi"
+      ]
+    },
+    {
+      "scenario": "S3",
+      "include_ifi": false,
+      "total_meur": 79443,
+      "tiers_meur": {
+        "local": 50507,
+        "departmental": 14866,
+        "national": 14070
+      },
+      "rate_pct": 1.3,
+      "company_land_meur": 3836,
+      "lines": [
+        "tfpb",
+        "tfpnb",
+        "tf_annexes",
+        "tf_etat",
+        "thrs",
+        "thrs_etat",
+        "dmto_communes",
+        "dmto_departements",
+        "dmto_etat",
+        "gains_ir",
+        "gains_ps",
+        "rents_ir",
+        "rents_ps",
+        "rents_csg"
+      ]
+    },
+    {
+      "scenario": "S3",
+      "include_ifi": true,
+      "total_meur": 81775,
+      "tiers_meur": {
+        "local": 50507,
+        "departmental": 14866,
+        "national": 16402
+      },
+      "rate_pct": 1.34,
+      "company_land_meur": 4564,
+      "lines": [
+        "tfpb",
+        "tfpnb",
+        "tf_annexes",
+        "tf_etat",
+        "thrs",
+        "thrs_etat",
+        "dmto_communes",
+        "dmto_departements",
+        "dmto_etat",
+        "gains_ir",
+        "gains_ps",
+        "ifi",
+        "rents_ir",
+        "rents_ps",
+        "rents_csg"
+      ]
+    }
+  ]
+}
