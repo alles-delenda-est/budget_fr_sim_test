@@ -69,6 +69,8 @@ describe('Hypothèses : questions aux relecteurs construites depuis PARAMS et le
     const tau = q('comp.tau0.ir')
     expect(q1.resume).toContain(`e_L = ${fmt(eL.value, 2)}`)
     expect(q1.resume).toContain(`${fmt(tau.value, 0)} % (fourchette ${fmt(tau.low, 0)}–${fmt(tau.high, 0)} %)`)
+    expect(q1.resume).toContain('tranche par tranche')
+    expect(q1.resume).toContain('taux marginal moyen implicite 20,6 %')
     const sigma = sigmaFiscalCase('ir', P, 'value')
     expect(q1.resume).toContain(`σ = ${fmt(sigma, 3).replace('-', '−')} % du PIB`)
     expect(q1.resume).toContain(`ε_offre = ${pctTxt(q('fisc.eps_offre').value)}`)

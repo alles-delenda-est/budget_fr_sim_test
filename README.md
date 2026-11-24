@@ -16,7 +16,7 @@ Version en ligne : **https://budget-fr-sim-test.vercel.app**
   - Avertissements « hors expérience historique » : **palier 1** (`260 %` du PIB, record Japon 2020) et **palier 2** (`500 %` du PIB ou intérêts `> 50 %` des recettes publiques).
 - **Simulateur budgétaire** : 6 scénarios types **neutres** (dont le comparateur macroéconomique RESF 2027), module minimal **Taxe sur la valeur du sol (LVT)** (`non validé`, inactif par défaut, `yields.json` LVTShift importé à un commit épinglé), décomposition exacte de l'écart de solde par cause, ventilation sur les 3 blocs APU, **URL partageables** et **export CSV** (séparateur `;`, protection anti-injection).
 - **Simulateur retraites** : variantes de productivité du **COR (juin 2026)** et de dérive santé/dépendance (**Commission européenne 2024**), leviers retenus pour la version 0.9 (`age_legal` 62–67 ans recalibré sur sources primaires avec effet d'offre emploi seniors, emplois implicites et 20 % de reports sociaux, `indexation_pensions`), préréglage **Comptes notionnels (NDC, dès 2028)** (`NDC_MODULE`, forme réduite `non validé`, confiance basse, décision D8) et mesure désactivée (`plafonnement_pensions`).
-- **Onglet Hypothèses & Paramètres** : source unique de vérité lisant 100 % des 175 paramètres, statuts (`sourcé`, `de mémoire`, `à collecter`, `non validé`, `à valider`, etc.), fourchettes et questions ouvertes aux relecteurs directement dans le catalogue du moteur.
+- **Onglet Hypothèses & Paramètres** : source unique de vérité lisant 100 % des 198 paramètres, statuts (`sourcé`, `de mémoire`, `à collecter`, `non validé`, `à valider`, etc.), fourchettes et questions ouvertes aux relecteurs directement dans le catalogue du moteur.
 
 ## Pile technique
 
@@ -40,9 +40,10 @@ npm run sync:lvt -- <commit>   # réimporte yields.json de LVTShift à un commit
 ```text
 src/
 ├── engine/                     # Moteur de projection v2 (pur JS, sans React)
-│   ├── params.js               # Catalogue unique des 175 paramètres (PARAMS)
+│   ├── params.js               # Catalogue unique des 198 paramètres (PARAMS), dont le barème de l'IR par tranche (offre.ir.*)
 │   ├── levers.js               # 14 leviers actifs + 3 leviers structurels désactivés
 │   ├── supply.js               # Effets d'offre E5 (σ calculé fiscal + σ décidé) et θ_non_réel
+│   ├── ir-tranches.js          # Barème de l'IR par tranche : σ de l'IR et θ par tranche (thetaIrTranches)
 │   ├── modules.js              # Contrat de module autonome
 │   ├── ndc-module.js           # Module Comptes notionnels (forme réduite, non validé, D8)
 │   ├── lvt-module.js           # Module Taxe sur la valeur du sol (minimal, non validé, D11–D12)

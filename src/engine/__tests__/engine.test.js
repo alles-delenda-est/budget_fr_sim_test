@@ -3,6 +3,7 @@ import { PARAMS, PARAM_BY_ID, STATUSES, resolveParams } from '../params.js'
 import { LEVERS, LEVER_BY_ID, STRUCTURAL_LEVERS, staticYield, thetaElasticity, leverTheta, BLOCKS } from '../levers.js'
 import { projectScenario, HORIZONS, issuanceRate, deepFreeze } from '../project.js'
 import { TEST_MODULE, validateModuleDefinition } from '../modules.js'
+import { irTranches, irDeltaLnNet, thetaIrTranches, coinMarginal } from '../ir-tranches.js'
 import { supplyPhase, sigmaFiscal, sigmaFiscalCase, partReelle, supplyForCase, coutUsageParPoint, impliedJobs, roundJobs, SUPPLY_BY_LEVER } from '../supply.js'
 
 const P = resolveParams()
@@ -605,7 +606,7 @@ describe('σ des leviers fiscaux : calculé depuis les paramètres (docs/sigma-f
     expect(t('comp.tau0.ir')).toEqual([18, 21, 23])
     expect(PARAM_BY_ID['comp.tau0.ir'].status).toBe('calculé (estimation)')
     expect(PARAM_BY_ID['comp.tau0.ir'].unit).toBe('%')
-    expect(P['offre.ir.conv_brut']).toBe(0.76)
+    expect(P['offre.ir.conv_brut']).toBeUndefined() // remplacé par le barème par tranche (ir-tranches.js)
     expect(P['base.conso_menages']).toBe(1545.9)
     expect(PARAM_BY_ID['base.conso_menages'].status).toBe('sourcé')
     expect(t('base.tva.2025')).toEqual([200, 208.8, 215])
@@ -640,9 +641,11 @@ describe('σ des leviers fiscaux : calculé depuis les paramètres (docs/sigma-f
     expect(sigmaFiscal('is', P).low).toBeCloseTo(-100 * 0.16 * 0.25 * dc, 10)
     expect(sigmaFiscal('is', P).high).toBeCloseTo(-100 * 0.21 * 1.0 * dc, 10)
     expect(sigmaFiscal('is', P).high).toBeCloseTo(-0.09, 2)
-    // IR : e_L × 0,01 × (τ_IR × conversion brut) / part nette, par 1 % du produit
-    expect(sigmaFiscalCase('ir', P)).toBeCloseTo(-100 * 0.4 * (0.01 * 0.21 * 0.76) / 0.57, 10)
-    expect(sigmaFiscal('ir', P).value).toBeCloseTo(-0.11, 2)
+    // IR : e_L × Σ_i (Z_i / Z) × 0,01 × τ_i × (1 − 6,8 %) / (1 − w_i), par 1 % du produit (barème par tranche, ir-tranches.js)
+    expect(sigmaFiscalCase('ir', P)).toBeCloseTo(-100 * 0.4 * irDeltaLnNet(P), 10)
+    expect(sigmaFiscal('ir', P).value).toBeCloseTo(-0.122, 3)
+    expect(sigmaFiscal('ir', P).low).toBeCloseTo(-0.061, 3)
+    expect(sigmaFiscal('ir', P).high).toBeCloseTo(-0.168, 3)
   })
   it('plafond de l\'IS (Gemini n° 4) : 0,15 par point en valeur absolue, sans effet au centre ; pas de plafond pour le travail', () => {
     expect(Math.abs(sigmaFiscal('is', P).high)).toBeLessThan(P['offre.is.plafond'])
@@ -782,15 +785,53 @@ describe('vérification primaire Day 0 : ventilation COFOG Eurostat 2024 et para
   it('plus aucun paramètre « de mémoire », seul cmp.aft.taux_emission.2026 « à collecter », et 3 centres calibrés (24 nov. 2026)', () => {
     expect(PARAMS.filter((q) => q.status === 'de mémoire')).toEqual([])
     expect(PARAMS.filter((q) => q.status === 'à collecter').map((q) => q.id)).toEqual(['cmp.aft.taux_emission.2026'])
-    expect(PARAMS.filter((q) => q.status === 'à valider').map((q) => q.id).sort()).toEqual(['lvt.capi.part', 'ref.derive.b_autres'])
+    expect(PARAMS.filter((q) => q.status === 'à valider').map((q) => q.id).sort()).toEqual(['dem.m.prestations', 'lvt.capi.part', 'ref.derive.b_autres'])
     expect(PARAM_BY_ID['dem.m.ir_csg'].source).toMatch(/Mésange.*0,41/)
-    expect(PARAM_BY_ID['comp.theta.ir'].source).toMatch(/Neisser.*0,343/)
     expect(PARAM_BY_ID['comp.theta.cotis'].source).toMatch(/Bozio, Breda et Grenet/)
     expect([PARAM_BY_ID['comp.offset.prestations'].value, PARAM_BY_ID['comp.offset.prestations'].status]).toEqual([0.20, 'sourcé (secondaire)'])
     expect([PARAM_BY_ID['comp.theta.csg'].value, PARAM_BY_ID['comp.theta.csg'].status]).toEqual([0.03, 'sourcé (fourchette), centre choisi'])
-    expect([PARAM_BY_ID['rend.cotis'].low, PARAM_BY_ID['rend.cotis'].value, PARAM_BY_ID['rend.cotis'].high, PARAM_BY_ID['rend.cotis'].status]).toEqual([6.2, 7.4, 10, 'sourcé (fourchette), centre choisi'])
     expect(PARAM_BY_ID['rend.is'].status).toBe('calculé (estimation)')
     expect(PARAM_BY_ID['macro.pi.long'].status).toBe('sourcé (fourchette), centre choisi')
+  })
+})
+
+describe('suivi de l\'audit Day 0 (PR #30/#32) : corrections de sources et fourchettes, centres inchangés', () => {
+  const range = (id) => [PARAM_BY_ID[id].low, PARAM_BY_ID[id].value, PARAM_BY_ID[id].high, PARAM_BY_ID[id].status]
+  it('fourchettes approuvées : θ CSG 0,01–0,05, θ IR 0,15–0,66 (levier proportionnel, dérivation par tranche), rend.cotis 7,0–10 ; centres inchangés', () => {
+    expect(range('comp.theta.csg')).toEqual([0.01, 0.03, 0.05, 'sourcé (fourchette), centre choisi'])
+    expect(range('comp.theta.ir')).toEqual([0.15, 0.15, 0.66, 'sourcé (fourchette), centre choisi'])
+    expect(range('rend.cotis')).toEqual([7.0, 7.4, 10, 'sourcé (fourchette), centre choisi'])
+    expect(range('rend.is')).toEqual([2.0, 2.3, 3.0, 'calculé (estimation)'])
+    expect(range('comp.theta.cotis')).toEqual([0.05, 0.15, 0.30, 'sourcé (fourchette), centre choisi'])
+    expect(range('dem.m.prestations')).toEqual([0.2, 0.5, 0.8, 'à valider'])
+    expect(range('dem.m.cotisations')).toEqual([0.2, 0.4, 0.7, 'sourcé (fourchette), centre choisi'])
+  })
+  it('sources corrigées : IS (DGFiP n° 51 : 257 Md€ à 25 %, 83,7/70,7 = IS + IR), cotisations (REPSS 7,3 / 6,9 ; 71,5 = total exonérations), prestations (FR-BDF 0,09)', () => {
+    expect(PARAM_BY_ID['rend.is'].source).toMatch(/257 Md€/)
+    expect(PARAM_BY_ID['rend.is'].source).toMatch(/83,7 Md€.*IS et IR/)
+    expect(PARAM_BY_ID['rend.is'].source).not.toMatch(/70,5 \/ 25/)
+    expect(PARAM_BY_ID['rend.cotis'].source).toMatch(/7,3 Md€ \(dont secteur privé 6,9 Md€/)
+    expect(PARAM_BY_ID['rend.cotis'].source).toMatch(/71,5 Md€ = coût total 2026 des exonérations/)
+    expect(PARAM_BY_ID['rend.cotis'].source).not.toMatch(/≈ 750/)
+    expect(PARAM_BY_ID['dem.m.prestations'].source).toMatch(/FR-BDF.*\+0,09 % de PIB an 1/)
+    expect(PARAM_BY_ID['dem.m.cotisations'].source).toMatch(/entre l'an 1 et l'an 2/)
+    expect(PARAM_BY_ID['comp.theta.cotis'].source).toMatch(/Source indirecte.*11 estimations/)
+    expect(PARAM_BY_ID['comp.theta.ir'].source).toMatch(/Cabannes, Houdré et Landais.*0,31/)
+  })
+  it('CSG : avec σ actif, θ_réel (0,049 au cas central) dépasse θ (0,034 au taux après réforme) et la part non réelle est bloquée à 0', () => {
+    const l = LEVER_BY_ID.csg
+    const th = leverTheta(l, 1, P)
+    expect(th).toBeCloseTo(0.0336, 4)
+    const s = supplyForCase('csg', 1, P, undefined, 'central')
+    const reel = partReelle('csg', s.sigma, l.rendement(P, 1), P)
+    expect(reel).toBeCloseTo(0.049, 3)
+    expect(Math.max(0, th - reel)).toBe(0)
+    const haut = supplyForCase('csg', 1, P, undefined, 'haut')
+    expect(Math.max(0, th - partReelle('csg', haut.sigma, l.rendement(P, 1), P))).toBeCloseTo(0.009, 3)
+  })
+  it('COFOG : parts nettes des transferts entre sous-secteurs affichées (GF04 66,9 % contre 68,7 % retenu), valeurs moteur inchangées', () => {
+    expect(P['bloc.cofog.affaires_economiques.centrales']).toBeCloseTo(123826.5 / (123826.5 + 56428.3), 10)
+    expect(PARAM_BY_ID['bloc.cofog.affaires_economiques.centrales'].source).toMatch(/14,7 Md€ de transferts.*66,9 % contre 68,7 %/)
   })
 })
 
@@ -980,3 +1021,61 @@ describe('emplois implicites de l\'effet d\'offre de l\'âge légal (affichage s
     expect(roundJobs(Infinity)).toBeNull()
   })
 })
+
+describe('barème de l\'IR par tranche : données communes au θ (documenté) et à σ (docs/review-day0-parameters.md §9)', () => {
+  const d = irTranches(P)
+  it('données DGFiP (revenus 2024) et barème lus ; revenus estimés et quotients moyens dans leurs tranches', () => {
+    expect([11, 30, 41, 45].map((t) => P[`offre.ir.tranche.${t}.foyers`])).toEqual([20930797, 6868031, 434112, 61476])
+    expect([1, 2, 3, 4].map((n) => P[`offre.ir.bareme.seuil${n}`])).toEqual([11497, 29315, 83823, 180294])
+    for (const t of [11, 30, 41, 45]) {
+      expect(PARAM_BY_ID[`offre.ir.tranche.${t}.foyers`].status).toBe('sourcé')
+      expect(PARAM_BY_ID[`offre.ir.tranche.${t}.parts`].status).toBe('calculé (estimation)')
+    }
+    expect(PARAM_BY_ID['offre.ir.tranche.0.revenu'].status).toBe('calculé (estimation)')
+    expect(d.tranches.map((r) => Math.round(r.revenu * 10) / 10)).toEqual([476.0, 475.8, 74.0, 22.5])
+    expect(d.total).toBeCloseTo(1144.3, 1)
+    expect(d.assiettePoint).toBeCloseTo(519.2, 1)
+    const seuils = [11497, 29315, 83823, 180294, Infinity]
+    d.tranches.forEach((r, i) => {
+      const q = (r.revenu * 1e3) / r.parts
+      expect(q).toBeGreaterThan(seuils[i])
+      expect(q).toBeLessThan(seuils[i + 1])
+    })
+    // taux marginal moyen pondéré par les revenus ≈ comp.tau0.ir (21 %, 18–23 %)
+    const moyen = d.tranches.reduce((a, r) => a + (r.taux / 100) * r.revenu, 0) / d.total
+    expect(moyen * 100).toBeGreaterThan(PARAM_BY_ID['comp.tau0.ir'].low)
+    expect(moyen * 100).toBeLessThan(PARAM_BY_ID['comp.tau0.ir'].high)
+  })
+  it('coins marginaux complets : 19,95 / 37,66 / 47,91 / 54,64 % (CEHR 3 %) ; 55,64 % au cas haut', () => {
+    expect([11, 30, 41, 45].map((t) => coinMarginal(P, t))).toEqual([11, 30, 41, 45].map((t) => expect.closeTo(0.097 + (t / 100) * 0.932 + (t === 45 ? 0.03 : 0), 10)))
+    expect(coinMarginal(P, 45, 'high')).toBeCloseTo(0.5564, 4)
+  })
+  it('θ par tranche reproduit la dérivation documentée : +1 pt 0,21 (0,07–0,39), proportionnel 0,37 (0,15–0,66) ; comp.theta.ir reste 0,15', () => {
+    expect(thetaIrTranches(P, 'point')).toBeCloseTo(0.213, 3)
+    expect(thetaIrTranches(P, 'point', 'low')).toBeCloseTo(0.074, 3)
+    expect(thetaIrTranches(P, 'point', 'high')).toBeCloseTo(0.391, 3)
+    expect(thetaIrTranches(P, 'proportionnel')).toBeCloseTo(0.372, 3)
+    expect(thetaIrTranches(P, 'proportionnel', 'low')).toBeCloseTo(0.150, 3)
+    expect(thetaIrTranches(P, 'proportionnel', 'high')).toBeCloseTo(0.663, 3)
+    expect(P['comp.theta.ir']).toBe(0.15)
+    expect([PARAM_BY_ID['comp.theta.ir'].low, PARAM_BY_ID['comp.theta.ir'].high]).toEqual([0.15, 0.66])
+    expect(LEVER_BY_ID.ir.aide).toContain('θ = 0,37 (0,15–0,66)')
+    expect(LEVER_BY_ID.cotis_patronales.aide).toContain(`fourchette ${String(PARAM_BY_ID['rend.cotis'].low)}–${String(PARAM_BY_ID['rend.cotis'].high)} Md€`)
+    expect(LEVER_BY_ID.is.aide).not.toMatch(/2,6–2,8/)
+  })
+  it('σ de l\'IR et θ_non_réel : part réelle 0,113 au cas central, θ_non_réel 0,039 (0 au cas bas, 0,095 au cas haut)', () => {
+    const l = LEVER_BY_ID.ir
+    const th = leverTheta(l, 1, P)
+    const nonReel = (c) => Math.max(0, th - partReelle('ir', supplyForCase('ir', 1, P, undefined, c).sigma, l.rendement(P, 1), P))
+    expect(nonReel('central')).toBeCloseTo(0.0388, 4)
+    expect(nonReel('bas')).toBe(0)
+    expect(nonReel('haut')).toBeCloseTo(0.0954, 4)
+  })
+  it('jamais de NaN : données incohérentes => irTranches null, σ et θ nuls', () => {
+    const bad = resolveParams({ 'offre.ir.tranche.30.impot': -500 }) // revenu estimé négatif
+    expect(irTranches(bad)).toBeNull()
+    expect(sigmaFiscalCase('ir', bad)).toBe(-0)
+    expect(thetaIrTranches(bad)).toBe(0)
+  })
+})
+

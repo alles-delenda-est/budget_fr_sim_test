@@ -12,11 +12,21 @@
 //
 // Leviers fiscaux (docs/sigma-fiscal.md, décisions de Patrick du 18 nov. 2026) : σ est CALCULÉ à partir des paramètres, jamais écrit en dur.
 //   Travail (cotisations patronales, CSG, TVA, IR) : σ = −100 × e_L × |Δ ln(1 − T)| par unité du levier (% du PIB), un relèvement baisse le PIB.
+//   IR : Δ ln(1 − T) moyenné tranche par tranche (revenus DGFiP 2024 estimés, coin complet IR + CSG/CRDS + CEHR ; ir-tranches.js).
 //   IS : σ = −100 × α × ε_K × Δc/c, Δc/c = 0,01 × (1/(1 − τ) − z/(1 − τz)), plafonné à offre.is.plafond en valeur absolue.
 // Cas bas / central / haut : e_L bas / central / haut (IS : α × ε_K bas / central / haut).
 // Pas de double compte avec θ : levers.js ne garde dans θ que la part non réelle (voir `partReelle` ci-dessous).
 
 import { PARAM_BY_ID } from './params.js'
+import { irDeltaLnNet, IR_TRANCHES } from './ir-tranches.js'
+
+// Paramètres de l'effet d'offre de l'IR (barème par tranche, docs/review-day0-parameters.md §9).
+const IR_SIGMA_PARAMS = [
+  ...IR_TRANCHES.flatMap((t) => [`offre.ir.tranche.${t}.foyers`, `offre.ir.tranche.${t}.impot`, `offre.ir.tranche.${t}.parts`]),
+  'offre.ir.tranche.45.hors_bareme', 'offre.ir.tranche.0.revenu', 'offre.ir.coin.crds', 'offre.ir.coin.cehr',
+  'offre.ir.bareme.seuil1', 'offre.ir.bareme.seuil2', 'offre.ir.bareme.seuil3', 'offre.ir.bareme.seuil4',
+  'comp.tau0.csg', 'offre.csg.part_deductible',
+]
 
 const finite = (v) => Number.isFinite(v)
 
@@ -54,7 +64,7 @@ export const SUPPLY_EFFECTS = [
     emploisComparateur: { bas: 'cmp.cor.emplois.age_legal_10ans.bas', haut: 'cmp.cor.emplois.age_legal_10ans.haut', libelle: 'fourchette des modèles du COR à 10 ans' } },
   { lever: 'ir', libelle: 'Impôt sur le revenu : effet d\'offre',
     nomCourt: 'Effet d\'offre de l\'IR', statut: 'non validé',
-    sigmaParams: ['offre.e_L', 'comp.tau0.ir', 'offre.ir.conv_brut', 'comp.coin.part_nette'], L: 'offre.lag.ir', t0: 'offre.t0.ir',
+    sigmaParams: ['offre.e_L', ...IR_SIGMA_PARAMS], L: 'offre.lag.ir', t0: 'offre.t0.ir',
     sigmaFn: 'ir', propre: (P) => P['base.ir.2025'] },
   { lever: 'is', libelle: 'Impôt sur les sociétés : effet d\'offre (coût d\'usage du capital)',
     sigmaParams: ['offre.is.alpha', 'offre.is.eps_k', 'offre.is.z', 'offre.is.tau_effectif', 'offre.is.plafond'], L: 'offre.lag.is', t0: 'offre.t0.is',
@@ -82,8 +92,9 @@ const DLN = {
   // TVA : 1 point de taux = rendement du point / consommation des ménages, en baisse du pouvoir d'achat
   tva_normal: (P) => P['rend.tva_normal'] / P['base.conso_menages'],
   tva_tous_taux: (P) => P['rend.tva_tous_taux'] / P['base.conso_menages'],
-  // IR : 1 % du produit = taux marginal moyen (revenu imposable) × conversion en brut × 1 % ; rapporté à la part nette
-  ir: (P) => (0.01 * (P['comp.tau0.ir'] / 100) * P['offre.ir.conv_brut']) / P['comp.coin.part_nette'],
+  // IR : +1 % du produit multiplie chaque taux du barème par 1,01 ; moyenne par tranche, pondérée par les revenus (0 % compris),
+  // de 0,01 × τ_i × (1 − CSG déductible) / (1 − w_i), w_i coin marginal complet (IR, CSG/CRDS, CEHR) : voir ir-tranches.js
+  ir: (P) => irDeltaLnNet(P),
 }
 
 /** Variation relative du coût d'usage du capital pour 1 point d'IS : Δc/c = 0,01 × (1/(1 − τ) − z/(1 − τz)). */

@@ -6,6 +6,18 @@
 // Convention : a > 0 améliore le solde. Les blocs sont : centrales, securiteSociale, locales.
 
 import { supplyForCase, supplyPhase, partReelle, thetaNonReel } from './supply.js'
+import { PARAM_BY_ID, resolveParams } from './params.js'
+import { thetaIrTranches } from './ir-tranches.js'
+
+// Textes d'aide calculés depuis le catalogue (aucun chiffre saisi en dur).
+const fr = (v, d = 1) => (d === 1 && Number.isInteger(v) ? String(v) : v.toFixed(d).replace('.', ','))
+const P0 = resolveParams()
+const COTIS = PARAM_BY_ID['rend.cotis']
+const IS = PARAM_BY_ID['rend.is']
+const THETA_IR = PARAM_BY_ID['comp.theta.ir']
+const AIDE_IS = `Rendement par point estimé à ${fr(IS.value)} Md€ (IS net 58,2 Md€ / 25 % ; fourchette ${fr(IS.low)}–${fr(IS.high)} Md€ ; borne statique brute ≈ 2,6 Md€ : 1 % des 257 Md€ imposés à 25 %, DGFiP 2025 ; sans étalon officiel DG Trésor).`
+const AIDE_COTIS = `Un point de cotisations employeurs : environ ${fr(COTIS.value)} Md€ (fourchette ${fr(COTIS.low)}–${fr(COTIS.high)} Md€ ; valeur 2025 du point de cotisation, secteur privé).`
+const AIDE_IR = `Variation proportionnelle du barème : 1 % du produit vaut environ 1 Md€ (FIPECO). Réaction comportementale correspondant à ce levier : θ = ${fr(thetaIrTranches(P0, 'proportionnel'), 2)} (${fr(thetaIrTranches(P0, 'proportionnel', 'low'), 2)}–${fr(thetaIrTranches(P0, 'proportionnel', 'high'), 2)}) ; ${fr(thetaIrTranches(P0, 'point'), 2)} pour +1 point sur chaque taux. Centre retenu ${fr(THETA_IR.value, 2)} (choix de Patrick, bas de fourchette, favorable au rendement de l'IR).`
 
 export const BLOCKS = ['centrales', 'securiteSociale', 'locales']
 export const ZERO_BLOCKS = () => ({ centrales: 0, securiteSociale: 0, locales: 0 })
@@ -54,13 +66,13 @@ export const LEVERS = [
     blocs: () => ALL_SECU, statut: 'sourcé', aide: 'Un point de CSG : environ 17 Md€ (FIPECO, 2024).' },
   { id: 'ir', titre: 'Impôt sur le revenu', unite: '% du produit', min: -30, max: 30, type: 'recette', signe: 1,
     rendement: (P) => P['rend.ir'], categorie: 'ir_csg', theta: { id: 'comp.theta.ir', tau0: 'comp.tau0.ir', mode: 'proportionnel', form: 'elasticite' },
-    blocs: () => ALL_CENTRAL, statut: 'sourcé', aide: 'Variation proportionnelle du barème : 1 % du produit vaut environ 1 Md€ (FIPECO).' },
+    blocs: () => ALL_CENTRAL, statut: 'sourcé', aide: AIDE_IR },
   { id: 'is', titre: 'Impôt sur les sociétés', unite: 'points de taux', min: -10, max: 10, type: 'recette', signe: 1,
     rendement: (P) => P['rend.is'], categorie: 'is', theta: { id: 'comp.theta.is', tau0: 'comp.tau0.is', mode: 'point', form: 'is' },
-    blocs: () => ALL_CENTRAL, statut: 'calculé (estimation)', aide: 'Rendement par point estimé à 2,3 Md€ (IS net 58,2 / 25 % ; brut DGFiP jusqu\'à ≈ 2,6–2,8 Md€/pt, sans étalon officiel DG Trésor).' },
+    blocs: () => ALL_CENTRAL, statut: 'calculé (estimation)', aide: AIDE_IS },
   { id: 'cotis_patronales', titre: 'Cotisations patronales', unite: 'points de taux', min: -5, max: 5, type: 'recette', signe: 1,
     rendement: (P) => P['rend.cotis'], categorie: 'cotisations', theta: { id: 'comp.theta.cotis', tau0: 'comp.tau0.cotis', mode: 'point', form: 'elasticite' },
-    blocs: () => ALL_SECU, statut: 'sourcé (fourchette), centre choisi', aide: 'Un point de cotisations employeurs : environ 7,4 Md€ sur la masse salariale privée consolidée APU (fourchette 6,2–10 Md€).' },
+    blocs: () => ALL_SECU, statut: 'sourcé (fourchette), centre choisi', aide: AIDE_COTIS },
   { id: 'dep_enseignement', titre: 'Dépenses d\'enseignement', unite: '% de la ligne', min: -30, max: 30, type: 'depense', signe: -1,
     rendement: (P) => P['base.cofog.enseignement'] / 100, categorie: 'remunerations', blocs: cofogBlocks('enseignement'),
     statut: 'sourcé', aide: '1 % de la fonction « enseignement » (COFOG 2024) : environ 1,5 Md€ (69,8 % État / 30,2 % collectivités, Eurostat 2024).' },

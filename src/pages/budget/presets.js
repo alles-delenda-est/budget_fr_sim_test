@@ -37,6 +37,14 @@ export function overridesForMacro(macroId) {
   return macroId && Object.hasOwn(MACRO_VARIANT_BY_ID, macroId) ? MACRO_VARIANT_BY_ID[macroId].overrides : undefined
 }
 
+// Bascule TVA sociale : montants affichés calculés depuis les étalons (rend.tva_tous_taux, rend.cotis), jamais saisis en dur.
+const TVA_SOCIALE = { tva_tous_taux: 1, cotis_patronales: -1.5 }
+const frMd = (v) => v.toFixed(1).replace('.', ',')
+const frPt = (v) => (Number.isInteger(v) ? String(v) : frMd(v))
+const tvaSocialeTva = TVA_SOCIALE.tva_tous_taux * PARAM_BY_ID['rend.tva_tous_taux'].value
+const tvaSocialeCotis = -TVA_SOCIALE.cotis_patronales * PARAM_BY_ID['rend.cotis'].value
+const tvaSocialeEcart = tvaSocialeTva - tvaSocialeCotis
+
 /** Catalogue des 6 scénarios types neutres (non partisans). */
 export const NEUTRAL_SCENARIOS = [
   {
@@ -102,12 +110,9 @@ export const NEUTRAL_SCENARIOS = [
   {
     id: 'tva_sociale',
     titre: 'Bascule TVA sociale (neutre ex ante)',
-    resume: '≈ +0,3 Md€ ex ante · transfert entre blocs',
-    description: 'Hausse de 1 point de TVA sur tous les taux (+11,4 Md€ pour l\'État) compensée par une baisse de 1,5 point de cotisations patronales (−11,1 Md€ pour la sécurité sociale). Illustre le transfert entre blocs et le léger gain d\'offre net sur le PIB au cas central.',
-    levers: {
-      tva_tous_taux: 1,
-      cotis_patronales: -1.5,
-    },
+    resume: `≈ ${tvaSocialeEcart >= 0 ? '+' : '−'}${frMd(Math.abs(tvaSocialeEcart))} Md€ ex ante · transfert entre blocs`,
+    description: `Hausse de ${frPt(TVA_SOCIALE.tva_tous_taux)} point de TVA sur tous les taux (+${frMd(tvaSocialeTva)} Md€ pour l'État) compensée par une baisse de ${frPt(-TVA_SOCIALE.cotis_patronales)} point de cotisations patronales (−${frMd(tvaSocialeCotis)} Md€ pour la sécurité sociale). Illustre le transfert entre blocs et le léger gain d'offre net sur le PIB au cas central.`,
+    levers: { ...TVA_SOCIALE },
     macroId: null,
   },
 ]

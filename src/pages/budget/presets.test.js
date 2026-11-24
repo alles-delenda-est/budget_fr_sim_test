@@ -111,6 +111,11 @@ describe('scénarios types neutres', () => {
     expect(r.blocks.centrales[t].balance - ref.blocks.centrales[t].balance).toBeGreaterThan(10)
     expect(r.blocks.securiteSociale[t].balance - ref.blocks.securiteSociale[t].balance).toBeLessThan(-10)
     expect(r.total[t].yS).toBeGreaterThan(0)
+    // Montants affichés calculés depuis les étalons (aucun chiffre saisi en dur).
+    const fr = (v) => v.toFixed(1).replace('.', ',')
+    expect(sc.description).toContain(`+${fr(P['rend.tva_tous_taux'])} Md€`)
+    expect(sc.description).toContain(`−${fr(1.5 * P['rend.cotis'])} Md€`)
+    expect(sc.resume).toContain(`${fr(Math.abs(totalStatic))} Md€`)
   })
 
   it('chaque scénario tourne sans NaN/Infinity sur les 3 horizons × 3 cas d\'offre et garde une décomposition algébriquement exacte', () => {
