@@ -54,6 +54,36 @@ export const LVT_PRELEVEMENTS_SOCIAUX = Object.freeze({
   }),
 })
 
+/**
+ * Impôts nationaux supprimés en S2 et S3, par impôt, tels que yields.json les retient (même commit 322190e, champ
+ * `reference_meur`, M€ 2025 ramenés en Md€) : ce sont les montants dont la somme forme la part nationale additionnelle des
+ * scénarios (part nationale moins frais de gestion de S1, à l'arrondi de yields.json près). Sert à la capitalisation inverse
+ * (D12, décision du 24 nov. 2026) : leur suppression relève le prix des biens, et la part « sol » de cette hausse revient dans
+ * l'assiette de la nouvelle taxe. Les millésimes relus par la revue (§2.2 ; LVT_LIGNES ci-dessous) sont plus bas :
+ * plus-values 2,8 Md€ en 2024 (moyenne 2020–2024 ici) ; loyers 7,7 Md€ en euros de 2022 (ici en euros de 2025).
+ * Statut « LVTShift » : statut « verified » chez LVTShift, non relu par la revue sauf l'IFI et le total des plus-values 2024.
+ */
+export const LVT_IMPOTS_NATIONAUX_SUPPRIMES = Object.freeze([
+  {
+    id: 'pv_ir_ps', drapeau: 'plusValues', court: 'plus-values immobilières', libelle: 'Plus-values immobilières des particuliers, IR et prélèvements sociaux',
+    montant: (1374 + 2613) / 1000, annees: '2020–2024 (moyenne, euros 2025)',
+    source: 'yields.json (LVTShift, commit 322190e) : gains_ir 1 374 M€ + gains_ps 2 613 M€ ; Cour des comptes, « L\'imposition des plus-values immobilières des particuliers », 25 nov. 2025, données ouvertes : https://www.ccomptes.fr/fr/publications/limposition-des-plus-values-immobilieres-des-particuliers',
+    statut: 'LVTShift',
+  },
+  {
+    id: 'loyers_ir_ps', drapeau: 'revenusLocatifs', court: 'revenus locatifs', libelle: 'Revenus locatifs des particuliers, IR, CSG et prélèvements sociaux',
+    montant: (4533 + 2590 + 1180) / 1000, annees: '2022 (euros 2025)',
+    source: 'yields.json (LVTShift, commit 322190e) : rents_ir 4 533 M€ + rents_ps 2 590 M€ + rents_csg 1 180 M€ ; CPO, « Pour une fiscalité du logement plus cohérente », déc. 2023 : https://www.vie-publique.fr/files/rapport/pdf/292676.pdf',
+    statut: 'LVTShift',
+  },
+  {
+    id: 'ifi', drapeau: 'ifi', court: 'IFI', libelle: 'Impôt sur la fortune immobilière',
+    montant: 2332 / 1000, annees: '2025',
+    source: 'yields.json (LVTShift, commit 322190e) : ifi 2 332 M€ ; DGFiP, Statistiques n° 45, 14 avril 2026 (2,3 Md€, relu par la revue) : https://www.impots.gouv.fr/dgfip-statistiques-limpot-sur-la-fortune-immobiliere-en-2025',
+    statut: 'relu',
+  },
+].map(Object.freeze))
+
 /** Lignes d'impôts remplacés, telles que la revue les a relevées (§2.2). Affichage et traçabilité : le module calcule sur LVT_SCENARIOS. */
 export const LVT_LIGNES = Object.freeze([
   { id: 'tfpb', impot: 'TFPB, communes et EPCI', bloc: 'locales', montant: 42.8, annee: 2025, scenarios: [1, 2, 3, 4, 5], url: 'https://data.ofgl.fr/explore/dataset/rei/', statut: 'LVTShift', note: 'REI 2025 via OFGL ; le BIS n° 209 de la DGCL donne 43,1 Md€ (relu, secondaire : https://www.maire-info.com/finances-locales/apres-des-annees-de-hausse-le-produit-de-la-fiscalite-directe-locale-s\'est-stabilise-en-2025-article-30783) ; écart de 0,3 Md€ non expliqué' },
