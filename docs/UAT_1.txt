@@ -34,8 +34,9 @@ Source de vérité des chiffres : src/engine/params.js (171 paramètres).
 [ ] 3 leviers structurels affichés désactivés avec badge « Non validé — avis demandé » (σ = 0)
 [ ] Déplacer un curseur met à jour immédiatement les 3 fiches (Année 1, Année 5, Fin d'horizon),
     les graphiques, la décomposition par cause et les 3 blocs APU
-[ ] Remettre tous les curseurs à 0 (ou cliquer « Remettre les leviers à zéro ») ramène la courbe
-    Scénario exactement sur la courbe Référence (et désactive le module LVT)
+[ ] Cliquer « Tout remettre à zéro » (ou « Référence (politique inchangée) ») ramène tous les
+    curseurs à 0, désactive le module LVT et superpose exactement la courbe Scénario sur la Référence
+    (remettre seulement les curseurs à 0 à la main laisse le module LVT dans son état choisi)
 [ ] Sous « Âge légal de départ en retraite », la note d'emplois implicites (JobsNote) s'actualise
     selon le cas d'offre (bas / central / haut) et affiche « emplois en moins » pour x < 0
 [ ] Chaque levier possède un bouton d'information (InfoPopover) affichant source, fourchette et statut

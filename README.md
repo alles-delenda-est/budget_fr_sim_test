@@ -71,4 +71,4 @@ Pour l'architecture détaillée et les conventions de contribution, voir [ARCHIT
 - **Inflation exogène** : trajectoire issue des prévisionnistes indépendants, sans boucle prix-salaires.
 - **Multiplicateurs d'expansion uniquement** : pas de changement automatique de régime en récession.
 - **Prolongement linéaire de `β`** jusqu'au plafond de 25 %, encadré par les avertissements palier 1 et palier 2.
-- **Transparence de la collecte** : plusieurs paramètres restent marqués `de mémoire`, `à collecter` ou `non validé` dans toute l'interface dans l'attente de la revue des économistes (voir `docs/model-note.md` §10–§12).
+- **Transparence de la collecte** : plusieurs paramètres restent marqués `de mémoire`, `à collecter`, `non validé`, `calculé (estimation)` ou `à valider` dans toute l'interface dans l'attente de la revue des économistes (voir `docs/model-note.md` §10–§12).
