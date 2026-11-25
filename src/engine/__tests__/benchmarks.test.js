@@ -80,6 +80,7 @@ describe('1. Gouvernement — RESF 2027 et PLF 2027 : plausibilité de la décom
     'macro.pi.2026': 2.1,
     'macro.pi.2027': 1.8,
     'macro.pi.long': 1.8,
+    'ref.derive.b_autres': 0,
     'dette.beta': 0,
   }
   const resfRates = (yMoyen = 3.8, yLong = 4.3) => ({
@@ -208,17 +209,18 @@ describe('2. Cour des comptes (juin 2026) : plausibilité de la décomposition (
     { label: 'haut', yBtf: 2.7, yMid: 3.6, yLong: 3.9 },
   ]
 
-  it('aux taux par défaut de novembre 2026 (i* = 4,38 %, β = 3), la dette 2029 dépasse de 2,4 pt le scénario « dérive »', () => {
+  it('aux taux par défaut de novembre 2026 (i* = 4,38 %, β = 3, b_autres = 0,05), la dette 2029 dépasse de 2,7 pt le scénario « dérive »', () => {
     const r29 = rowOf(projectScenario({}), 2029)
-    expect(pct(r29.debtRatio) - P['cmp.cour.dette.2029_derive']).toBeCloseTo(2.4, 1)
+    expect(pct(r29.debtRatio) - P['cmp.cour.dette.2029_derive']).toBeCloseTo(2.7, 1)
   })
 
-  it('aux taux de millésime printemps 2026 (OAT 10 ans 3,9 %, β = 0), les intérêts 2029 redescendent vers 108–112 Md€ (> 100 Md€) et la dette se rapproche du scénario « dérive » (124,3 %)', () => {
+  it('aux taux de millésime printemps 2026 (OAT 10 ans 3,9 %, β = 0, b_autres = 0), les intérêts 2029 redescendent vers 108–112 Md€ (> 100 Md€) et la dette se rapproche du scénario « dérive » (124,3 %)', () => {
     const def29 = rowOf(projectScenario({}), 2029)
 
     for (const band of SPRING_BAND) {
       const ov = {
         'dette.beta': 0,
+        'ref.derive.b_autres': 0,
         'dette.y_btf': band.yBtf,
         'dette.y_moyen': band.yMid,
         'dette.y_long': band.yLong,
@@ -247,7 +249,7 @@ describe('2. Cour des comptes (juin 2026) : plausibilité de la décomposition (
     }
 
     // Borne haute uniforme 3,9 % (β = 0) : 2026 ≈ 77,0 Md€ (2,50 % vs 77,4 Md€ / 2,5 % Cour), 2029 ≈ 117,0 Md€
-    const rUnif = projectScenario({ overrides: { 'dette.beta': 0, ...flatYields(3.9) } })
+    const rUnif = projectScenario({ overrides: { 'dette.beta': 0, 'ref.derive.b_autres': 0, ...flatYields(3.9) } })
     expect(rowOf(rUnif, 2026).interest).toBeCloseTo(77.0, 0)
     expect(pct(rowOf(rUnif, 2026).interestRatio)).toBeCloseTo(2.5, 1)
     expect(rowOf(rUnif, 2029).interest).toBeGreaterThan(P['cmp.cour.interets.2029'])
@@ -255,10 +257,11 @@ describe('2. Cour des comptes (juin 2026) : plausibilité de la décomposition (
 
   it('en ajoutant le solde primaire de printemps 2026 (−2,5 % = −5,0 % + 2,5 %, avant révision RESF −2,8 %), la dette 2029 rejoint « dérive » (124,1 % vs 124,3 %)', () => {
     // Dans le rapport de juin 2026, le déficit cible 2026 de printemps était −5,0 % et les intérêts 2,5 % (baseline-data.md item 6a).
-    // À macro médiane nov. 2026 inchangée, la dette 2029 atterrit à 124,1 % (vs 124,3 % « dérive ») avec un solde 2029 de −5,78 % (vs −5,4 % Cour).
+    // À macro médiane nov. 2026 inchangée (hors b_autres), la dette 2029 atterrit à 124,1 % (vs 124,3 % « dérive ») avec un solde 2029 de −5,78 % (vs −5,4 % Cour).
     const res = projectScenario({
       overrides: {
         'dette.beta': 0,
+        'ref.derive.b_autres': 0,
         'dette.y_btf': 2.5,
         'dette.y_moyen': 3.4,
         'dette.y_long': 3.9,
@@ -286,6 +289,7 @@ describe('3. Commission européenne — prévisions du printemps 2026 : plausibi
     'macro.pi.2026': 2.4,
     'macro.pi.2027': 1.8,
     'ref.spb_2026': P['cmp.ce.solde.2026'] + P['cmp.ce.interets.2026'], // −2,5 %
+    'ref.derive.b_autres': 0,
     'dette.beta': 0,
   }
 
@@ -360,32 +364,38 @@ describe('4. Commission européenne — Debt Sustainability Monitor 2025 : plaus
   // - Courbe annuelle des rendements de la fiche pays DSM : non trouvée → sensibilité sur i* ∈ [3,3 % ; 3,8 %] (millésime automne 2025).
   const DSM_DEBT_2025_MD = P['base.pib.2025'] * (P['cmp.dsm.dette.2025'] / 100)
 
-  it('décomposition pas à pas de l\'écart de +14,5 pt en 2036 (158,5 % moteur vs 144,0 % DSM)', () => {
+  it('décomposition pas à pas de l\'écart de +17,6 pt en 2036 (161,6 % moteur vs 144,0 % DSM)', () => {
     const s0Default = rowOf(projectScenario({ horizon: 'dixAns' }), 2036)
     const s1NoBeta = rowOf(projectScenario({ horizon: 'dixAns', overrides: { 'dette.beta': 0 } }), 2036)
+    const s1bNoBAutres = rowOf(projectScenario({ horizon: 'dixAns', overrides: { 'dette.beta': 0, 'ref.derive.b_autres': 0 } }), 2036)
     const s2NoAgeing = rowOf(projectScenario({
       horizon: 'dixAns',
-      overrides: { 'dette.beta': 0, 'ref.derive.a_sante': 0, 'ref.derive.a_retraites': FLAT_COR },
+      overrides: { 'dette.beta': 0, 'ref.derive.b_autres': 0, 'ref.derive.a_sante': 0, 'ref.derive.a_retraites': FLAT_COR },
     }), 2036)
     const s3Recal2025 = rowOf(projectScenario({
       horizon: 'dixAns',
       overrides: {
         'dette.beta': 0,
+        'ref.derive.b_autres': 0,
         'ref.derive.a_sante': 0,
         'ref.derive.a_retraites': FLAT_COR,
         'base.dette.2025': DSM_DEBT_2025_MD,
       },
     }), 2036)
 
-    // Étape 0 : écart initial +14,49 pt
-    expect(pct(s0Default.debtRatio) - P['cmp.dsm.dette.2036']).toBeCloseTo(14.49, 1)
+    // Étape 0 : écart initial +17,59 pt (avec b_autres = +0,05 pt/an)
+    expect(pct(s0Default.debtRatio) - P['cmp.dsm.dette.2036']).toBeCloseTo(17.59, 1)
 
-    // Étape 1 : suppression de la prime endogène β = 3 → 0 (−3,00 pt)
+    // Étape 1 : suppression de la prime endogène β = 3 → 0 (−3,21 pt)
     const dBeta = pct(s1NoBeta.debtRatio - s0Default.debtRatio)
-    expect(dBeta).toBeCloseTo(-3.0, 1)
+    expect(dBeta).toBeCloseTo(-3.2, 1)
 
-    // Étape 2 : suppression du vieillissement (−0,50 pt ; cumul β + vieillissement : 158,5 % → 155,0 %)
-    const dAgeing = pct(s2NoAgeing.debtRatio - s1NoBeta.debtRatio)
+    // Étape 1bis : suppression de la dérive hors vieillissement b_autres = 0,05 → 0 (−2,88 pt)
+    const dBAutres = pct(s1bNoBAutres.debtRatio - s1NoBeta.debtRatio)
+    expect(dBAutres).toBeCloseTo(-2.9, 1)
+
+    // Étape 2 : suppression du vieillissement (−0,50 pt ; cumul β + b_autres + vieillissement : 161,6 % → 155,0 %)
+    const dAgeing = pct(s2NoAgeing.debtRatio - s1bNoBAutres.debtRatio)
     expect(dAgeing).toBeCloseTo(-0.5, 1)
     expect(pct(s2NoAgeing.debtRatio)).toBeCloseTo(155.0, 1)
 
@@ -398,14 +408,14 @@ describe('4. Commission européenne — Debt Sustainability Monitor 2025 : plaus
     const s4Lo = rowOf(projectScenario({
       horizon: 'dixAns',
       overrides: {
-        'dette.beta': 0, 'ref.derive.a_sante': 0, 'ref.derive.a_retraites': FLAT_COR,
+        'dette.beta': 0, 'ref.derive.b_autres': 0, 'ref.derive.a_sante': 0, 'ref.derive.a_retraites': FLAT_COR,
         'base.dette.2025': DSM_DEBT_2025_MD, ...flatYields(3.3),
       },
     }), 2036)
     const s4Hi = rowOf(projectScenario({
       horizon: 'dixAns',
       overrides: {
-        'dette.beta': 0, 'ref.derive.a_sante': 0, 'ref.derive.a_retraites': FLAT_COR,
+        'dette.beta': 0, 'ref.derive.b_autres': 0, 'ref.derive.a_sante': 0, 'ref.derive.a_retraites': FLAT_COR,
         'base.dette.2025': DSM_DEBT_2025_MD, ...flatYields(3.8),
       },
     }), 2036)
@@ -424,6 +434,7 @@ describe('4. Commission européenne — Debt Sustainability Monitor 2025 : plaus
   it('l\'écart résiduel (+2 à +6 pt au-delà de 144,0 %) est expliqué par le millésime de SPB 2026 (−2,5 % CE vs −2,8 % RESF) ou la croissance nominale de long terme', () => {
     const dsmBaseOv = {
       'dette.beta': 0,
+      'ref.derive.b_autres': 0,
       'ref.derive.a_sante': 0,
       'ref.derive.a_retraites': FLAT_COR,
       'base.dette.2025': DSM_DEBT_2025_MD,
@@ -472,11 +483,12 @@ describe('5. Synthèse (plausibilité, non validation) : chaque écart aux repè
   it('à hypothèses homogènes, chaque comparateur est rejoint à l\'ordre de grandeur attendu et la somme des facteurs nommés boucle', () => {
     const def = projectScenario({ horizon: 'dixAns' })
 
-    // 1) RESF 2027 (intérêts et solde 2027) : écart défaut −0,84 pt sur le solde réduit à < 0,03 pt
+    // 1) RESF 2027 (intérêts et solde 2027) : écart défaut −0,89 pt sur le solde réduit à < 0,03 pt
     const resfLike = projectScenario({
       overrides: {
         'macro.g.2026': 0.5, 'macro.g.2027': 1.0, 'macro.g.potentielle': 1.2,
         'macro.pi.2026': 2.1, 'macro.pi.2027': 1.8, 'macro.pi.long': 1.8,
+        'ref.derive.b_autres': 0,
         'dette.beta': 0, 'dette.y_btf': 3.0, 'dette.y_moyen': 3.8, 'dette.y_long': 4.3,
       },
       modules: [{ module: primaryShiftModule(0.7), levers: {} }],
@@ -484,9 +496,9 @@ describe('5. Synthèse (plausibilité, non validation) : chaque écart aux repè
     expect(Math.abs(pct(rowOf(resfLike, 2027).balanceRatio) - P['cmp.gouv.solde.2027']))
       .toBeLessThan(Math.abs(pct(rowOf(def, 2027).balanceRatio) - P['cmp.gouv.solde.2027']) / 20)
 
-    // 2) Cour des comptes 2029 : écart défaut +2,4 pt sur la dette « dérive » réduit à < 0,3 pt
+    // 2) Cour des comptes 2029 : écart défaut +2,7 pt sur la dette « dérive » réduit à < 0,3 pt
     const courLike = projectScenario({
-      overrides: { 'dette.beta': 0, 'dette.y_btf': 2.5, 'dette.y_moyen': 3.4, 'dette.y_long': 3.9, 'ref.spb_2026': -2.5 },
+      overrides: { 'dette.beta': 0, 'ref.derive.b_autres': 0, 'dette.y_btf': 2.5, 'dette.y_moyen': 3.4, 'dette.y_long': 3.9, 'ref.spb_2026': -2.5 },
     })
     expect(Math.abs(pct(rowOf(courLike, 2029).debtRatio) - P['cmp.cour.dette.2029_derive']))
       .toBeLessThan(Math.abs(pct(rowOf(def, 2029).debtRatio) - P['cmp.cour.dette.2029_derive']) / 5)
@@ -495,17 +507,17 @@ describe('5. Synthèse (plausibilité, non validation) : chaque écart aux repè
     const ceLike = projectScenario({
       overrides: {
         'macro.g.2026': 0.8, 'macro.g.2027': 1.1, 'macro.pi.2026': 2.4, 'macro.pi.2027': 1.8,
-        'ref.spb_2026': -2.5, 'dette.beta': 0, ...flatYields(3.8),
+        'ref.spb_2026': -2.5, 'ref.derive.b_autres': 0, 'dette.beta': 0, ...flatYields(3.8),
       },
       modules: [{ module: primaryShiftModule(-0.4), levers: {} }],
     })
     expect(Math.abs(pct(rowOf(ceLike, 2027).balanceRatio) - P['cmp.ce.solde.2027'])).toBeLessThan(0.05)
 
-    // 4) CE DSM 2025 (dette 2036) : écart défaut +14,5 pt réduit à < 0,5 pt à hypothèses homogènes
+    // 4) CE DSM 2025 (dette 2036) : écart défaut +17,6 pt réduit à < 0,5 pt à hypothèses homogènes
     const dsmLike = projectScenario({
       horizon: 'dixAns',
       overrides: {
-        'dette.beta': 0, 'ref.derive.a_sante': 0, 'ref.derive.a_retraites': FLAT_COR,
+        'dette.beta': 0, 'ref.derive.b_autres': 0, 'ref.derive.a_sante': 0, 'ref.derive.a_retraites': FLAT_COR,
         'base.dette.2025': P['base.pib.2025'] * (P['cmp.dsm.dette.2025'] / 100),
         'ref.spb_2026': -2.5, ...flatYields(3.5),
       },
@@ -517,25 +529,26 @@ describe('5. Synthèse (plausibilité, non validation) : chaque écart aux repè
 
 describe('instantanés de non-régression (valeurs actuelles du moteur, sans chiffre de comparateur)', () => {
   // Ces valeurs figent la sortie du moteur (docs/baseline-data.md) ; elles détectent un changement, elles ne valident rien.
-  it('référence par défaut : i*, β et dette/PIB 2026, 2027, 2029, 2036', () => {
+  it('référence par défaut : i*, β, b_autres et dette/PIB 2026, 2027, 2029, 2036', () => {
     const def = projectScenario({ horizon: 'dixAns' })
     expect(pct(issuanceRate(P))).toBeCloseTo(4.38, 2)
     expect(P['dette.beta']).toBe(3)
+    expect(P['ref.derive.b_autres']).toBe(0.05)
     expect(pct(rowOf(def, 2026).debtRatio)).toBeCloseTo(117.8, 1)
-    expect(pct(rowOf(def, 2027).debtRatio)).toBeCloseTo(120.5, 1)
-    expect(pct(rowOf(def, 2029).debtRatio)).toBeCloseTo(126.7, 1)
-    expect(pct(rowOf(def, 2036).debtRatio)).toBeCloseTo(158.5, 1)
+    expect(pct(rowOf(def, 2027).debtRatio)).toBeCloseTo(120.6, 1)
+    expect(pct(rowOf(def, 2029).debtRatio)).toBeCloseTo(127.0, 1)
+    expect(pct(rowOf(def, 2036).debtRatio)).toBeCloseTo(161.6, 1)
   })
 
-  it('référence par défaut : intérêts 2029 (129,2 Md€) et dette 2029 (126,7 %)', () => {
+  it('référence par défaut : intérêts 2029 (129,5 Md€) et dette 2029 (127,0 %)', () => {
     const r29 = rowOf(projectScenario({}), 2029)
-    expect(r29.interest).toBeCloseTo(129.2, 1)
-    expect(pct(r29.debtRatio)).toBeCloseTo(126.7, 1)
+    expect(r29.interest).toBeCloseTo(129.5, 1)
+    expect(pct(r29.debtRatio)).toBeCloseTo(127.0, 1)
   })
 
   it('cascade DSM, étape 4 : dette 2036 à i* uniforme 3,3 / 3,5 / 3,8 % (146,0 / 147,7 / 150,4 %)', () => {
     const ov = (iPct) => ({
-      'dette.beta': 0, 'ref.derive.a_sante': 0, 'ref.derive.a_retraites': FLAT_COR,
+      'dette.beta': 0, 'ref.derive.b_autres': 0, 'ref.derive.a_sante': 0, 'ref.derive.a_retraites': FLAT_COR,
       'base.dette.2025': P['base.pib.2025'] * (P['cmp.dsm.dette.2025'] / 100), ...flatYields(iPct),
     })
     expect(pct(rowOf(projectScenario({ horizon: 'dixAns', overrides: ov(3.3) }), 2036).debtRatio)).toBeCloseTo(146.0, 1)

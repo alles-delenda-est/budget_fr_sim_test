@@ -5,7 +5,10 @@
 import { PARAMS, PARAM_BY_ID, resolveParams } from '../../engine/params.js'
 import { LEVERS, staticYield } from '../../engine/levers.js'
 import { SUPPLY_BY_LEVER, sigmaFiscal, sigmaFiscalCase } from '../../engine/supply.js'
-import { irTranches, thetaReelIr } from '../../engine/ir-tranches.js'
+import { irTranches, thetaIrTranches, thetaReelIr } from '../../engine/ir-tranches.js'
+import { deriveBAutres, deriveMPrestations } from '../../engine/internal-derivations.js'
+import { lvtComponents } from '../../engine/lvt-module.js'
+import { LVT_PROVENANCE } from '../../engine/lvt-snapshot.js'
 import { START_YEAR, RATE_MAX, HORIZONS, projectScenario } from '../../engine/project.js'
 import { fmt, isFlagged, paramRange, BLOCK_LABELS } from '../budget/helpers.js'
 
@@ -79,7 +82,7 @@ export function buildEquations(P) {
     { id: 'E5', titre: 'Effets d\'offre explicites (σ)', formule: 'yS_j(t) = σ_j × taille_j(t) × clamp((τ − t0_j) / (L_j − t0_j), 0, 1)', detail: 'Effet durable sur le niveau du PIB, ligne distincte par mesure (cas bas / central / haut). σ calculé pour les impôts (travail via e_L, IS via coût d\'usage) et décidé sur revue de preuves pour l\'âge légal, l\'assurance chômage et l\'enseignement.' },
     { id: 'E6', titre: 'PIB effectif', formule: 'Y(t) = Yb(t) × (1 + yD(t) + yS(t))', detail: 'Combinaison de la trajectoire tendancielle, de l\'écart de demande et des effets d\'offre.' },
     { id: 'E7', titre: 'Passage au solde (D13)', formule: 'Δsolde_PIB(t) = ε × yD(t) + ε_offre × yS(t)', detail: `La demande passe par les stabilisateurs cycliques (ε = ${fmt(P['fisc.eps'], 1)}) ; l'offre passe par le taux de prélèvements obligatoires (ε_offre = ${fmt(P['fisc.eps_offre'] * 100, 1)} %), sans dépense cyclique induite.` },
-    { id: 'E8', titre: 'Solde primaire par bloc', formule: 'sp(t) = spb(0) − d(t) + Σ_j (1 − θ_j) a(j,t) + ε yD(t) + ε_offre yS(t)', detail: 'Dérive de référence d(t) = dA(t) (vieillissement COR retraites + santé Commission 2024, bloc ASSO) + dB(t) (autres dépenses, 0 provisoire).' },
+    { id: 'E8', titre: 'Solde primaire par bloc', formule: 'sp(t) = spb(0) − d(t) + Σ_j (1 − θ_j) a(j,t) + ε yD(t) + ε_offre yS(t)', detail: `Dérive de référence d(t) = dA(t) (vieillissement COR retraites + santé Commission 2024, bloc ASSO) + dB(t) (autres dépenses : ${fmt(P['ref.derive.b_autres'], 2)} pt/an, estimation interne Eurostat 1995–2024).` },
     { id: 'E9', titre: 'Taux à l\'émission et prime β', formule: `i_new(t) = clamp(i* + β × (dette/PIB(t−1) − dette/PIB(2026)), 0 %, ${fmt(RATE_MAX * 100, 0)} %)`, detail: `Ancre i* pondérée BTF / OAT 2–8 ans / OAT 10 ans+. Pente linéaire β = ${fmt(P['dette.beta'], 0)} pb/pt (fourchette ${fmt(betaLo, 0)}–${fmt(betaHi, 0)}) au-delà du ratio de 2026 ; le plafond de ${fmt(RATE_MAX * 100, 0)} % porte sur le taux à l'émission total.` },
     { id: 'E10', titre: 'Taux moyen du stock de dette', formule: 'i_moy(t) = (1 − φ(t)) i_moy(t−1) + φ(t) i_new(t) ; φ = min(1, 1/M + max(0, ΔD)/D)', detail: `Inertie de la maturité moyenne M = ${fmt(P['dette.M'], 2)} ans plus part de dette nouvelle émise dans l'année.` },
     { id: 'E11', titre: 'Charge d\'intérêts et dette', formule: 'INT(t) = i_moy(t) × D(t−1) ; D(t) = D(t−1) + INT(t) − sp(t) × Yb(t)', detail: 'Ajustements stock-flux nuls ; charge d\'intérêts répartie entre les trois blocs selon leur part observée en 2025.' },
@@ -306,4 +309,68 @@ export function buildReviewerQuestions() {
       statut: 'Paramètres offre.e_L (non validé) et comp.theta.ir — question 6 de la note de modèle, avis demandé.',
     },
   ]
+}
+
+/**
+ * Vue avancée « Méthodologie des dérivations internes » de la page Hypothèses.
+ * Toutes les valeurs sont calculées en direct depuis PARAMS, internal-derivations.js, lvt-module.js et ir-tranches.js.
+ */
+export function buildInternalDerivations(P) {
+  const bParam = PARAM_BY_ID['ref.derive.b_autres']
+  const bCalc = deriveBAutres(P)
+  const debt2036Sensitivity = [bParam.low, bParam.value, bParam.high].map((b) => {
+    const r = projectScenario({ horizon: 'dixAns', overrides: { 'ref.derive.b_autres': b } })
+    const end = lastRow(r)
+    return { b, debt2036Pct: end.debtRatio * 100, balance2036Pct: end.balanceRatio * 100 }
+  })
+
+  const mParam = PARAM_BY_ID['dem.m.prestations']
+  const mCalc = deriveMPrestations(P)
+
+  const capiParam = PARAM_BY_ID['lvt.capi.part']
+  const partSolParam = PARAM_BY_ID['lvt.capi.part_sol']
+  const tauxParam = PARAM_BY_ID['lvt.capi.taux_actualisation']
+  const lvtScenarios = [1, 2, 3, 4, 5].map((code) => {
+    const c = lvtComponents(code, P)
+    return {
+      code,
+      id: c.scenario.id,
+      libelle: c.scenario.libelle,
+      totalMd: c.totalNouvelle,
+      nationalAddMd: c.nationalAdditionnel,
+      capiBrutePct: (c.capiBrute / c.pib) * 100,
+      capiInversePct: (c.capiInverse / c.pib) * 100,
+      netPct: (c.capitalisation / c.pib) * 100,
+    }
+  })
+
+  const tr = irTranches(P)
+  return {
+    bAutres: {
+      param: bParam,
+      ...bCalc,
+      debt2036Sensitivity,
+    },
+    mPrestations: {
+      param: mParam,
+      ...mCalc,
+      mRem: P['dem.m.remunerations'],
+      mAchats: P['dem.m.achats_invest'],
+    },
+    lvtCapi: {
+      param: capiParam,
+      partSolParam,
+      tauxParam,
+      provenance: LVT_PROVENANCE,
+      effectiveNetShare: P['lvt.capi.part'] * (1 - P['lvt.capi.part_sol']),
+      scenarios: lvtScenarios,
+    },
+    irTranches: {
+      paramTheta: PARAM_BY_ID['comp.theta.ir'],
+      tranches: tr?.tranches ?? [],
+      totalRevenu: tr?.total ?? Number.NaN,
+      thetaProp: thetaIrTranches(P, 'proportionnel'),
+      thetaPoint: thetaIrTranches(P, 'point'),
+    },
+  }
 }

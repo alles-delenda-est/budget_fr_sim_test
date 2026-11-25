@@ -298,3 +298,75 @@
 .hyp-footnote {
   margin-top: 1rem;
 }
+
+.hyp-advanced-section {
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 1rem 1.15rem;
+  margin: 1.25rem 0;
+}
+
+.hyp-advanced-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.hyp-advanced-bar h2 {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0.3rem;
+  font-size: 1.2rem;
+}
+
+.hyp-advanced-lead {
+  margin-bottom: 0;
+}
+
+.hyp-advanced-toggle {
+  min-height: 44px;
+  flex-shrink: 0;
+}
+
+.hyp-advanced-panel {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.hyp-method-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 0.95rem 1.05rem;
+}
+
+.hyp-method-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
+}
+
+.hyp-method-head h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.hyp-method-card p {
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--color-ink-light);
+  margin-bottom: 0.6rem;
+}
+
+.hyp-method-card p:last-child {
+  margin-bottom: 0;
+}
