@@ -1,6 +1,6 @@
 # Intégrer LVTShift au simulateur budgétaire : module « taxe sur la valeur du sol »
 
-**En bref.** Day 0 sous condition (portillon au 30 novembre), en forme minimale : module non validé, `a` = 0 dans chaque bloc, `yS` central = 0, flux bruts affichés ; sinon janvier 2027. Le bloc local n'a pas besoin de leviers mais doit recevoir des sorties de module (D9 à reformuler). Aucune estimation d'effet sur le PIB français n'a été trouvée ; seul repère chiffré, l'OCDE, donne 0 à +1,1 % de PIB en borne haute (S3 avec IFI) et ne résiste pas aux tests de robustesse. Effort : ≈ 9 jours-personne, dont ≈ 4,5 propres au module.
+**En bref.** Retenu pour le Day 0 (décision de Patrick du 25 nov. 2026 ; le portillon prévu au 30 novembre est levé : le moteur calcule par bloc et accepte `yS`), en forme minimale : module non validé, `a` = 0 dans chaque bloc, `yS` central = 0, flux bruts affichés. Le bloc local n'a pas besoin de leviers mais doit recevoir des sorties de module (D9 à reformuler). Aucune estimation d'effet sur le PIB français n'a été trouvée ; seul repère chiffré, l'OCDE, donne 0 à +1,1 % de PIB en borne haute (S3 avec IFI) et ne résiste pas aux tests de robustesse. Effort : ≈ 9 jours-personne, dont ≈ 4,5 propres au module.
 
 
 Note d'évaluation, 17 novembre 2026. Rédigée pour Patrick. Aucun code n'est écrit ; la note recommande une voie et chiffre l'effort.
@@ -205,14 +205,14 @@ Direction et mécanisme des cinq effets, avec la phrase « aucune estimation fra
 
 ### 5.1 Day 0 ou plus tard
 
-**Day 0 (10 décembre), sous condition, dans la forme minimale ci-dessous ; sinon version suivante (janvier 2027).**
+**Day 0 (10 décembre), dans la forme minimale ci-dessous : retenu par Patrick le 25 nov. 2026.**
 
 Raisons de viser le Day 0 :
 - le module est un bon test réel du contrat (`a` par bloc, `yS`, bloc local récepteur) : le moteur n'a pas encore de code, le contrat peut encore être corrigé à bas coût ;
 - il n'altère aucun chiffre de tête (`a` = 0 dans chaque bloc, `yS` central = 0 sous D2) : son risque pour la version de revue est faible ;
 - LVTShift fournit déjà un tableau de rendements sourcé, par niveau et par scénario ; aucun calcul parcellaire n'est nécessaire.
 
-Raisons de prévoir un portillon : la note de modèle est en brouillon v0.2, aucun code moteur n'est écrit ; il reste 23 jours. **Portillon au 30 novembre** : le moteur doit alors calculer les équations par bloc et accepter une entrée `yS`. Sinon le module sort du Day 0 sans perte, la version de revue étant celle du cœur.
+Raisons de prévoir un portillon (portillon levé le 25 nov. 2026) : la note de modèle est en brouillon v0.2, aucun code moteur n'est écrit ; il reste 23 jours. **Portillon au 30 novembre** : le moteur doit alors calculer les équations par bloc et accepter une entrée `yS`. Sinon le module sort du Day 0 sans perte, la version de revue étant celle du cœur.
 
 ### 5.2 Module minimal viable
 
@@ -266,7 +266,7 @@ Branche `module/lvt-minimal`, sur `review/day0`. Module `LVT_MODULE` (`src/engin
 - **Données** : à l'origine instantané recopié dans `src/engine/lvt-snapshot.js` ; depuis le 24 nov. 2026, `src/engine/data/lvt-yields.json` importé tel quel de LVTShift (commit 322190e, 12 nov. 2026, voir §8) : les cinq variantes de 1.3 (total, local, départemental, national, taux indicatif), les lignes de 2.2 avec URL et statut, les prélèvements sociaux de 2.3 (1,92 Md€ en 2024 sur plus-values ; 3,5 Md€ en 2022 sur loyers). Conversion par `base.pib.2025` (2 991 Md€). Aucun appel à LVTShift. Le produit de la nouvelle taxe est la somme des trois niveaux ; il diffère du total publié de 0,1 Md€ en S2 et S3 sans IFI (arrondis de `yields.json`).
 - **Leviers** : `scenario` (0 inactif ; 1 S1 ; 2 S2 ; 3 S2 avec IFI ; 4 S3 ; 5 S3 avec IFI) et `offre_ocde` (0 par défaut). Effet dès 2027.
 - **D11** : `a(sécurité sociale)` = −(1 − 7,5/17,2) × prélèvements sociaux remplacés ; `a(centrales)` = + le même montant ; nul au consolidé. Montants de 2024 (plus-values) et 2022 (loyers) : 1,1 Md€ en S2 et 3,1 Md€ en S3, **bas** de la fourchette de 2.4 (1,1–1,4 et 3,1–3,4). Les flux bruts du bloc local s'affichent (D9).
-- **D12** : taxe nationale additionnelle = part nationale moins celle de S1 (1,8 Md€ de frais de gestion, déjà sur l'avis de taxe foncière). Pour S3 sans IFI, 12,3 Md€ au lieu des « 14 Md€ » de 4.4 : la borne haute passe de −0,15 / −0,2 % à −0,13 / −0,18 % du PIB (taux de 4 % / 3 %) ; S3 avec IFI donne −0,16 / −0,22 %. Paramètres : `lvt.capi.part` 0,80 (0,60–1,00, **à valider**), `lvt.capi.taux_actualisation` 3,5 % (3–4 %), `lvt.base_fonciere.2025` 6 122 Md€. Montée en charge sur trois ans (hypothèse). À taux fixé, chaque niveau perd au prorata de sa part du produit : part locale et départementale en `a(locales)`, part nationale en `a(centrales)` (D11 n'affecte à l'État que le produit national).
+- **D12** : taxe nationale additionnelle = part nationale moins celle de S1 (1,8 Md€ de frais de gestion, déjà sur l'avis de taxe foncière). Pour S3 sans IFI, 12,3 Md€ au lieu des « 14 Md€ » de 4.4 : la borne haute passe de −0,15 / −0,2 % à −0,13 / −0,18 % du PIB (taux de 4 % / 3 %) ; S3 avec IFI donne −0,16 / −0,22 %. Paramètres : `lvt.capi.part` 0,80 (0,60–1,00, centre retenu le 24 nov. 2026), `lvt.capi.taux_actualisation` 3,5 % (3–4 %), `lvt.base_fonciere.2025` 6 122 Md€. Montée en charge sur trois ans (hypothèse). À taux fixé, chaque niveau perd au prorata de sa part du produit : part locale et départementale en `a(locales)`, part nationale en `a(centrales)` (D11 n'affecte à l'État que le produit national).
 - **yS** : bas = central = 0 (D2) ; haut = borne de 4.3 si `offre_ocde` = 1 (prélèvements obligatoires = `fisc.eps_offre` × PIB ≈ 1 304 Md€ au lieu de ≈ 1 290 : +0,31 % en S2, +1,12 % en S3 avec IFI), montée en charge `offre.lag.lvt` (12 ans) et `offre.t0.lvt` (1 an). Le paramètre `offre.sigma.lvt` (+0,10 / +0,20 / +0,45) n'est pas lu par le module ; L et t0 ont été calibrés pour ce σ.
 - **Multiplicateur** : `θ` = 0 ; `m` = 0, y compris pour la capitalisation : l'effet de richesse de la baisse du prix du sol n'est pas modélisé, et aucune catégorie existante ne représente ce canal.
 
@@ -282,13 +282,13 @@ Effet à plein régime (2029 et après), en % du PIB :
 
 Taux d'actualisation 3,5 % dans les deux cas. Le consolidé est la seule capitalisation.
 
-Reste à faire avant le portillon du 30 novembre : fixer la part capitalisée centrale ; vérifier la clé 7,5/17,2 et le taux des prélèvements sociaux en vigueur en 2026 ; trancher l'écart entre `offre.sigma.lvt` et D2.
+Fait depuis : part capitalisée centrale fixée (0,80, capitalisation nette, 24 nov. 2026) ; écart `offre.sigma.lvt`/D2 tranché (yS central 0) ; module retenu pour le Day 0 (25 nov. 2026). Reste : vérifier la clé 7,5/17,2 et le taux des prélèvements sociaux en vigueur en 2026.
 
 ## 7. Addendum du 24 nov. 2026 : capitalisation nette et calendrier (décision de Patrick)
 
 Branche `module/lvt-net-capitalisation`, sur `review/day0`. Le module reste « non validé » et inactif par défaut. Cet addendum remplace, pour D12, la montée en charge sur trois ans et la capitalisation brute de la section 6.
 
-**1. Capitalisation nette.** La capitalisation de la nouvelle taxe nationale est inchangée (part 0,60 / 0,80 / 1,00, à valider). On en retranche la capitalisation inverse des impôts nationaux supprimés : en S2 et S3, IR et prélèvements sociaux sur les plus-values immobilières et sur les loyers ; dans les variantes « avec IFI », l'IFI. Supprimer un impôt récurrent sur le rendement des biens relève leur prix de (impôt supprimé / r) × part capitalisée. Seule la part du sol de cette hausse entre dans l'assiette de la nouvelle taxe.
+**1. Capitalisation nette.** La capitalisation de la nouvelle taxe nationale est inchangée (part 0,60 / 0,80 / 1,00, centre retenu le 24 nov. 2026). On en retranche la capitalisation inverse des impôts nationaux supprimés : en S2 et S3, IR et prélèvements sociaux sur les plus-values immobilières et sur les loyers ; dans les variantes « avec IFI », l'IFI. Supprimer un impôt récurrent sur le rendement des biens relève leur prix de (impôt supprimé / r) × part capitalisée. Seule la part du sol de cette hausse entre dans l'assiette de la nouvelle taxe.
 
 - Perte nette = part × [taxe nationale additionnelle / r − part du sol × impôts supprimés / r] / 6 122 Md€ × produit total de la nouvelle taxe, ramenée à 0 si elle est négative (aucun gain inscrit). Répartition par niveau inchangée (au prorata du produit).
 - Impôts supprimés : montants de `yields.json` par impôt (même commit 322190e ; lus dans `src/engine/data/lvt-yields.json` par `src/engine/lvt-snapshot.js`, `LVT_IMPOTS_NATIONAUX_SUPPRIMES`) : plus-values 3,99 Md€ (IR 1,37 + PS 2,61, moyenne 2020–2024 en euros 2025, Cour des comptes) ; loyers 8,30 Md€ (IR 4,53 + PS 2,59 + CSG 1,18, données 2022 en euros 2025, CPO) ; IFI 2,33 Md€ (DGFiP, relu, §2.2). Statut : « LVTShift », sauf l'IFI. Ce sont les montants dont la somme forme la part nationale additionnelle de chaque scénario (à 0,02 Md€ près, arrondis de `yields.json`) ; les millésimes relus en §2.2 sont plus bas (plus-values 2,8 Md€ en 2024 ; loyers 7,7 Md€ en euros de 2022). Choix de l'implémentation : prendre les mêmes montants que ceux qui dimensionnent la nouvelle taxe. Conséquence : à rendement égal, impôts supprimés ≈ taxe additionnelle, donc perte nette ≈ perte brute × (1 − part du sol). Avec les millésimes relus, la perte nette centrale serait plus forte (S3 avec IFI : environ −0,09 % du PIB au lieu de −0,08 %).

@@ -785,7 +785,7 @@ describe('vérification primaire Day 0 : ventilation COFOG Eurostat 2024 et para
   it('plus aucun paramètre « de mémoire », seul cmp.aft.taux_emission.2026 « à collecter », et 3 centres calibrés (24 nov. 2026)', () => {
     expect(PARAMS.filter((q) => q.status === 'de mémoire')).toEqual([])
     expect(PARAMS.filter((q) => q.status === 'à collecter').map((q) => q.id)).toEqual(['cmp.aft.taux_emission.2026'])
-    expect(PARAMS.filter((q) => q.status === 'à valider').map((q) => q.id).sort()).toEqual(['dem.m.prestations', 'lvt.capi.part', 'ref.derive.b_autres'])
+    expect(PARAMS.filter((q) => q.status === 'à valider').map((q) => q.id).sort()).toEqual(['dem.m.prestations', 'ref.derive.b_autres'])
     expect(PARAM_BY_ID['dem.m.ir_csg'].source).toMatch(/Mésange.*0,41/)
     expect(PARAM_BY_ID['comp.theta.cotis'].source).toMatch(/Bozio, Breda et Grenet/)
     expect([PARAM_BY_ID['comp.offset.prestations'].value, PARAM_BY_ID['comp.offset.prestations'].status]).toEqual([0.20, 'sourcé (secondaire)'])
