@@ -261,7 +261,7 @@ export default function IntroPage({ navigateTo }) {
           <button type="button" className="intro-inline-link" onClick={() => navigateTo?.('hypotheses')}>
             Hypothèses &amp; Paramètres
           </button>{' '}
-          pour le détail des comptes 2025, des équations E1–E12, de la table complète des paramètres et des trois questions
+          pour le détail des comptes 2025, des équations E1–E12, de la table complète des paramètres et des quatre questions
           ouvertes aux relecteurs.
         </p>
       </section>

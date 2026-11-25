@@ -112,7 +112,7 @@ Source de vérité des chiffres : src/engine/params.js (198 paramètres).
 [ ] Comptes APU 2025 (3 blocs + total consolidé + 105,6 Md€ transferts) et 10 fonctions COFOG 2024
 [ ] Table des 198 paramètres : filtre « Tous » vs « À vérifier uniquement » fonctionnel,
     aucun paramètre orphelin ni valeur NaN / undefined
-[ ] 3 questions ouvertes aux relecteurs (§12) affichées avec chiffres recalculés depuis le moteur
+[ ] 4 questions ouvertes aux relecteurs (§12) affichées avec chiffres recalculés depuis le moteur
 
 
 10. RESPONSIVE & ACCESSIBILITÉ (320 px / 375 px / 1280 px+)

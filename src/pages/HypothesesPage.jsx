@@ -372,7 +372,7 @@ export default function HypothesesPage() {
       <section id="hyp-questions" className="hyp-section">
         <h2>5. Questions ouvertes aux relecteurs (<code>docs/model-note.md</code> §12)</h2>
         <p className="sb-help">
-          Trois choix de modélisation sont explicitement soumis à l'avis des économistes relecteurs avant la publication :
+          Quatre choix de modélisation sont explicitement soumis à l'avis des économistes relecteurs avant la publication :
         </p>
         <div className="hyp-questions">
           {questions.map((q) => (
