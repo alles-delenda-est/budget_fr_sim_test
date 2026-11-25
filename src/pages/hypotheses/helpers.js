@@ -5,7 +5,7 @@
 import { PARAMS, PARAM_BY_ID, resolveParams } from '../../engine/params.js'
 import { LEVERS, staticYield } from '../../engine/levers.js'
 import { SUPPLY_BY_LEVER, sigmaFiscal, sigmaFiscalCase } from '../../engine/supply.js'
-import { irTranches } from '../../engine/ir-tranches.js'
+import { irTranches, thetaReelIr } from '../../engine/ir-tranches.js'
 import { START_YEAR, RATE_MAX, HORIZONS, projectScenario } from '../../engine/project.js'
 import { fmt, isFlagged, paramRange, BLOCK_LABELS } from '../budget/helpers.js'
 
@@ -255,7 +255,7 @@ export function irBreakEvenEL() {
 }
 
 /**
- * Trois questions ouvertes aux relecteurs (docs/model-note.md §12). Toutes les valeurs viennent de PARAMS
+ * Quatre questions ouvertes aux relecteurs (docs/model-note.md §12 ; la quatrième est la question 6 de la note). Toutes les valeurs viennent de PARAMS
  * ou d'une projection du moteur (aucun chiffre écrit en dur).
  */
 export function buildReviewerQuestions() {
@@ -275,6 +275,10 @@ export function buildReviewerQuestions() {
   const outcome = (gap) => (gap >= 0 ? 'la hausse reste rentable' : 'elle coûte')
   const pctTxt = (v) => `${fmt(v * 100, 1)} %`
   const debts = [beta.low, beta.value, beta.high, 0].map((b) => ({ b, d: debt30AtBeta(b) }))
+  const thetaIr = PARAM_BY_ID['comp.theta.ir']
+  const thetaReel = thetaReelIr(P, sigmaIr)
+  const etiUniforme = thetaReel > 0 ? thetaIr.value / (thetaReel / eL.value) : Number.NaN
+  const md = (v) => `${fmt(v, 2).replace('-', '−')} Md€`
 
   return [
     {
@@ -294,6 +298,12 @@ export function buildReviewerQuestions() {
       titre: `La pente de taux β = ${fmt(beta.value, 0)} pb/pt (fourchette ${fmt(beta.low, 0)}–${fmt(beta.high, 0)}) est-elle bien calibrée pour la France en zone euro ?`,
       resume: `Les estimations empiriques sont dispersées (Kirpson et Staehr 2025 : ≈ 3 pb en zone euro ; Laubach 2009 : 3–4 pb aux États-Unis ; Banque de France WP 494 : 0,7 pb à long terme, 4,5 pb à court terme, non significatif en zone euro après 2008). Or β pilote la trajectoire de dette à 30 ans (${debts.map(({ b, d }) => `${fmt(d, 0)} % à β = ${fmt(b, 0)}`).join(', ')}). Faut-il conserver ${fmt(beta.value, 0)} pb au centre et prolonger linéairement au-delà de 200 % du PIB, ou plafonner ?`,
       statut: `Paramètre dette.beta : ${beta.status}.`,
+    },
+    {
+      numero: 4,
+      titre: 'Élasticité réelle de l\'offre de travail (e_L) et élasticité totale de l\'IR (θ) : laquelle retenir ?',
+      resume: `L'élasticité uniforme équivalente à θ_IR = ${fmt(thetaIr.value, 2)} est ≈ ${fmt(etiUniforme, 2)}. Or e_L = ${fmt(eL.value, 2)}, retenue pour l'effet d'offre, la dépasse : la part réelle de la réponse (θ_réel ≈ ${fmt(thetaReel, 2)}) excède la réponse totale dont elle devrait n'être qu'une partie, et la part non réelle de θ tombe à 0. Les deux chiffres viennent de littératures différentes (offre de travail agrégée pour e_L, élasticité du revenu imposable pour θ). En outre, l'effet d'offre passe au solde par ε_offre = ${pctTxt(epsOffre.value)} sur toutes les recettes publiques : une hausse de 1 % de l'IR ${gapCentral < 0 ? `coûte ${md(-gapCentral)}` : `rapporte ${md(gapCentral)}`} au solde primaire en ${endYear}. C'est ce choix qui fixe le seuil de rentabilité de la question 1. Faut-il rapprocher e_L de l'élasticité totale de l'IR, relever θ, ou garder les deux sources en le signalant ?`,
+      statut: 'Paramètres offre.e_L (non validé) et comp.theta.ir — question 6 de la note de modèle, avis demandé.',
     },
   ]
 }
