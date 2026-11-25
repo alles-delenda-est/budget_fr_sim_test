@@ -1,6 +1,6 @@
 # Intégrer LVTShift au simulateur budgétaire : module « taxe sur la valeur du sol »
 
-**En bref.** Day 0 sous condition (portillon au 30 novembre), en forme minimale : module non validé, `a` = 0 dans chaque bloc, `yS` central = 0, flux bruts affichés ; sinon janvier 2027. Le bloc local n'a pas besoin de leviers mais doit recevoir des sorties de module (D9 à reformuler). Aucune estimation d'effet sur le PIB français n'a été trouvée ; seul repère chiffré, l'OCDE, donne 0 à +1,1 % de PIB en borne haute (S3 avec IFI) et ne résiste pas aux tests de robustesse. Effort : ≈ 9 jours-personne, dont ≈ 4,5 propres au module.
+**En bref.** Retenu pour le Day 0 (décision de Patrick du 25 nov. 2026 ; le portillon prévu au 30 novembre est levé : le moteur calcule par bloc et accepte `yS`), en forme minimale : module non validé, `a` = 0 dans chaque bloc, `yS` central = 0, flux bruts affichés ; sinon janvier 2027. Le bloc local n'a pas besoin de leviers mais doit recevoir des sorties de module (D9 à reformuler). Aucune estimation d'effet sur le PIB français n'a été trouvée ; seul repère chiffré, l'OCDE, donne 0 à +1,1 % de PIB en borne haute (S3 avec IFI) et ne résiste pas aux tests de robustesse. Effort : ≈ 9 jours-personne, dont ≈ 4,5 propres au module.
 
 
 Note d'évaluation, 17 novembre 2026. Rédigée pour Patrick. Aucun code n'est écrit ; la note recommande une voie et chiffre l'effort.
@@ -205,7 +205,7 @@ Direction et mécanisme des cinq effets, avec la phrase « aucune estimation fra
 
 ### 5.1 Day 0 ou plus tard
 
-**Day 0 (10 décembre), sous condition, dans la forme minimale ci-dessous ; sinon version suivante (janvier 2027).**
+**Day 0 (10 décembre), dans la forme minimale ci-dessous : retenu par Patrick le 25 nov. 2026.**
 
 Raisons de viser le Day 0 :
 - le module est un bon test réel du contrat (`a` par bloc, `yS`, bloc local récepteur) : le moteur n'a pas encore de code, le contrat peut encore être corrigé à bas coût ;
@@ -282,7 +282,7 @@ Effet à plein régime (2029 et après), en % du PIB :
 
 Taux d'actualisation 3,5 % dans les deux cas. Le consolidé est la seule capitalisation.
 
-Reste à faire avant le portillon du 30 novembre : fixer la part capitalisée centrale ; vérifier la clé 7,5/17,2 et le taux des prélèvements sociaux en vigueur en 2026 ; trancher l'écart entre `offre.sigma.lvt` et D2.
+Fait depuis : part capitalisée centrale fixée (0,80, capitalisation nette, 24 nov. 2026) ; écart `offre.sigma.lvt`/D2 tranché (yS central 0) ; module retenu pour le Day 0 (25 nov. 2026). Reste : vérifier la clé 7,5/17,2 et le taux des prélèvements sociaux en vigueur en 2026.
 
 ## 7. Addendum du 24 nov. 2026 : capitalisation nette et calendrier (décision de Patrick)
 

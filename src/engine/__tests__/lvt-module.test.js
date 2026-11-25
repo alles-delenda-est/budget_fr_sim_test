@@ -97,9 +97,9 @@ describe('paramètres du module : gardes de non-régression', () => {
     const q = (id) => PARAM_BY_ID[id]
     expect(q('lvt.base_fonciere.2025').value).toBe(6122)
     expect([q('lvt.capi.part').value, q('lvt.capi.part').low, q('lvt.capi.part').high]).toEqual([0.80, 0.60, 1.00])
-    expect(q('lvt.capi.part').status).toBe('à valider')
-    expect(q('lvt.capi.part').source).toMatch(/NON fixée par le propriétaire/)
-    expect(q('lvt.capi.part').explanation).toMatch(/à valider/)
+    expect(q('lvt.capi.part').status).toBe('sourcé (fourchette), centre choisi')
+    expect(q('lvt.capi.part').source).toMatch(/retenu par Patrick le 24 nov. 2026/)
+    expect(q('lvt.capi.part').explanation).toMatch(/retenu par Patrick/)
     expect([q('lvt.capi.taux_actualisation').value, q('lvt.capi.taux_actualisation').low, q('lvt.capi.taux_actualisation').high]).toEqual([3.5, 3, 4])
     expect(q('lvt.capi.taux_actualisation').source).toMatch(/calcul, non relu/)
     expect(q('lvt.ps.cle_etat').value).toBeCloseTo(7.5 / 17.2, 6)

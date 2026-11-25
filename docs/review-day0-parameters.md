@@ -184,8 +184,7 @@ Pour éviter tout double compte avec la dérive démographique `dA` (retraites C
 1. **`0` paramètre `de mémoire` restant** dans `src/engine/params.js` (sur 17 initiaux).
 2. **`1` seul paramètre `à collecter` restant :** `cmp.aft.taux_emission.2026` (`3,5 %`, affichage seul, en attente du rapport annuel AFT 2026).
 3. **3 calibrations approuvées le 24 nov. 2026 :** `comp.offset.prestations = 0,20`, `comp.theta.csg = 0,03`, `rend.cotis = 7,4 Md€/pt` (avec rééquilibrage du préréglage `tva_sociale`).
-4. **3 décisions propriétaire (`à valider`) restantes :**
-   - `lvt.capi.part = 0,80` (`[0,60 ; 1,00]`, D12) et go/no-go du module LVT (30 nov.).
+4. **Décisions propriétaire (`à valider`) restantes :** (`lvt.capi.part = 0,80` retenu le 24 nov. 2026 ; module LVT retenu pour le Day 0 le 25 nov. 2026)
    - `ref.derive.b_autres = 0` (`[0 ; 0,11]`, D7 — maintenir `0` ou retenir un centre positif ex. `+0,05` / `+0,10` d'après Eurostat 1995–2024).
    - `dem.m.prestations = 0,5` (`[0,2 ; 0,8]`) : aucune source directe pour le centre ; FR-BDF donne 0,09 an 1 et 0,43 an 4 (§5).
    - Pour information : `comp.theta.ir = 0,15` est le bas de la fourchette du levier proportionnel (0,37, 0,15–0,66) : il sous-estime la réaction comportementale et surestime donc le rendement d'une hausse de l'IR (§9).
