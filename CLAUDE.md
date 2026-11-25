@@ -6,7 +6,7 @@ Instructions de travail pour les agents et contributeurs sur **Simulateur Budget
 
 - **Spécification du modèle** : `docs/model-note.md` (note de modèle v0.3, équations E1–E12, décisions D1–D13, limites §10–§12).
 - **Données et collecte** : `docs/baseline-data.md`, `docs/sigma-fiscal.md`, `docs/review-supply-effects-gemini.md`, `docs/review-age-legal.md`, `docs/review-day0-parameters.md`, `docs/review-comptes-notionnels.md`, `docs/review-lvt-module.md`, `docs/citations.md`.
-- **Catalogue unique des paramètres** : `src/engine/params.js` (175 paramètres avec valeur centrale, fourchette `low`/`high`, unité, source, statut et explication). Ne jamais dupliquer de constante économique dans les pages UI.
+- **Catalogue unique des paramètres** : `src/engine/params.js` (198 paramètres avec valeur centrale, fourchette `low`/`high`, unité, source, statut et explication ; par statut : 113 `sourcé`, 10 `sourcé (calcul)`, 8 `sourcé (secondaire)`, 27 `sourcé (fourchette), centre choisi`, 8 `calculé (estimation)`, 1 `à collecter`, 3 `à valider`, 28 `non validé`, 0 `de mémoire`). Ne jamais dupliquer de constante économique dans les pages UI.
 - **Seuils d'avertissement** : `src/config.js` (`WARNING_THRESHOLDS`, source unique).
 
 ## 2. Architecture du moteur v2 (`src/engine/`)
@@ -17,6 +17,7 @@ Le moteur projette les **administrations publiques consolidées (APU)** en compt
 |---|---|
 | `src/engine/params.js` | Catalogue `PARAMS` / `PARAM_BY_ID`, statuts `STATUSES`, `resolveParams(overrides)`, `interpolateSeries(series, year)`. |
 | `src/engine/levers.js` | 14 leviers actifs (`LEVERS`), 3 leviers structurels désactivés (`STRUCTURAL_LEVERS`, `σ = 0`), `staticYield`, `thetaAtRate`, `leversToInstruments`. |
+| `src/engine/ir-tranches.js` | Barème de l'IR par tranche (`IR_TRANCHES`, `irTranches`, `coinMarginal`, `irDeltaLnNet`, `thetaIrTranches`) : revenus par tranche estimés (DGFiP, revenus 2024), coin marginal complet, données communes à σ de l'IR et à la dérivation de θ (`docs/review-day0-parameters.md` §9). |
 | `src/engine/supply.js` | Effets d'offre E5 (`SUPPLY_EFFECTS`, `coreSupplyLines`, `supplyPhase`), `σ` calculé pour les 5 familles fiscales (cotisations, CSG, TVA, IR, IS) et `θ_non_réel` (`partReelle`, `thetaNonReel`) pour éviter tout double compte avec E5 + E7. |
 | `src/engine/modules.js` | Contrat de module autonome (`validateModuleDefinition`, `moduleLeverValues`, `runModule`, `TEST_MODULE`). Un module n'écrit **jamais** dans la dette ni dans les intérêts et reçoit un `contexte` profondément gelé (`deepFreeze`). |
 | `src/engine/ndc-module.js` | `NDC_MODULE` (`comptes_notionnels_ndc`, `statut: 'non validé'`, décision D8) : forme réduite stabilisant sur 15 cohortes (dès janvier 2028, `NDC_START_T = 2`, `NDC_RAMP_YEARS = 15`) la dérive post-2025 de `ref.derive.a_retraites` (COR juin 2026), avec `yS = 0` et respect de `comp.offset.prestations`. |
@@ -46,7 +47,7 @@ Le moteur projette les **administrations publiques consolidées (APU)** en compt
 1. **`IntroPage.jsx`** : présentation pédagogique du moteur v2, chiffres 2025 lus depuis `PARAMS`, trajectoire de référence à 10 ans et sensibilité à `β` à 30 ans, limites assumées.
 2. **`SimulateurBudgetPage.jsx`** (`src/pages/budget/`) : 14 leviers actifs en 3 groupes (recettes, dépenses, prestations), 3 leviers structurels désactivés, **6 scénarios types neutres** (`presets.js`, dont le comparateur macroéconomique RESF 2027), 3 horizons, 3 cas d'offre, décomposition exacte par cause (`decomposeAtYear`, somme = écart au centième de milliard), 3 blocs APU, avertissements palier 1 (`260 %`, record Japon 2020) / palier 2 (`500 %` dette ou `50 %` intérêts/recettes), **URL partageables** (`share.js`), **export CSV** (`exportCsv.js`).
 3. **`SimulateurRetraitesPage.jsx`** (`src/pages/retraites/`) : variantes de productivité COR juin 2026 (`1,0 %` / `0,7 %` / `0,4 %`), variantes santé/dépendance Commission européenne 2024, leviers validés (`age_legal` 62–67 ans dès janv. 2028 avec effet d'offre emploi seniors, `indexation_pensions`), **préréglage Comptes notionnels (D8)** (`age_legal = 65 ans` + `NDC_MODULE`, `non validé`, confiance basse), mesure désactivée (`plafonnement_pensions`), 4 graphiques, décomposition exacte et 3 blocs.
-4. **`HypothesesPage.jsx`** (`src/pages/hypotheses/`) : lit 100 % de ses tableaux dans `PARAMS`, `LEVERS`, `STRUCTURAL_LEVERS`, `SUPPLY_EFFECTS` et `WARNING_THRESHOLDS` (comptes APU 2025, COFOG 2024, équations E1–E12, catalogue leviers/σ, table filtrable des 175 paramètres, 3 questions ouvertes aux relecteurs).
+4. **`HypothesesPage.jsx`** (`src/pages/hypotheses/`) : lit 100 % de ses tableaux dans `PARAMS`, `LEVERS`, `STRUCTURAL_LEVERS`, `SUPPLY_EFFECTS` et `WARNING_THRESHOLDS` (comptes APU 2025, COFOG 2024, équations E1–E12, catalogue leviers/σ, table filtrable des 198 paramètres, 3 questions ouvertes aux relecteurs).
 
 ## 4. Suite de tests (`npm test`)
 
@@ -73,7 +74,7 @@ Le moteur projette les **administrations publiques consolidées (APU)** en compt
 
 ## 6. Limites connues (alignées sur `docs/model-note.md` §10–§12)
 
-- **Paramètres à vérifier / collecter** : **0 paramètre `de mémoire` restant** ; 1 seul `à collecter` (`cmp.aft.taux_emission.2026`, rapport annuel AFT 2026 attendu en 2027) ; 3 `calculé (estimation)` (`comp.tau0.ir`, `offre.ir.conv_brut`, `rend.is`) ; 2 `à valider` soumis à décision propriétaire (`lvt.capi.part`, `ref.derive.b_autres`) ; `non validé` pour `macro.g/pi` 2026–2027, `dem.lambda`, délais `offre.lag/t0`, effet d'offre de l'IR, `NDC_MODULE`, `LVT_MODULE`. Voir `docs/review-day0-parameters.md`.
+- **Paramètres à vérifier / collecter** : **0 paramètre `de mémoire` restant** ; 1 seul `à collecter` (`cmp.aft.taux_emission.2026`, rapport annuel AFT 2026 attendu en 2027) ; 8 `calculé (estimation)` (`comp.tau0.ir`, `rend.is` et les 6 revenus par tranche de l'IR `offre.ir.tranche.*.parts`, `offre.ir.tranche.0.revenu`, `offre.ir.tranche.45.hors_bareme`) ; 3 `à valider` soumis à décision propriétaire (`lvt.capi.part`, `ref.derive.b_autres`, `dem.m.prestations`) ; `non validé` pour `macro.g/pi` 2026–2027, `dem.lambda`, délais `offre.lag/t0`, effet d'offre de l'IR, `NDC_MODULE`, `LVT_MODULE`. Voir `docs/review-day0-parameters.md`.
 - **Hors périmètre Day 0** : modèle déterministe (pas de distribution probabiliste), inflation exogène (pas de boucle prix-salaires), régime unique de multiplicateurs d'expansion, prolongement linéaire de `β` jusqu'au plafond de 25 % (encadré par les paliers 1 et 2).
 - **Questions ouvertes aux relecteurs (§12)** : (1) rentabilité long terme d'une hausse uniforme d'IR (`e_L = 0,40`, `τ_m = 21 %`), (2) calibrage de `ε_offre = 0,436` (D13), (3) pente dette–taux `β = 3 pb/pt` en zone euro et comportement au-delà de 200 % de dette/PIB.
 

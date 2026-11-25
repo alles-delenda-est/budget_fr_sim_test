@@ -665,7 +665,7 @@ describe('σ des leviers fiscaux : calculé depuis les paramètres (docs/sigma-f
     expect(yS(is)[8]).toBeCloseTo(sigmaFiscal('is', P).value / 100, 10) // τ = 7 = L
   })
   it('θ non réel : ≥ 0, valeurs centrales attendues, jamais supérieur à θ', () => {
-    const attendu = { cotis_patronales: 0.05, csg: 0, tva_normal: 0, ir: 0.05, is: 0.25 }
+    const attendu = { cotis_patronales: 0.05, csg: 0, tva_normal: 0, ir: 0.26, is: 0.25 }
     for (const [id, th] of Object.entries(attendu)) {
       const lever = LEVER_BY_ID[id]
       const theta = leverTheta(lever, 1, P)
@@ -797,9 +797,9 @@ describe('vérification primaire Day 0 : ventilation COFOG Eurostat 2024 et para
 
 describe('suivi de l\'audit Day 0 (PR #30/#32) : corrections de sources et fourchettes, centres inchangés', () => {
   const range = (id) => [PARAM_BY_ID[id].low, PARAM_BY_ID[id].value, PARAM_BY_ID[id].high, PARAM_BY_ID[id].status]
-  it('fourchettes approuvées : θ CSG 0,01–0,05, θ IR 0,15–0,66 (levier proportionnel, dérivation par tranche), rend.cotis 7,0–10 ; centres inchangés', () => {
+  it('fourchettes approuvées : θ CSG 0,01–0,05, θ IR 0,15–0,66 (levier proportionnel, dérivation par tranche ; centre 0,37 depuis le 25 nov. 2026), rend.cotis 7,0–10', () => {
     expect(range('comp.theta.csg')).toEqual([0.01, 0.03, 0.05, 'sourcé (fourchette), centre choisi'])
-    expect(range('comp.theta.ir')).toEqual([0.15, 0.15, 0.66, 'sourcé (fourchette), centre choisi'])
+    expect(range('comp.theta.ir')).toEqual([0.15, 0.37, 0.66, 'sourcé (fourchette), centre choisi'])
     expect(range('rend.cotis')).toEqual([7.0, 7.4, 10, 'sourcé (fourchette), centre choisi'])
     expect(range('rend.is')).toEqual([2.0, 2.3, 3.0, 'calculé (estimation)'])
     expect(range('comp.theta.cotis')).toEqual([0.05, 0.15, 0.30, 'sourcé (fourchette), centre choisi'])
@@ -1050,26 +1050,31 @@ describe('barème de l\'IR par tranche : données communes au θ (documenté) et
     expect([11, 30, 41, 45].map((t) => coinMarginal(P, t))).toEqual([11, 30, 41, 45].map((t) => expect.closeTo(0.097 + (t / 100) * 0.932 + (t === 45 ? 0.03 : 0), 10)))
     expect(coinMarginal(P, 45, 'high')).toBeCloseTo(0.5564, 4)
   })
-  it('θ par tranche reproduit la dérivation documentée : +1 pt 0,21 (0,07–0,39), proportionnel 0,37 (0,15–0,66) ; comp.theta.ir reste 0,15', () => {
+  it('θ par tranche reproduit la dérivation documentée : +1 pt 0,21 (0,07–0,39), proportionnel 0,37 (0,15–0,66) ; comp.theta.ir = 0,37 (décision du 25 nov. 2026)', () => {
     expect(thetaIrTranches(P, 'point')).toBeCloseTo(0.213, 3)
     expect(thetaIrTranches(P, 'point', 'low')).toBeCloseTo(0.074, 3)
     expect(thetaIrTranches(P, 'point', 'high')).toBeCloseTo(0.391, 3)
     expect(thetaIrTranches(P, 'proportionnel')).toBeCloseTo(0.372, 3)
     expect(thetaIrTranches(P, 'proportionnel', 'low')).toBeCloseTo(0.150, 3)
     expect(thetaIrTranches(P, 'proportionnel', 'high')).toBeCloseTo(0.663, 3)
-    expect(P['comp.theta.ir']).toBe(0.15)
+    expect(P['comp.theta.ir']).toBe(0.37)
+    expect(P['comp.theta.ir']).toBeCloseTo(thetaIrTranches(P, 'proportionnel'), 2)
     expect([PARAM_BY_ID['comp.theta.ir'].low, PARAM_BY_ID['comp.theta.ir'].high]).toEqual([0.15, 0.66])
     expect(LEVER_BY_ID.ir.aide).toContain('θ = 0,37 (0,15–0,66)')
+    expect(LEVER_BY_ID.ir.aide).toContain('Centre retenu 0,37')
+    expect(LEVER_BY_ID.ir.aide).not.toMatch(/favorable au rendement/)
+    expect(PARAM_BY_ID['comp.theta.ir'].source).not.toMatch(/Centre 0,15 choisi par Patrick/)
     expect(LEVER_BY_ID.cotis_patronales.aide).toContain(`fourchette ${String(PARAM_BY_ID['rend.cotis'].low)}–${String(PARAM_BY_ID['rend.cotis'].high)} Md€`)
     expect(LEVER_BY_ID.is.aide).not.toMatch(/2,6–2,8/)
   })
-  it('σ de l\'IR et θ_non_réel : part réelle 0,113 au cas central, θ_non_réel 0,039 (0 au cas bas, 0,095 au cas haut)', () => {
+  it('σ de l\'IR et θ_non_réel : part réelle 0,113 au cas central, θ_non_réel 0,262 (0,219 au cas bas, 0,318 au cas haut)', () => {
     const l = LEVER_BY_ID.ir
     const th = leverTheta(l, 1, P)
     const nonReel = (c) => Math.max(0, th - partReelle('ir', supplyForCase('ir', 1, P, undefined, c).sigma, l.rendement(P, 1), P))
-    expect(nonReel('central')).toBeCloseTo(0.0388, 4)
-    expect(nonReel('bas')).toBe(0)
-    expect(nonReel('haut')).toBeCloseTo(0.0954, 4)
+    expect(th).toBeCloseTo(0.3747, 4)
+    expect(nonReel('central')).toBeCloseTo(0.2616, 4)
+    expect(nonReel('bas')).toBeCloseTo(0.2192, 4)
+    expect(nonReel('haut')).toBeCloseTo(0.3181, 4)
   })
   it('jamais de NaN : données incohérentes => irTranches null, σ et θ nuls', () => {
     const bad = resolveParams({ 'offre.ir.tranche.30.impot': -500 }) // revenu estimé négatif
