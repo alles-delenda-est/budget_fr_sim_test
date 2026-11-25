@@ -53,6 +53,8 @@ Signes pour une **baisse**. « Par point de PIB » = par 1 % du PIB de coût sta
 | IS, −1 pt | 0,43 % | 0,02 / **0,04** / 0,09 | 0,52 | 0,15 par point (n° 4) |
 | IR, −1 % du produit | dépend du taux marginal moyen pondéré | **en attente** | — | — |
 
+*Note de mise à jour (25 nov. 2026) : le tableau ci-dessus conserve les chiffres historiques du 18 novembre (`rend.cotis = 8,5 Md€/pt`). Depuis le recalibrage de `rend.cotis` à `7,4 Md€/pt` (PR #32, 24 nov. 2026), l'effet « par point de PIB » des cotisations patronales vaut **1,19** (contre 1,05), à `σ = 0,29 %` du PIB par point de taux inchangé ; pour l'IR, voir la mise à jour tranche par tranche en section 7 (`σ = −0,122`).*
+
 **Plafond.** Le plafond Gemini des cotisations vient de l'évaluation du CICE : peu d'emplois en deux ou trois ans, une moitié de la baisse passée en salaires. Cela mesure la demande de travail à court terme, pas l'offre à long terme : des salaires nets plus hauts sont justement le canal d'offre. Proposition : pas de plafond Gemini pour les impôts larges sur le travail ; plafond maintenu pour l'IS (méta-analyse de Gechert & Heimberger, 2022). À décider.
 
 **IR.** Avec e_L = 0,40 et un taux marginal moyen de 25 % (de mémoire), une hausse uniforme de l'IR perdrait de l'argent à long terme : le levier multiplie tout le barème, les taux marginaux montent beaucoup plus que le rendement. Résultat trop fort pour un taux non sourcé : IR à 0 en attendant le taux marginal moyen pondéré par les revenus (Insee, IPP ou DG Trésor).

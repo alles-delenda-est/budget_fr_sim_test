@@ -16,13 +16,13 @@ Version en ligne : **https://budget-fr-sim-test.vercel.app**
   - Avertissements « hors expérience historique » : **palier 1** (`260 %` du PIB, record Japon 2020) et **palier 2** (`500 %` du PIB ou intérêts `> 50 %` des recettes publiques).
 - **Simulateur budgétaire** : 6 scénarios types **neutres** (dont le comparateur macroéconomique RESF 2027), module minimal **Taxe sur la valeur du sol (LVT)** (`non validé`, inactif par défaut, `yields.json` LVTShift importé à un commit épinglé), décomposition exacte de l'écart de solde par cause, ventilation sur les 3 blocs APU, **URL partageables** et **export CSV** (séparateur `;`, protection anti-injection).
 - **Simulateur retraites** : variantes de productivité du **COR (juin 2026)** et de dérive santé/dépendance (**Commission européenne 2024**), leviers retenus pour la version 0.9 (`age_legal` 62–67 ans recalibré sur sources primaires avec effet d'offre emploi seniors, emplois implicites et 20 % de reports sociaux, `indexation_pensions`), préréglage **Comptes notionnels (NDC, dès 2028)** (`NDC_MODULE`, forme réduite `non validé`, confiance basse, décision D8) et mesure désactivée (`plafonnement_pensions`).
-- **Onglet Hypothèses & Paramètres** : source unique de vérité lisant 100 % des 198 paramètres, statuts (`sourcé`, `de mémoire`, `à collecter`, `non validé`, `à valider`, etc.), fourchettes et questions ouvertes aux relecteurs directement dans le catalogue du moteur.
+- **Onglet Hypothèses & Paramètres** : source unique de vérité lisant 100 % des 198 paramètres, statuts (`sourcé`, `à collecter`, `non validé`, `calculé (estimation)`, `à valider`, etc. ; `0` paramètre `de mémoire`), fourchettes et questions ouvertes aux relecteurs directement dans le catalogue du moteur.
 
 ## Pile technique
 
 - React 19 + Vite 7 + Recharts 3
 - CSS pur (mobile d'abord, sans framework)
-- Vitest (15 fichiers, 357 tests) + ESLint 9
+- Vitest (15 fichiers, 366 tests) + ESLint 9
 
 ## Lancer en local
 
