@@ -58,6 +58,7 @@ describe('Hypothèses : comptes 2025, COFOG et équations', () => {
     qs.forEach((q) => expect(`${q.titre} ${q.resume}`).not.toMatch(/NaN|undefined/))
     expect(qs[3].resume).toContain('≈ 0,23') // ETI uniforme équivalente à θ_IR (0,35 / 1,496)
     expect(qs[3].resume).toContain('θ_réel ≈ 0,60')
+    expect(qs[3].resume).toContain('à plein effet d\'offre')
     expect(eqs.find((e) => e.id === 'E9').formule).toContain(`${fmt(RATE_MAX * 100, 0)} %)`)
     expect(eqs.find((e) => e.id === 'E1').detail).toContain(macroGrowthSourceLabel())
   })
