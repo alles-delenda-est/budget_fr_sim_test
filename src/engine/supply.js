@@ -18,7 +18,7 @@
 // Pas de double compte avec θ : levers.js ne garde dans θ que la part non réelle (voir `partReelle` ci-dessous).
 
 import { PARAM_BY_ID } from './params.js'
-import { irDeltaLnNet, IR_TRANCHES } from './ir-tranches.js'
+import { irDeltaLnNet, thetaReelIr, IR_TRANCHES } from './ir-tranches.js'
 
 // Paramètres de l'effet d'offre de l'IR (barème par tranche, docs/review-day0-parameters.md §9).
 const IR_SIGMA_PARAMS = [
@@ -65,7 +65,7 @@ export const SUPPLY_EFFECTS = [
   { lever: 'ir', libelle: 'Impôt sur le revenu : effet d\'offre',
     nomCourt: 'Effet d\'offre de l\'IR', statut: 'non validé',
     sigmaParams: ['offre.e_L', ...IR_SIGMA_PARAMS], L: 'offre.lag.ir', t0: 'offre.t0.ir',
-    sigmaFn: 'ir', propre: (P) => P['base.ir.2025'] },
+    sigmaFn: 'ir', partReelle: (sigma, P) => thetaReelIr(P, sigma) },
   { lever: 'is', libelle: 'Impôt sur les sociétés : effet d\'offre (coût d\'usage du capital)',
     sigmaParams: ['offre.is.alpha', 'offre.is.eps_k', 'offre.is.z', 'offre.is.tau_effectif', 'offre.is.plafond'], L: 'offre.lag.is', t0: 'offre.t0.is',
     sigmaFn: 'is', propre: (P) => P['base.is.produit_etat_2026'] },
@@ -167,11 +167,15 @@ export function supplyForCase(leverId, x, P, explicit, ysCase = 'central') {
  * Part « réelle » de θ : perte de recette propre due à la variation du PIB, en part du rendement statique (docs/sigma-fiscal.md, décision 3).
  *   θ_réel = max(0, −σ × recette propre / (100 × rendement par unité)), avec σ en % du PIB par unité, recette propre et rendement en Md€.
  * La recette propre varie comme le PIB (le moteur la perd déjà par le canal des stabilisateurs E7) : on la retire de θ pour ne pas la compter deux fois.
- * Vaut 0 si σ = 0, si σ n'est pas fini ou s'il n'y a pas de recette propre déclarée : θ reste alors inchangé.
+ * IR (décision de Patrick du 25 nov. 2026) : θ_réel est calculé avec les mêmes poids, coins et facteur de CSG déductible que θ
+ * (`thetaReelIr`, ir-tranches.js), l'élasticité réelle e_L remplaçant les élasticités par tranche.
+ * Vaut 0 si σ = 0, si σ n'est pas fini ou s'il n'y a ni recette propre ni règle propre déclarée : θ reste alors inchangé.
  */
 export function partReelle(leverId, sigma, rendementUnitaire, P) {
   const reg = SUPPLY_BY_LEVER[leverId]
-  if (!reg?.propre || !finite(sigma) || sigma === 0 || !(rendementUnitaire > 0)) return 0
+  if (!finite(sigma) || sigma === 0) return 0
+  if (reg?.partReelle) return reg.partReelle(sigma, P)
+  if (!reg?.propre || !(rendementUnitaire > 0)) return 0
   const r = (-sigma * reg.propre(P)) / (100 * rendementUnitaire)
   return finite(r) ? Math.max(0, r) : 0
 }
