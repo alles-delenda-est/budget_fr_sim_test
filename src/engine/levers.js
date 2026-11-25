@@ -17,7 +17,7 @@ const IS = PARAM_BY_ID['rend.is']
 const THETA_IR = PARAM_BY_ID['comp.theta.ir']
 const AIDE_IS = `Rendement par point estimé à ${fr(IS.value)} Md€ (IS net 58,2 Md€ / 25 % ; fourchette ${fr(IS.low)}–${fr(IS.high)} Md€ ; borne statique brute ≈ 2,6 Md€ : 1 % des 257 Md€ imposés à 25 %, DGFiP 2025 ; sans étalon officiel DG Trésor).`
 const AIDE_COTIS = `Un point de cotisations employeurs : environ ${fr(COTIS.value)} Md€ (fourchette ${fr(COTIS.low)}–${fr(COTIS.high)} Md€ ; valeur 2025 du point de cotisation, secteur privé).`
-const AIDE_IR = `Variation proportionnelle du barème : 1 % du produit vaut environ 1 Md€ (FIPECO). Réaction comportementale correspondant à ce levier : θ = ${fr(thetaIrTranches(P0, 'proportionnel'), 2)} (${fr(thetaIrTranches(P0, 'proportionnel', 'low'), 2)}–${fr(thetaIrTranches(P0, 'proportionnel', 'high'), 2)}) ; ${fr(thetaIrTranches(P0, 'point'), 2)} pour +1 point sur chaque taux. Centre retenu ${fr(THETA_IR.value, 2)} (choix de Patrick, bas de fourchette, favorable au rendement de l'IR).`
+const AIDE_IR = `Variation proportionnelle du barème : 1 % du produit vaut environ 1 Md€ (FIPECO). Réaction comportementale correspondant à ce levier : θ = ${fr(thetaIrTranches(P0, 'proportionnel'), 2)} (${fr(thetaIrTranches(P0, 'proportionnel', 'low'), 2)}–${fr(thetaIrTranches(P0, 'proportionnel', 'high'), 2)}) ; ${fr(thetaIrTranches(P0, 'point'), 2)} pour +1 point sur chaque taux. Centre retenu ${fr(THETA_IR.value, 2)} (valeur calculée pour ce levier proportionnel, décision de Patrick du 25 nov. 2026).`
 
 export const BLOCKS = ['centrales', 'securiteSociale', 'locales']
 export const ZERO_BLOCKS = () => ({ centrales: 0, securiteSociale: 0, locales: 0 })

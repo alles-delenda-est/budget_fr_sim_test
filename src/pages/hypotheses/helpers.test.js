@@ -79,6 +79,13 @@ describe('Hypothèses : questions aux relecteurs construites depuis PARAMS et le
     const be = irBreakEvenEL()
     expect(Math.abs(irPrimaryGap30(be))).toBeLessThan(1e-3)
     expect(q1.resume).toContain(`e_L ≈ ${fmt(be, 2)}`)
+    // θ_réel de l'IR cohérent avec θ (25 nov. 2026) : seuil de rentabilité dans (0,20 ; 0,30), sous e_L central (la hausse coûte au centre)
+    expect(be).toBeGreaterThan(0.20)
+    expect(be).toBeLessThan(0.30)
+    expect(be).toBeCloseTo(0.251, 2)
+    expect(irPrimaryGap30(q('offre.e_L').value)).toBeLessThan(0)
+    expect(irPrimaryGap30(q('offre.e_L').low)).toBeGreaterThan(0)
+    expect(q1.resume).toContain('dépasse')
   })
 
   it('question 2 : ε_offre (central et haut) et ε lus dans PARAMS', () => {

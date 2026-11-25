@@ -22,7 +22,7 @@ Version en ligne : **https://budget-fr-sim-test.vercel.app**
 
 - React 19 + Vite 7 + Recharts 3
 - CSS pur (mobile d'abord, sans framework)
-- Vitest (15 fichiers, 366 tests) + ESLint 9
+- Vitest (15 fichiers, 368 tests) + ESLint 9
 
 ## Lancer en local
 

@@ -54,6 +54,9 @@ export function irTranches(P, c = 'value') {
   return ok ? { tranches, revenu0, total, assiettePoint, impot } : null
 }
 
+/** Facteur (1 − CSG déductible) : le revenu imposable à l'IR est net de la CSG déductible (6,8 points sur 9,2 %). */
+export const facteurCsgDeductible = (P) => 1 - (P['comp.tau0.csg'] / 100) * P['offre.csg.part_deductible']
+
 /**
  * Δ ln(1 − T) moyen pour +1 % du produit de l'IR (levier proportionnel), pondéré par les revenus de toutes les tranches (0 % compris) :
  * Σ_i (Z_i / Z_total) × 0,01 × τ_i × (1 − CSG déductible) / (1 − w_i). Les poids somment à 1 : σ est une part du PIB.
@@ -61,22 +64,42 @@ export function irTranches(P, c = 'value') {
 export function irDeltaLnNet(P) {
   const d = irTranches(P)
   if (!d) return 0
-  const deductible = (P['comp.tau0.csg'] / 100) * P['offre.csg.part_deductible']
-  return d.tranches.reduce((a, r) => a + (r.revenu / d.total) * (0.01 * (r.taux / 100) * (1 - deductible)) / (1 - r.coin), 0)
+  const f = facteurCsgDeductible(P)
+  return d.tranches.reduce((a, r) => a + (r.revenu / d.total) * (0.01 * (r.taux / 100) * f) / (1 - r.coin), 0)
+}
+
+/** Σ_i poids_i × e_i × w_i / (1 − w_i) × (1 − CSG déductible), e_i donné par `eOf(taux)` ; 0 si les données sont incohérentes. */
+function sommeTheta(P, mode, c, eOf) {
+  const d = irTranches(P, c)
+  if (!d) return 0
+  const f = facteurCsgDeductible(P)
+  return d.tranches.reduce((a, r) => {
+    const poids = mode === 'proportionnel' ? ((r.taux / 100) * r.revenu) / d.impot : r.revenu / d.assiettePoint
+    return a + poids * eOf(r.taux) * (r.coin / (1 - r.coin)) * f
+  }, 0)
 }
 
 /**
- * θ de l'IR par tranche (dérivation documentée, docs/review-day0-parameters.md §9 ; comp.theta.ir reste fixé par le propriétaire) :
- *   +1 point sur tous les taux : θ = Σ_i (Z_i / B) × e_i × w_i / (1 − w_i)
- *   hausse proportionnelle (levier du moteur) : θ = Σ_i (τ_i × Z_i / T) × e_i × w_i / (1 − w_i)
+ * θ de l'IR par tranche (dérivation documentée, docs/review-day0-parameters.md §9 ; comp.theta.ir en reprend le centre et la fourchette,
+ * levier proportionnel). Une hausse du taux d'IR de Δτ relève le coin du salaire brut de Δτ × (1 − CSG déductible), même facteur que σ :
+ *   +1 point sur tous les taux : θ = Σ_i (Z_i / B) × e_i × w_i / (1 − w_i) × (1 − CSG déductible)
+ *   hausse proportionnelle (levier du moteur) : θ = Σ_i (τ_i × Z_i / T) × e_i × w_i / (1 − w_i) × (1 − CSG déductible)
  * @param {'point'|'proportionnel'} mode
  * @param {'low'|'value'|'high'} c  cas des élasticités et de la CEHR
  */
 export function thetaIrTranches(P, mode = 'point', c = 'value') {
-  const d = irTranches(P, c)
-  if (!d) return 0
-  return d.tranches.reduce((a, r) => {
-    const poids = mode === 'proportionnel' ? ((r.taux / 100) * r.revenu) / d.impot : r.revenu / d.assiettePoint
-    return a + poids * pc(P, `offre.ir.tranche.${r.taux}.eti`, c) * (r.coin / (1 - r.coin))
-  }, 0)
+  return sommeTheta(P, mode, c, (t) => pc(P, `offre.ir.tranche.${t}.eti`, c))
+}
+
+/**
+ * Part réelle de θ pour le levier IR proportionnel, cohérente avec θ (mêmes poids τ_i Z_i / T, mêmes coins w_i / (1 − w_i), même facteur
+ * de CSG déductible), l'élasticité de chaque tranche étant remplacée par l'élasticité réelle e_L déduite de σ :
+ *   e_L = −σ / (100 × irDeltaLnNet), θ_réel = e_L × Σ_i (τ_i Z_i / T) × w_i / (1 − w_i) × (1 − CSG déductible).
+ * σ en % du PIB par unité de levier (négatif pour une hausse). Vaut 0 si σ ≥ 0, si σ n'est pas fini ou si les données sont incohérentes.
+ */
+export function thetaReelIr(P, sigma) {
+  const dln = irDeltaLnNet(P)
+  if (!finite(sigma) || !(dln > 0)) return 0
+  const r = (-sigma / (100 * dln)) * sommeTheta(P, 'proportionnel', 'value', () => 1)
+  return finite(r) ? Math.max(0, r) : 0
 }
