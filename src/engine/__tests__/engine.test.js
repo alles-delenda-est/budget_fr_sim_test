@@ -1158,5 +1158,14 @@ describe('dérivations internes documentées (src/engine/internal-derivations.js
     expect(q.source).toMatch(/yields\.json n'exporte aucun paramètre de capitalisation/)
     expect(q.source).toMatch(/dynamic-effects\.md §5\.4/)
   })
+  it('jamais de NaN ni de sortie aberrante sur entrées invalides (g_pot non fini, λ hors [0 ; 1])', () => {
+    expect(deriveBAutres({ 'macro.g.potentielle': Number.NaN })).toBeNull()
+    expect(deriveBAutres({ 'macro.g.potentielle': Infinity })).toBeNull()
+    expect(deriveMPrestations({ ...P, 'dem.lambda': Number.NaN })).toBeNull()
+    expect(deriveMPrestations({ ...P, 'dem.lambda': -0.5 })).toBeNull()
+    expect(deriveMPrestations({ ...P, 'dem.lambda': 1.2 })).toBeNull()
+    expect(deriveMPrestations({ ...P, 'dem.m.remunerations': Number.NaN })).toBeNull()
+    expect(deriveMPrestations({ ...P, 'dem.lambda': 0 }).frBdfEq4).toBeCloseTo(1.15, 10)
+  })
 })
 

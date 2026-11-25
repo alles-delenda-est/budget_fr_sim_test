@@ -61,9 +61,11 @@ function median(values) {
  * Pour chaque fenêtre Eurostat : dérive implicite = s_2024 × (g_dép − g_pot), plancher D7 à 0.
  * Valeur interne retenue : médiane des 5 fenêtres structurelles (égale à la fenêtre 2007–2024,
  * seule fenêtre dont la croissance réelle observée du PIB, +0,96 %/an, coïncide avec g_pot = 1,0 %), arrondie à 2 décimales.
+ * Renvoie null si `macro.g.potentielle` n'est pas fini (même garde défensive que irTranches).
  */
 export function deriveBAutres(P) {
-  const gPotPct = P['macro.g.potentielle']
+  const gPotPct = P?.['macro.g.potentielle']
+  if (!Number.isFinite(gPotPct)) return null
   const share = EUROSTAT_NON_AGEING_SHARE_2024
   const windows = EUROSTAT_NON_AGEING_WINDOWS.map((w) => {
     const impliedRaw = share * (w.gDepPct - gPotPct)
@@ -78,6 +80,7 @@ export function deriveBAutres(P) {
     gPotPct,
     windows,
     rawMedian,
+    window2007,
     window2007Implied: window2007.impliedD7,
     ols2000ExCovid,
     rounded: roundTo(rawMedian, 2),
@@ -86,13 +89,19 @@ export function deriveBAutres(P) {
 
 /**
  * Dérivation interne de `dem.m.prestations` (équation E4).
- * Méthode principale : équivalence cumulée sur 4 ans dans E4 (décroissance géométrique λ) du profil direct
+ * Méthode principale : équivalence cumulée sur 4 ans dans E4 (décroissance géométrique λ ∈ [0 ; 1]) du profil direct
  * FR-BDF (Banque de France WP 750, Tableau 11) : m_eq = Σ y_FR-BDF(1..4) / Σ_{k=0..3} λ^k.
  * Recoupements : proxy 2 ans FR-BDF (borne basse), proxy revenu disponible Mésange (IR/CSG an 1 = 0,41),
  * et décomposition résiduelle du choc composite Mésange §4.1.2 (à m_direct = 1,0 et aux centres du moteur).
+ * Renvoie null si λ ∉ [0 ; 1] ou si un paramètre d'entrée n'est pas fini.
  */
 export function deriveMPrestations(P) {
-  const lambda = P['dem.lambda']
+  const lambda = P?.['dem.lambda']
+  const mRem = P?.['dem.m.remunerations']
+  const mAchats = P?.['dem.m.achats_invest']
+  if (!Number.isFinite(lambda) || lambda < 0 || lambda > 1 || !Number.isFinite(mRem) || !Number.isFinite(mAchats)) {
+    return null
+  }
   const factorAt = (n) => {
     let s = 0
     for (let k = 0; k < n; k++) s += lambda ** k
@@ -102,19 +111,20 @@ export function deriveMPrestations(P) {
   const cum2 = FR_BDF_PRESTATIONS_PROFILE[0] + FR_BDF_PRESTATIONS_PROFILE[1]
   const e4Factor4 = factorAt(4)
   const e4Factor2 = factorAt(2)
-  const frBdfEq4 = e4Factor4 > 0 ? cum4 / e4Factor4 : 0
-  const frBdfEq2 = e4Factor2 > 0 ? cum2 / e4Factor2 : 0
+  const frBdfEq4 = cum4 / e4Factor4
+  const frBdfEq2 = cum2 / e4Factor2
 
   const M = MESANGE_PRESTATIONS_BENCHMARKS
-  const residual = (mRem, mAchats) =>
-    (M.compositeY1 - M.investWeight * M.investY1 - M.remWeight * mRem - M.achatsWeight * mAchats) / M.prestWeight
+  const residual = (rem, achats) =>
+    (M.compositeY1 - M.investWeight * M.investY1 - M.remWeight * rem - M.achatsWeight * achats) / M.prestWeight
 
   const mesangeResidualUnit = residual(1.0, 1.0)
-  const mesangeResidualEngine = residual(P['dem.m.remunerations'], P['dem.m.achats_invest'])
+  const mesangeResidualEngine = residual(mRem, mAchats)
 
   return {
     lambda,
     profile: FR_BDF_PRESTATIONS_PROFILE,
+    mesange: M,
     cum4,
     cum2,
     e4Factor4,

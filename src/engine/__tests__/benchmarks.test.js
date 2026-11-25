@@ -358,7 +358,7 @@ describe('3. Commission européenne — prévisions du printemps 2026 : plausibi
 describe('4. Commission européenne — Debt Sustainability Monitor 2025 : plausibilité de la décomposition de l\'écart (i* inféré)', () => {
   // Spécification DSM 2025 (docs/baseline-data.md item 6b) :
   // - Horizon 10 ans : 2025 → 2036 (dette de base 144,0 % du PIB).
-  // - Solde primaire structurel constant à partir de 2026, HORS coût du vieillissement (a_sante = 0, retraites plates à 14,1 %).
+  // - Solde primaire structurel constant à partir de 2026, HORS coût du vieillissement et dérive interne (a_sante = 0, b_autres = 0, retraites plates à 14,1 %).
   // - Pas de prime endogène β (dette.beta = 0).
   // - Recalage de la dette 2025 : 116,3 % (prévision CE automne 2025) vs 115,7 % Insee (+0,6 pt, baseline-data.md ligne 116).
   // - Courbe annuelle des rendements de la fiche pays DSM : non trouvée → sensibilité sur i* ∈ [3,3 % ; 3,8 %] (millésime automne 2025).

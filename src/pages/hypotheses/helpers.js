@@ -5,7 +5,7 @@
 import { PARAMS, PARAM_BY_ID, resolveParams } from '../../engine/params.js'
 import { LEVERS, staticYield } from '../../engine/levers.js'
 import { SUPPLY_BY_LEVER, sigmaFiscal, sigmaFiscalCase } from '../../engine/supply.js'
-import { irTranches, thetaIrTranches, thetaReelIr } from '../../engine/ir-tranches.js'
+import { IR_TRANCHES, irTranches, thetaIrTranches, thetaReelIr, facteurCsgDeductible } from '../../engine/ir-tranches.js'
 import { deriveBAutres, deriveMPrestations } from '../../engine/internal-derivations.js'
 import { lvtComponents } from '../../engine/lvt-module.js'
 import { LVT_PROVENANCE } from '../../engine/lvt-snapshot.js'
@@ -335,7 +335,6 @@ export function buildInternalDerivations(P) {
     return {
       code,
       id: c.scenario.id,
-      libelle: c.scenario.libelle,
       totalMd: c.totalNouvelle,
       nationalAddMd: c.nationalAdditionnel,
       capiBrutePct: (c.capiBrute / c.pib) * 100,
@@ -348,12 +347,13 @@ export function buildInternalDerivations(P) {
   return {
     bAutres: {
       param: bParam,
-      ...bCalc,
+      ...(bCalc ?? { share2024Pct: Number.NaN, gPotPct: Number.NaN, windows: [], rawMedian: Number.NaN, window2007: null, window2007Implied: Number.NaN, ols2000ExCovid: Number.NaN, rounded: Number.NaN }),
+      endYear10: HORIZONS.dixAns.endYear,
       debt2036Sensitivity,
     },
     mPrestations: {
       param: mParam,
-      ...mCalc,
+      ...(mCalc ?? { lambda: Number.NaN, profile: [], mesange: null, cum4: Number.NaN, cum2: Number.NaN, e4Factor4: Number.NaN, e4Factor2: Number.NaN, frBdfEq4: Number.NaN, frBdfEq2: Number.NaN, mesangeIrCsgY1: Number.NaN, mesangeResidualUnit: Number.NaN, mesangeResidualEngine: Number.NaN, coenenSecondary: Number.NaN, rounded: Number.NaN }),
       mRem: P['dem.m.remunerations'],
       mAchats: P['dem.m.achats_invest'],
     },
@@ -369,6 +369,9 @@ export function buildInternalDerivations(P) {
       paramTheta: PARAM_BY_ID['comp.theta.ir'],
       tranches: tr?.tranches ?? [],
       totalRevenu: tr?.total ?? Number.NaN,
+      facteurCsg: facteurCsgDeductible(P),
+      csgCrdsPct: P['comp.tau0.csg'] + P['offre.ir.coin.crds'],
+      topTranchePct: IR_TRANCHES.at(-1),
       thetaProp: thetaIrTranches(P, 'proportionnel'),
       thetaPoint: thetaIrTranches(P, 'point'),
     },

@@ -53,7 +53,13 @@ export default function HypothesesPage() {
   const { P, apu, cofog, equations, levers, lvt, iStarPct, counts, questions, derivations } = model
 
   const jumpTo = (id) => {
-    if (id === 'hyp-methodo-avancee') setShowAdvanced(true)
+    if (id === 'hyp-methodo-avancee' && !showAdvanced) {
+      setShowAdvanced(true)
+      requestAnimationFrame(() => {
+        document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+      return
+    }
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
@@ -388,10 +394,11 @@ export default function HypothesesPage() {
             type="button"
             className={`sb-btn hyp-advanced-toggle ${showAdvanced ? 'hyp-btn-active' : ''}`}
             aria-expanded={showAdvanced}
-            aria-controls="hyp-advanced-panel"
+            aria-controls={showAdvanced ? 'hyp-advanced-panel' : undefined}
             onClick={() => setShowAdvanced((v) => !v)}
           >
-            {showAdvanced ? 'Masquer la méthodologie avancée ▴' : 'Afficher la méthodologie avancée ▾'}
+            {showAdvanced ? 'Masquer la méthodologie avancée ' : 'Afficher la méthodologie avancée '}
+            <span aria-hidden="true">{showAdvanced ? '▴' : '▾'}</span>
           </button>
         </div>
 
@@ -402,7 +409,7 @@ export default function HypothesesPage() {
               <div className="hyp-method-head">
                 <h3>
                   A. Dérive primaire hors vieillissement (<code>ref.derive.b_autres</code>) :{' '}
-                  <strong>+{fmt(derivations.bAutres.param.value, 2)} pt de PIB/an</strong>
+                  <strong>{fmt(derivations.bAutres.param.value, 2, { signed: true })} pt de PIB/an</strong>
                 </h3>
                 <StatusBadge status={derivations.bAutres.param.status} />
               </div>
@@ -421,11 +428,15 @@ export default function HypothesesPage() {
                 <code className="hyp-formula">
                   b = max(0 ; {fmt(derivations.bAutres.share2024Pct, 2)} % × (g_dép − {fmt(derivations.bAutres.gPotPct, 1)} %))
                 </code>
-                . La valeur interne retenue est la <strong>médiane des 5 fenêtres</strong> (
-                <strong>+{fmt(derivations.bAutres.rawMedian, 3)} → +{fmt(derivations.bAutres.rounded, 2)} pt/an</strong>),
-                qui coïncide avec la fenêtre post-crise <strong>2007–2024</strong> (seule fenêtre où la croissance réelle
-                observée du PIB, +0,96 %/an, rejoint <code>g_pot</code>) et avec la pente MCO 2000–2024 hors Covid en part
-                de PIB (+{fmt(derivations.bAutres.ols2000ExCovid, 3)} pt/an).
+                . La valeur interne retenue est la <strong>médiane des {derivations.bAutres.windows.length} fenêtres</strong> (
+                <strong>
+                  {fmt(derivations.bAutres.rawMedian, 3, { signed: true })} →{' '}
+                  {fmt(derivations.bAutres.rounded, 2, { signed: true })} pt/an
+                </strong>
+                ), qui coïncide avec la fenêtre post-crise <strong>2007–2024</strong> (seule fenêtre où la croissance réelle
+                observée du PIB, {fmt(derivations.bAutres.window2007?.gGdpPct, 2, { signed: true })} %/an, rejoint{' '}
+                <code>g_pot</code>) et avec la pente MCO 2000–2024 hors Covid en part de PIB (
+                {fmt(derivations.bAutres.ols2000ExCovid, 3, { signed: true })} pt/an).
               </p>
               <div className="hyp-table-wrap">
                 <table className="hyp-table">
@@ -455,7 +466,7 @@ export default function HypothesesPage() {
                 </table>
               </div>
               <p className="sb-help">
-                <strong>Sensibilité sur la référence 2036 (recalculée par le moteur) :</strong>{' '}
+                <strong>Sensibilité sur la référence {derivations.bAutres.endYear10} (recalculée par le moteur) :</strong>{' '}
                 {derivations.bAutres.debt2036Sensitivity
                   .map((s) => `à b = ${fmt(s.b, 2)} pt/an → dette ${fmt(s.debt2036Pct, 1)} % (solde ${fmt(s.balance2036Pct, 2, { signed: true })} %)`)
                   .join(' · ')}
@@ -475,11 +486,13 @@ export default function HypothesesPage() {
               </div>
               <p>
                 <strong>Pourquoi un calcul interne :</strong> le modèle <em>Mésange</em> (Insee / DG Trésor, G2017/04) ne
-                publie aucune variante « prestations seules » (les prestations en espèces forment 46 % du choc composite de
-                dépense §4.1.2). La seule estimation française directe lue est la variante prestations sociales hors chômage
-                de <strong>FR-BDF</strong> (Banque de France, WP 750, Tableau 11 p. 28) :{' '}
-                <code>{derivations.mPrestations.profile.map((v) => `+${fmt(v, 2)}`).join(' / ')} %</code> de PIB sur 4 ans
-                (cumul <strong>{fmt(derivations.mPrestations.cum4, 2)}</strong>).
+                publie aucune variante « prestations seules » (les prestations en espèces forment{' '}
+                {fmt((derivations.mPrestations.mesange?.prestWeight ?? Number.NaN) * 100, 0)} % du choc composite de dépense
+                §4.1.2). La seule estimation française directe lue est la variante prestations sociales hors chômage de{' '}
+                <strong>FR-BDF</strong> (Banque de France, WP 750, Tableau 11 p. 28) :{' '}
+                <code>{derivations.mPrestations.profile.map((v) => fmt(v, 2, { signed: true })).join(' / ')} %</code> de PIB
+                sur {derivations.mPrestations.profile.length} ans (cumul{' '}
+                <strong>{fmt(derivations.mPrestations.cum4, 2)}</strong>).
               </p>
               <p>
                 <strong>Méthode retenue (équivalence cumulée dans E4) :</strong> l'équation E4 applique un pic dès l'année 1
@@ -488,8 +501,9 @@ export default function HypothesesPage() {
                 <code className="hyp-formula">
                   1 + λ + λ² + λ³ = {fmt(derivations.mPrestations.e4Factor4, 3)}
                 </code>
-                ). Retenir la seule année 1 de FR-BDF (0,09) écraserait l'impulsion cumulée d'un modèle en cloche. Le
-                multiplicateur équivalent qui reproduit la même impulsion cumulée sur 4 ans vaut{' '}
+                ). Retenir la seule année 1 de FR-BDF ({fmt(derivations.mPrestations.profile[0], 2)}) écraserait l'impulsion
+                cumulée d'un modèle en cloche. Le multiplicateur équivalent qui reproduit la même impulsion cumulée sur 4 ans
+                vaut{' '}
                 <code className="hyp-formula">
                   {fmt(derivations.mPrestations.cum4, 2)} / {fmt(derivations.mPrestations.e4Factor4, 3)} ={' '}
                   {fmt(derivations.mPrestations.frBdfEq4, 3)} → {fmt(derivations.mPrestations.rounded, 2)}
@@ -523,7 +537,15 @@ export default function HypothesesPage() {
                     </tr>
                     <tr>
                       <th scope="row">Mésange G2017/04 — résidu algébrique du choc composite (§4.1.2)</th>
-                      <td>Lecture directe PDF · 0,78 = 8 %×1,31 + 25 %×m_rém + 21 %×m_achats + 46 %×m_prest (m_direct = 1,0 vs moteur {fmt(derivations.mPrestations.mRem, 1)}/{fmt(derivations.mPrestations.mAchats, 1)})</td>
+                      <td>
+                        Lecture directe PDF · {fmt(derivations.mPrestations.mesange?.compositeY1, 2)} ={' '}
+                        {fmt((derivations.mPrestations.mesange?.investWeight ?? Number.NaN) * 100, 0)} %×
+                        {fmt(derivations.mPrestations.mesange?.investY1, 2)} +{' '}
+                        {fmt((derivations.mPrestations.mesange?.remWeight ?? Number.NaN) * 100, 0)} %×m_rém +{' '}
+                        {fmt((derivations.mPrestations.mesange?.achatsWeight ?? Number.NaN) * 100, 0)} %×m_achats +{' '}
+                        {fmt((derivations.mPrestations.mesange?.prestWeight ?? Number.NaN) * 100, 0)} %×m_prest (m_direct =
+                        1,0 vs moteur {fmt(derivations.mPrestations.mRem, 1)}/{fmt(derivations.mPrestations.mAchats, 1)})
+                      </td>
                       <td className="hyp-num">{fmt(derivations.mPrestations.mesangeResidualUnit, 2)} à {fmt(derivations.mPrestations.mesangeResidualEngine, 2)}</td>
                     </tr>
                     <tr>
@@ -608,8 +630,9 @@ export default function HypothesesPage() {
               <p>
                 Les revenus par tranche (total imposable + non imposé :{' '}
                 <strong>{fmt(derivations.irTranches.totalRevenu, 1)} Md€</strong>) sont estimés par inversion du barème sur
-                les effectifs et impôts nets DGFiP (revenus 2024), avec coin marginal complet (IR × 0,932 + CSG/CRDS 9,7 % +
-                CEHR en tranche 45 %). Ce socle commun produit{' '}
+                les effectifs et impôts nets DGFiP (revenus 2024), avec coin marginal complet (IR ×{' '}
+                {fmt(derivations.irTranches.facteurCsg, 3)} + CSG/CRDS {fmt(derivations.irTranches.csgCrdsPct, 1)} % + CEHR
+                en tranche {fmt(derivations.irTranches.topTranchePct, 0)} %). Ce socle commun produit{' '}
                 <strong>θ proportionnel = {fmt(derivations.irTranches.thetaProp, 3)}</strong> (arrondi à{' '}
                 <strong>{fmt(derivations.irTranches.paramTheta.value, 2)}</strong> ; +1 pt sur chaque taux :{' '}
                 {fmt(derivations.irTranches.thetaPoint, 3)}) ainsi que l'effet d'offre σ de l'IR (voir{' '}
