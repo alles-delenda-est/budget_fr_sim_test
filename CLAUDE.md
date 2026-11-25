@@ -6,7 +6,7 @@ Instructions de travail pour les agents et contributeurs sur **Simulateur Budget
 
 - **Spécification du modèle** : `docs/model-note.md` (note de modèle v0.3, équations E1–E12, décisions D1–D13, limites §10–§12).
 - **Données et collecte** : `docs/baseline-data.md`, `docs/sigma-fiscal.md`, `docs/review-supply-effects-gemini.md`, `docs/review-age-legal.md`, `docs/review-day0-parameters.md`, `docs/review-comptes-notionnels.md`, `docs/review-lvt-module.md`, `docs/citations.md`.
-- **Catalogue unique des paramètres** : `src/engine/params.js` (198 paramètres avec valeur centrale, fourchette `low`/`high`, unité, source, statut et explication ; par statut : 113 `sourcé`, 10 `sourcé (calcul)`, 8 `sourcé (secondaire)`, 27 `sourcé (fourchette), centre choisi`, 8 `calculé (estimation)`, 1 `à collecter`, 3 `à valider`, 28 `non validé`, 0 `de mémoire`). Ne jamais dupliquer de constante économique dans les pages UI.
+- **Catalogue unique des paramètres** : `src/engine/params.js` (198 paramètres avec valeur centrale, fourchette `low`/`high`, unité, source, statut et explication ; par statut : 113 `sourcé`, 10 `sourcé (calcul)`, 8 `sourcé (secondaire)`, 28 `sourcé (fourchette), centre choisi`, 8 `calculé (estimation)`, 1 `à collecter`, 2 `à valider`, 28 `non validé`, 0 `de mémoire`). Ne jamais dupliquer de constante économique dans les pages UI.
 - **Seuils d'avertissement** : `src/config.js` (`WARNING_THRESHOLDS`, source unique).
 
 ## 2. Architecture du moteur v2 (`src/engine/`)
