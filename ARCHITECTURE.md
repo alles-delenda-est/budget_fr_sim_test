@@ -21,9 +21,10 @@ src/
 │   ├── Navigation.jsx/.css     # Barre d'onglets
 │   └── ReviewBanner.jsx/.css   # Bandeau « Version de relecture »
 ├── engine/                     # Moteur de projection v2 (pur JavaScript, sans dépendance React)
-│   ├── params.js               # Catalogue unique des 175 paramètres (PARAMS, PARAM_BY_ID, resolveParams, interpolateSeries)
+│   ├── params.js               # Catalogue unique des 198 paramètres (PARAMS, PARAM_BY_ID, resolveParams, interpolateSeries)
 │   ├── levers.js               # 14 leviers actifs (LEVERS) + 3 leviers structurels désactivés (STRUCTURAL_LEVERS)
 │   ├── supply.js               # Effets d'offre E5 (σ calculé fiscal + σ décidé) et θ_non_réel
+│   ├── ir-tranches.js          # Barème IR par tranche (revenus DGFiP 2024, coin marginal complet, σ IR et thetaIrTranches)
 │   ├── modules.js              # Contrat de module autonome (validateModuleDefinition, runModule, TEST_MODULE)
 │   ├── ndc-module.js           # Module Comptes notionnels (NDC_MODULE, forme réduite, non validé, D8)
 │   ├── lvt-module.js           # Module Taxe sur la valeur du sol (LVT_MODULE, non validé, D11, D12)
@@ -83,7 +84,7 @@ Le modèle couvre l'ensemble des **administrations publiques (APU)** en comptabi
 ## 3. Flux de calcul du moteur (`projectScenario`)
 
 ### 3.1 Résolution des paramètres et instruments
-1. `resolveParams(overrides)` résout les 175 paramètres de `PARAMS` en validant les identifiants et la finitude des valeurs.
+1. `resolveParams(overrides)` résout les 198 paramètres de `PARAMS` en validant les identifiants et la finitude des valeurs.
 2. `leversToInstruments(levers, P, N, ramp, { sigma, ysCase })` convertit les 14 leviers actifs (`LEVERS`) en séries annuelles par bloc `aBlocks[bloc][t]` (fraction du PIB de référence) et `theta[t]`.
 3. Chaque module passé dans `options.modules` est exécuté par `runModule(mod, values, context)` avec un `context` profondément gelé (`deepFreeze`). Le contrat impose qu'un module ne renvoie que `{ annees, flux, explications }`, ne touche jamais à la dette ni aux intérêts, et fournisse `a` par bloc, `theta ∈ [0, 1]`, `categorie` ou `m`, et un `yS` optionnel `{ bas, central, haut }`.
 4. `coreSupplyLines` calcule les séries d'effets d'offre E5 des leviers natifs pour les trois cas (`bas`, `central`, `haut`), auxquelles s'ajoutent celles des modules et d'un éventuel chemin `options.yS` externe.
@@ -96,7 +97,7 @@ Le modèle couvre l'ensemble des **administrations publiques (APU)** en comptabi
   - Dépenses : `θ = 0`, sauf effets de report sociaux `comp.offset.age_legal` (`0,20`, DREES/DARES) pour `age_legal` et décalage prestations `comp.offset.prestations` (`0,20`, Note IPP n° 129) pour `indexation_pensions` et `NDC_MODULE`.
 - **E4 — Effet de demande** : `S_j(t) = λ S_j(t-1) + m_j Δa_j(t)` ; `yD(t) = −Σ S_j(t)` (`λ = 0,7`). Effet en niveau qui s'estompe vers 0.
 - **E5 — Effets d'offre** : `yS_j(t) = σ_j × taille_j(t) × clamp((τ − t0_j) / (L_j − t0_j), 0, 1)`.
-  - `σ` **calculé** dans `supply.js` pour les impôts sur le travail (`cotis_patronales`, `csg`, `tva_normal`, `tva_tous_taux`, `ir` via `offre.e_L = 0,40` et le coin fiscal `comp.coin.part_nette = 0,57`) et pour l'`is` (coût d'usage du capital, plafonné à `0,15 %` PIB/pt). L'effet d'offre de l'`ir` porte le statut `non validé`.
+  - `σ` **calculé** dans `supply.js` pour les impôts sur le travail (`cotis_patronales`, `csg`, `tva_normal`, `tva_tous_taux` via `offre.e_L = 0,40` et le coin fiscal `comp.coin.part_nette = 0,57` ; `ir` calculé tranche par tranche dans `ir-tranches.js` sur les revenus DGFiP 2024 et le coin marginal complet, `σ = −0,122 %` PIB par % du produit) et pour l'`is` (coût d'usage du capital, plafonné à `0,15 %` PIB/pt). L'effet d'offre de l'`ir` porte le statut `non validé`.
   - `σ` **décidé** (revue de preuves) pour `age_legal` (`+0,50 %` PIB/an, `+0,30 / +0,70`, `L = 6`, décision du 23 nov. 2026), `travail_assurance_chomage` (`−0,012 %` PIB par % de générosité, `L = 3`), `dep_enseignement` (`0 / 0 / +0,040 %` PIB par % de ligne, `L = 35`, `t0 = 8`), ainsi que `offre.sigma.lvt` (`+0,20 %`, `L = 12`, `t0 = 1`, non lu par `LVT_MODULE` minimal qui applique `yS = 0` au centre et la borne OCDE en cas haut si l'option est activée).
 - **E6 — PIB réalisé** : `Y(t) = Yb(t) * (1 + yD(t) + yS(t))`.
 - **E7 — Stabilisateurs et retour fiscal (D13)** : `stab = (ε * yD + ε_offre * yS) * Yb`, avec `ε = 0,6` (cyclique) et `ε_offre = 0,436` (taux de prélèvements obligatoires 2025, sans dépense cyclique).

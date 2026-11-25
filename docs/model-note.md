@@ -1,6 +1,6 @@
 # Note de modèle — Simulateur Budget France
 
-**Statut : v0.3, décisions de Patrick intégrées le 17 novembre 2026 ; reste à valider la rédaction. Aucun code moteur ne doit être écrit avant cette validation.**
+**Statut : v0.3 mise en œuvre (moteur v2 / version 0.9 Day 0, `review/day0`) — décisions D1 à D13 intégrées et auditées jusqu'au 25 novembre 2026 (`docs/review-day0-parameters.md`).** Les sections historiques v0.2/v0.3 ci-dessous sont conservées avec leurs mises à jour datées ; les seuls points ouverts avant la revue de sécurité figurent en §8 et §10.
 
 **v0.3 — 17 novembre 2026 :** décisions D1 à D12 intégrées (section 8) ; croissance de référence = médiane des prévisionnistes indépendants, prévisions du Gouvernement en comparateur ; chiffres officiels de `docs/baseline-data.md` repris (dépenses 1 714,2 ; dette 2026 119,3 % ; inflation 2026 2,1 % ; PIB 2025–2027 ; intérêts de la Cour des comptes ; DSM 144,0 % en 2036 ; COR) ; règle de prudence (section 5) ; E3 : θ = 0 pour la dépense, décalage optionnel ; dérive de référence en deux composantes ; σ = 0 par défaut, revue de preuves ouverte ; comptes notionnels en préréglage ; taxe sur la valeur du sol : D11 et D12 ; contrat de module : `flux[]` ; trois horizons ; limites « inflation » et « régimes de multiplicateurs » déplacées en section 11.
 
@@ -278,7 +278,7 @@ Règles : un module n'écrit jamais dans la dette ni dans les intérêts ; un mo
 | D12 | Capitalisation dans le prix du sol | Tranchée | Comptée dès le Day 0 dans le module LVT, mécanisme et fourchette de la revue LVT ; capitalisation nette (moins la capitalisation inverse des impôts nationaux supprimés, part du sol seulement, plancher à 0) et plein effet dès 2027, décision du 24 nov. 2026 |
 | D13 | Effets d'offre : passage au solde par le taux de prélèvements obligatoires (≈ 0,45), pas par la semi-élasticité cyclique (0,6), décision du 18 novembre 2026 | Tranchée | `fisc.eps_offre` = 0,436 (Insee, 2025) pour yS ; `fisc.eps` = 0,6 inchangé pour yD (E7) |
 
-**Reste ouvert :** (1) valeurs à collecter (section 10) ; (2) σ issus de la revue de preuves (D2, D5, et `yS` haut du module LVT) ; (3) valeur centrale de la capitalisation (D12 ; 0,80 proposé dans le module minimal, à valider) et go/no-go du module LVT le 30 novembre.
+**Reste ouvert (25 nov. 2026) :** (1) 1 seul paramètre `à collecter` (`cmp.aft.taux_emission.2026`, affichage seul, rapport annuel AFT 2026 attendu en 2027) ; (2) 3 décisions propriétaire `à valider` : `lvt.capi.part` (`0,80`, D12, et go/no-go du module LVT le 30 nov.), `ref.derive.b_autres` (`0`, fourchette Eurostat `[0 ; 0,11]`, D7) et `dem.m.prestations` (`0,5`, sans source directe, FR-BDF `0,09` an 1) ; (3) revue de sécurité Gemini 4 Neon (`CLAUDE.md` §7) avant fusion vers `main` ; (4) questions ouvertes aux relecteurs (§12).
 
 ## 9. Sources
 
