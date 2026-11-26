@@ -94,16 +94,17 @@ describe('fmt : abréviation des très grandes valeurs', () => {
 describe('σ de la CSG et offre.csg.tmi_salarie', () => {
   const P = resolveParams()
   const sigmaLitteral = (e) => {
-    const dln = (0.01 * 0.9825 * (6.8 / 9.2 * (1 - 0.30) + (1 - 6.8 / 9.2))) / P['comp.coin.part_nette']
+    const dln = (P['offre.ir_csg.part_actifs'] * 0.01 * 0.9825 * (6.8 / 9.2 * (1 - 0.30) + (1 - 6.8 / 9.2))) / P['comp.coin.part_nette']
     return -100 * e * dln
   }
-  it('à tmi_salarie = 30 %, σ_CSG est celui de la formule littérale (centre −0,54, bas −0,27, haut −0,74 % du PIB par point)', () => {
+  it('à tmi_salarie = 30 % et part_actifs = 74 % (D-P3), σ_CSG suit la formule littérale (centre −0,40, bas −0,20, haut −0,55 % du PIB par point)', () => {
     expect(P['offre.csg.tmi_salarie']).toBe(30)
+    expect(P['offre.ir_csg.part_actifs']).toBe(0.74)
     const s = sigmaFiscal('csg', P)
     expect(s.value).toBeCloseTo(sigmaLitteral(0.40), 9)
     expect(s.low).toBeCloseTo(sigmaLitteral(0.20), 9)
     expect(s.high).toBeCloseTo(sigmaLitteral(0.55), 9)
-    expect(s.value).toBeCloseTo(-0.54, 2)
+    expect(s.value).toBeCloseTo(-0.40, 2)
   })
   it('σ_CSG lit le paramètre : un taux marginal plus élevé réduit |σ| (la part déductible coûte moins)', () => {
     const hi = sigmaFiscal('csg', resolveParams({ 'offre.csg.tmi_salarie': 41 }))

@@ -280,7 +280,8 @@ export function buildReviewerQuestions() {
   const debts = [beta.low, beta.value, beta.high, 0].map((b) => ({ b, d: debt30AtBeta(b) }))
   const thetaIr = PARAM_BY_ID['comp.theta.ir']
   const thetaReel = thetaReelIr(P, sigmaIr)
-  const etiUniforme = thetaReel > 0 ? thetaIr.value / (thetaReel / eL.value) : Number.NaN
+  const partActifs = P['offre.ir_csg.part_actifs']
+  const etiUniforme = thetaReel > 0 ? thetaIr.value / (thetaReel / (eL.value * partActifs)) : Number.NaN
   const md = (v) => `${fmt(v, 2).replace('-', '−')} Md€`
 
   return [
@@ -344,6 +345,23 @@ export function buildInternalDerivations(P) {
   })
 
   const tr = irTranches(P)
+  const pParts16 = resolveParams({ 'offre.ir.tranche.30.parts': 1.6 })
+  const tr16 = irTranches(pParts16)
+  const irSensitivity = [
+    { id: 'central', label: `Base actuelle (e_L = ${fmt(P['offre.e_L'], 2)}, part actifs = ${fmt(P['offre.ir_csg.part_actifs'] * 100, 0)} %, parts TMI 30 % = ${fmt(P['offre.ir.tranche.30.parts'], 1)})`, p: P },
+    { id: 'stat53_16', label: 'Audit DGFiP Stat 53 (parts TMI 30 % = 1,6)', p: pParts16 },
+    { id: 'el_025', label: 'Sensibilité e_L = 0,25 (CBO / littérature française)', p: resolveParams({ 'offre.e_L': 0.25 }) },
+  ].map(({ id, label, p: Pi }) => {
+    const sig = sigmaFiscalCase('ir', Pi, 'value')
+    return {
+      id,
+      label,
+      sigmaPct: sig,
+      thetaProp: thetaIrTranches(Pi, 'proportionnel'),
+      thetaReel: thetaReelIr(Pi, sig),
+      totalRevenu: (id === 'stat53_16' ? tr16 : tr)?.total ?? Number.NaN,
+    }
+  })
   return {
     bAutres: {
       param: bParam,
@@ -367,6 +385,7 @@ export function buildInternalDerivations(P) {
     },
     irTranches: {
       paramTheta: PARAM_BY_ID['comp.theta.ir'],
+      paramPartActifs: PARAM_BY_ID['offre.ir_csg.part_actifs'],
       tranches: tr?.tranches ?? [],
       totalRevenu: tr?.total ?? Number.NaN,
       facteurCsg: facteurCsgDeductible(P),
@@ -374,6 +393,7 @@ export function buildInternalDerivations(P) {
       topTranchePct: IR_TRANCHES.at(-1),
       thetaProp: thetaIrTranches(P, 'proportionnel'),
       thetaPoint: thetaIrTranches(P, 'point'),
+      sensitivity: irSensitivity,
     },
   }
 }

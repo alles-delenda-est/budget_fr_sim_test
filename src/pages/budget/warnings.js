@@ -16,18 +16,20 @@ export const interestShareOfRevenue = (row) =>
 const gdpFigures = (row) => [row.interestRatio, Math.abs(row.balanceRatio)].map((v) => 100 * v)
 
 /**
- * Évalue les deux paliers sur la trajectoire du scénario (`result.total`).
+ * Évalue les paliers sur la trajectoire du scénario (`result.total`).
+ * Indicateur β hors échantillon (D-P4) : première année où la dette dépasse `betaOutOfSampleDebtPct` % du PIB (180 %).
  * Palier 1 : première année où la dette dépasse `tier1DebtPct` % du PIB.
  * Palier 2 : première année où la dette dépasse `tier2DebtPct` %, OU où les intérêts dépassent `tier2InterestShareRevenuePct` % des recettes,
  * OU où une grandeur affichée en % du PIB dépasse `tier2GdpFigurePct` % (règle générale).
- * @returns {{ tier1: null | { year: number, t: number, debtPct: number }, tier2: null | { year: number, t: number, debtPct: number, interestSharePct: number | null, reasons: string[] } }}
  */
 export function evaluateWarnings(result) {
+  let betaRegime = null
   let tier1 = null
   let tier2 = null
   for (let t = 0; t < result.total.length; t++) {
     const row = result.total[t]
     const debtPct = 100 * row.debtRatio
+    if (!betaRegime && above(debtPct, W.betaOutOfSampleDebtPct)) betaRegime = { year: row.year, t, debtPct }
     if (!tier1 && above(debtPct, W.tier1DebtPct)) tier1 = { year: row.year, t, debtPct }
     if (!tier2) {
       const share = interestShareOfRevenue(row)
@@ -37,10 +39,14 @@ export function evaluateWarnings(result) {
       if (gdpFigures(row).some((v) => above(v, W.tier2GdpFigurePct))) reasons.push('grandeur en % du PIB')
       if (reasons.length) tier2 = { year: row.year, t, debtPct, interestSharePct: share, reasons }
     }
-    if (tier1 && tier2) break
+    if (betaRegime && tier1 && tier2) break
   }
-  return { tier1, tier2 }
+  return { betaRegime, tier1, tier2 }
 }
+
+/** Texte de l'indicateur β hors échantillon (> 180 % du PIB, décision D-P4). */
+export const betaRegimeText = (w) =>
+  `Extrapolation hors échantillon de la prime de risque (β) : dès ${w.year} (dette à ${fmt(w.debtPct, 0)} % du PIB), la trajectoire dépasse le domaine empirique d'estimation de β (40–${W.betaOutOfSampleDebtPct} % du PIB, Pamies et al. 2021 ; Kirpson et Staehr 2025). La pente linéaire prolongée au-delà relève d'une convention arithmétique, non d'une prévision de marché.`
 
 /** Texte du palier 1 : le repère concerne les économies avancées seulement. */
 export const tier1Text = (w) =>

@@ -4,7 +4,7 @@ import { projectScenario } from '../../engine/project.js'
 import { LEVERS } from '../../engine/levers.js'
 import { fmt } from './helpers.js'
 import { PARAM_BY_ID } from '../../engine/params.js'
-import { evaluateWarnings, interestShareOfRevenue, tier1Text, tier2Text, tier2Explanation, splitSeriesAtYear, visibleDomain } from './warnings.js'
+import { evaluateWarnings, interestShareOfRevenue, betaRegimeText, tier1Text, tier2Text, tier2Explanation, splitSeriesAtYear, visibleDomain } from './warnings.js'
 
 /** Trajectoire synthétique : une ligne par année avec dette (en fraction du PIB), intérêts et recettes en Md€. */
 const row = (year, debtPct, { interest = 100, revenue = 1000, interestPct = 5, balancePct = -5 } = {}) =>
@@ -22,8 +22,15 @@ describe('config', () => {
 })
 
 describe('evaluateWarnings', () => {
-  it('aucun palier sous 260 %', () => {
-    expect(evaluateWarnings(path([120, 150, 260]))).toEqual({ tier1: null, tier2: null })
+  it('aucun palier sous 180 % ; indicateur β hors échantillon (D-P4) au-dessus de 180 % sans palier 1', () => {
+    expect(evaluateWarnings(path([120, 150, 180]))).toEqual({ betaRegime: null, tier1: null, tier2: null })
+    const b = evaluateWarnings(path([120, 180, 185, 260]))
+    expect(b.betaRegime).toMatchObject({ year: 2028, t: 2 })
+    expect(b.betaRegime.debtPct).toBeCloseTo(185, 9)
+    expect(b.tier1).toBeNull()
+    expect(b.tier2).toBeNull()
+    expect(betaRegimeText(b.betaRegime)).toContain('180 %')
+    expect(betaRegimeText(b.betaRegime)).toContain('2028')
   })
   it('palier 1 : première année strictement au-dessus de 260 %', () => {
     const w = evaluateWarnings(path([120, 259.9, 260.1, 300, 261]))
@@ -48,7 +55,7 @@ describe('evaluateWarnings', () => {
     expect(evaluateWarnings(path([100, 100], { balancePct: 500, interest: 1 })).tier2).toBeNull()
   })
   it('valeurs non finies : pas de palier faux (NaN), recettes absentes ignorées pour les intérêts', () => {
-    expect(evaluateWarnings({ total: [{ year: 2026, debtRatio: NaN, interest: NaN, revenue: NaN, interestRatio: NaN, balanceRatio: NaN }] })).toEqual({ tier1: null, tier2: null })
+    expect(evaluateWarnings({ total: [{ year: 2026, debtRatio: NaN, interest: NaN, revenue: NaN, interestRatio: NaN, balanceRatio: NaN }] })).toEqual({ betaRegime: null, tier1: null, tier2: null })
     expect(interestShareOfRevenue({ interest: 10, revenue: 0 })).toBeNull()
     expect(interestShareOfRevenue({ interest: 10, revenue: 40 })).toBe(25)
   })
@@ -133,7 +140,7 @@ describe('moteur : recettes et paliers de bout en bout', () => {
     expect(dep.revenue - ref).toBeCloseTo(gdpEffect, 6)
   })
   it('référence 10 ans : aucun avertissement ; scénario extrême 30 ans : palier 1 puis palier 2 ; la dette en 2056 reste dans le résultat', () => {
-    expect(evaluateWarnings(projectScenario({ horizon: 'dixAns' }))).toEqual({ tier1: null, tier2: null })
+    expect(evaluateWarnings(projectScenario({ horizon: 'dixAns' }))).toEqual({ betaRegime: null, tier1: null, tier2: null })
     const worst = Object.fromEntries(LEVERS.map((l) => [l.id, l.signe > 0 ? l.min : l.max]))
     const r = projectScenario({ horizon: 'trenteAns', levers: worst })
     const w = evaluateWarnings(r)

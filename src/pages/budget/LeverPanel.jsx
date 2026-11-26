@@ -1,5 +1,5 @@
 import { useId } from 'react'
-import { staticYield, defaultRampFor, STRUCTURAL_LEVERS } from '../../engine/levers.js'
+import { staticYield, defaultRampFor, STRUCTURAL_LEVERS, QUALITATIVE_NOTES } from '../../engine/levers.js'
 import { START_YEAR } from '../../engine/project.js'
 import { SUPPLY_BY_LEVER } from '../../engine/supply.js'
 import { PARAM_BY_ID } from '../../engine/params.js'
@@ -84,6 +84,9 @@ export default function LeverPanel({ values, onChange, onReset, onExtreme, P, ys
             </div>
             <input type="range" className="sb-slider" min={l.min} max={l.max} step={0.1} value={l.defaut} disabled aria-label={l.titre} readOnly />
           </div>
+        ))}
+        {QUALITATIVE_NOTES.map((n) => (
+          <p key={n.id} className="sb-help"><strong>{n.titre} :</strong> {n.detail}</p>
         ))}
       </fieldset>
       {children}

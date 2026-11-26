@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { PARAMS, PARAM_BY_ID, resolveParams } from '../engine/params.js'
-import { STRUCTURAL_LEVERS } from '../engine/levers.js'
+import { STRUCTURAL_LEVERS, QUALITATIVE_NOTES } from '../engine/levers.js'
 import { issuanceRate } from '../engine/project.js'
 import { WARNING_THRESHOLDS as W } from '../config.js'
 import { fmt, FLAGGED_STATUSES } from './budget/helpers'
@@ -314,6 +314,9 @@ export default function HypothesesPage() {
                 </li>
               ))}
             </ul>
+            {QUALITATIVE_NOTES.map((n) => (
+              <p key={n.id} className="sb-help"><strong>{n.titre} :</strong> {n.detail}</p>
+            ))}
           </div>
         </div>
       </section>
@@ -635,9 +638,36 @@ export default function HypothesesPage() {
                 en tranche {fmt(derivations.irTranches.topTranchePct, 0)} %). Ce socle commun produit{' '}
                 <strong>θ proportionnel = {fmt(derivations.irTranches.thetaProp, 3)}</strong> (arrondi à{' '}
                 <strong>{fmt(derivations.irTranches.paramTheta.value, 2)}</strong> ; +1 pt sur chaque taux :{' '}
-                {fmt(derivations.irTranches.thetaPoint, 3)}) ainsi que l'effet d'offre σ de l'IR (voir{' '}
+                {fmt(derivations.irTranches.thetaPoint, 3)}) ainsi que l'effet d'offre σ de l'IR, pondéré par la part des
+                revenus d'activité{' '}
+                <code>offre.ir_csg.part_actifs = {fmt(derivations.irTranches.paramPartActifs.value * 100, 0)} %</code>{' '}
+                (décision D-P3 : les pensions de retraite n'ont pas d'élasticité d'offre de travail ; voir{' '}
                 <code>docs/review-day0-parameters.md</code> §9).
               </p>
+              <div className="hyp-table-wrap">
+                <table className="hyp-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Sensibilité IR (audit DGFiP Stat 53 &amp; e_L)</th>
+                      <th scope="col" className="hyp-num">Assiette totale (Md€)</th>
+                      <th scope="col" className="hyp-num">θ prop.</th>
+                      <th scope="col" className="hyp-num">θ_réel</th>
+                      <th scope="col" className="hyp-num">σ IR (% PIB / %)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {derivations.irTranches.sensitivity.map((s) => (
+                      <tr key={s.id} className={s.id === 'central' ? 'hyp-total-row' : ''}>
+                        <th scope="row">{s.label}</th>
+                        <td className="hyp-num">{fmt(s.totalRevenu, 1)}</td>
+                        <td className="hyp-num">{fmt(s.thetaProp, 3)}</td>
+                        <td className="hyp-num">{fmt(s.thetaReel, 3)}</td>
+                        <td className="hyp-num"><strong>{fmt(s.sigmaPct, 3, { signed: true })} %</strong></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </article>
           </div>
         )}

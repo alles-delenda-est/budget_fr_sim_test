@@ -9,6 +9,12 @@ export const COMMENT_URL = ''
  */
 export const WARNING_THRESHOLDS = {
   /**
+   * Indicateur hors échantillon de la prime de risque β (décision D-P4) : les études empiriques zone euro/OCDE
+   * (Pamies, Carnot et Pătărău 2021 EC DP 141 ; Kirpson et Staehr 2025) estiment β entre ~40 et 180 % du PIB.
+   * Au-delà de 180 %, le prolongement linéaire de β relève d'une convention arithmétique, non d'une prévision de marché.
+   */
+  betaOutOfSampleDebtPct: 180,
+  /**
    * Palier 1 : dette en % du PIB au-delà du plus haut niveau jamais atteint par une économie avancée.
    * Repère : Japon, dette brute des administrations publiques 258,4 % du PIB en 2020 (FMI, World Economic Outlook, série
    * FRED GGGDTAJPA188N). Le seuil est arrondi à 260 %. L'énoncé ne porte que sur les économies avancées : des pays à faible
