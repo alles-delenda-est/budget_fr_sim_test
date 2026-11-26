@@ -193,6 +193,7 @@ export const PARAM_GROUP_DEFS = [
   { id: 'macro', titre: 'Macroéconomie et chômage (E1, E12)', match: (id) => id.startsWith('macro.') || id === 'base.chomage' || id === 'base.chomage_ref' || id === 'emploi.kappa' },
   { id: 'ref', titre: 'Dérive de référence et point de départ 2026 (E8, D7)', match: (id) => id.startsWith('ref.') },
   { id: 'dem', titre: 'Demande et multiplicateurs (E4)', match: (id) => id.startsWith('dem.') },
+  { id: 'infl', titre: 'Inflation endogène et répercussion TVA (E1b, Phase 3 opt-in)', match: (id) => id.startsWith('infl.') },
   { id: 'comp', titre: 'Réaction comportementale et fiscalité (E3)', match: (id) => id.startsWith('comp.') },
   { id: 'offre', titre: 'Effets d\'offre (E5)', match: (id) => id.startsWith('offre.') },
   { id: 'lvt', titre: 'Module taxe sur la valeur du sol (D11, D12)', match: (id) => id.startsWith('lvt.') },

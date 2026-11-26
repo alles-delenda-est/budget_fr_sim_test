@@ -25,4 +25,16 @@ export default defineConfig(({ command }) => ({
     __GIT_COMMIT__: JSON.stringify(command === 'build' ? commitHash() : 'dev'),
     __BUILD_DATE__: JSON.stringify(command === 'build' ? new Date().toISOString().slice(0, 10) : 'dev'),
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+          if (id.includes('recharts') || id.includes('d3-') || id.includes('victory-vendor')) return 'vendor-charts'
+          if (id.includes('react-dom') || id.includes('scheduler') || /[\\/]react[\\/]/.test(id)) return 'vendor-react'
+          return undefined
+        },
+      },
+    },
+  },
 }))

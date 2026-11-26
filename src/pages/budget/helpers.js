@@ -47,6 +47,13 @@ export const SUPPLY_CASES = [
   { id: 'haut', label: 'Haut' },
 ]
 
+export const DEMAND_REGIME_OPTIONS = [
+  { id: 'normal', label: 'Normal (expansion — défaut)' },
+  { id: 'recession', label: 'Récession (multiplicateurs accrus)' },
+  { id: 'elb', label: 'Taux plancher / ELB (majoration maximale)' },
+  { id: 'endogene', label: 'Endogène (transition logistique sur chômage)' },
+]
+
 /** Pas du curseur d'un levier : 0,5 si l'amplitude est faible, 1 sinon. */
 export const sliderStep = (lever) => (lever.max - lever.min <= 10 ? 0.5 : 1)
 
@@ -184,6 +191,16 @@ export function decomposeAtYear(result, reference, t, eps, epsOffre) {
   const stab = BLOCKS.reduce((s, b) => s + result.blocks[b][t].stabilisers, 0)
   lines.push({ key: 'demande', kind: 'demande', label: 'Effet de demande (stabilisateurs automatiques)', detail: 'Part de l\'écart de PIB due à la demande, avant effets d\'offre.', gdpPct: tot.yD * 100, montant: stab - offreTotal })
   lines.push(...offreLines)
+  const inflDelta = (tot.inflFiscal ?? 0) - (reference.total[t].inflFiscal ?? 0)
+  if (Math.abs(inflDelta) > 1e-12) {
+    lines.push({
+      key: 'inflation',
+      kind: 'inflation',
+      label: 'Inflation endogène (indexation retardée des pensions, CSS L. 161-25)',
+      detail: 'Décalage d\'un an entre le déflateur du PIB (t) et l\'indexation des pensions sur l\'IPC (t−1) lorsque l\'inflation endogène est activée.',
+      montant: inflDelta,
+    })
+  }
   lines.push({ key: 'interets', kind: 'interets', label: 'Intérêts (taux et dette supplémentaire, boule de neige)', detail: 'Variation de la charge d\'intérêts par rapport à la référence ; une charge plus basse améliore le solde.', montant: -(tot.interest - reference.total[t].interest) })
   const ecart = tot.balance - reference.total[t].balance
   return { year: tot.year, ecart, lines }
@@ -240,6 +257,14 @@ export function paramIdsFor(values, result, macroId = null) {
   for (const line of result?.supply?.lignes ?? []) {
     const reg = SUPPLY_BY_LEVER[line.id]
     if (reg) ids.push(...(reg.sigma ? [reg.sigma] : reg.sigmaParams), reg.L, reg.t0)
+  }
+  if (result?.demandRegime && result.demandRegime !== 'normal') {
+    ids.push('dem.recession.mult_depenses', 'dem.recession.mult_prestations', 'dem.recession.mult_impots')
+    if (result.demandRegime === 'elb') ids.push('dem.elb.bonus_depenses')
+    if (result.demandRegime === 'endogene') ids.push('dem.slack.z_mid', 'dem.slack.gamma')
+  }
+  if (result?.endogenousInflation) {
+    ids.push('infl.phillips.gamma', 'infl.phillips.rho', 'infl.tva.passthrough', 'infl.deflateur.ratio', 'infl.zone_euro.poids_fr', 'infl.oati.part_stock', 'infl.clamp_max')
   }
   return [...new Set(ids)].filter((id) => PARAM_BY_ID[id])
 }

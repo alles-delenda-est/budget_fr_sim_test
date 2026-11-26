@@ -112,4 +112,19 @@ describe('buildCsv : module actif', () => {
     expect(lines).toContain('Aucun levier actif (modules seuls)')
     expect(csv).not.toMatch(/identique à la référence/)
   })
+  it('inclut les dynamiques avancées Phase 3 et conserve la somme exacte des causes (inflation incluse)', () => {
+    const r = projectScenario({ levers: { tva_tous_taux: 3 }, horizon: 'dixAns', demandRegime: 'recession', endogenousInflation: true })
+    const ref = projectScenario({ levers: {}, horizon: 'dixAns', demandRegime: 'recession', endogenousInflation: true })
+    const rows = buildExportRows(r, ref, EPS, EPS_OFFRE)
+    for (const row of rows) {
+      expect(row.slice(12).reduce((s, v) => s + v, 0)).toBeCloseTo(row[11], 6)
+    }
+    const csv = buildCsv({
+      stamp: 'v', url: 'u', horizonLabel: '10 ans', ysCase: 'central',
+      dynamicsLabel: 'Régime E4 : Récession · Inflation endogène active',
+      values: { tva_tous_taux: 3 }, rows,
+    })
+    expect(csv).toContain('Dynamiques avancées (Day 1);Régime E4 : Récession · Inflation endogène active')
+    expect(csv).toContain('Cause : inflation endogène (Md€)')
+  })
 })

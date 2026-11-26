@@ -76,4 +76,13 @@ describe('liens de scénario', () => {
     expect(decodeScenario('lvt=2&lvt_ocde=yes').lvt).toEqual({ scenario: 2, ocde: 0 })
     expect(decodeScenario('lvt=3').values).toEqual({})
   })
+  it('dynamiques avancées Phase 3 (reg, inf) : encodées seulement si actives, aller-retour, valeurs invalides ignorées', () => {
+    expect(encodeScenario({ values: {}, demandRegime: 'normal', endogenousInflation: false })).toBe('h=dixAns&cas=central')
+    const s = { values: { tva_normal: 2 }, horizon: 'trenteAns', ysCase: 'central', macroId: null, demandRegime: 'recession', endogenousInflation: true }
+    expect(encodeScenario(s)).toBe('h=trenteAns&cas=central&reg=recession&inf=1&tva_normal=2')
+    expect(decodeScenario(encodeScenario(s))).toEqual(s)
+    expect(decodeScenario('reg=bad&inf=yes')).not.toHaveProperty('demandRegime')
+    expect(decodeScenario('reg=bad&inf=yes')).not.toHaveProperty('endogenousInflation')
+    expect(decodeScenario('reg=normal&inf=0')).not.toHaveProperty('demandRegime')
+  })
 })
