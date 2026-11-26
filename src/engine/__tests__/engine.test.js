@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { PARAMS, PARAM_BY_ID, STATUSES, resolveParams } from '../params.js'
-import { LEVERS, LEVER_BY_ID, STRUCTURAL_LEVERS, staticYield, thetaElasticity, leverTheta, BLOCKS } from '../levers.js'
+import { LEVERS, LEVER_BY_ID, STRUCTURAL_LEVERS, staticYield, thetaElasticity, thetaAtRate, leverTheta, BLOCKS } from '../levers.js'
 import { projectScenario, HORIZONS, issuanceRate, deepFreeze } from '../project.js'
-import { TEST_MODULE, validateModuleDefinition } from '../modules.js'
+import { TEST_MODULE, validateModuleDefinition, runModule } from '../modules.js'
 import { irTranches, irDeltaLnNet, thetaIrTranches, thetaReelIr, facteurCsgDeductible, coinMarginal } from '../ir-tranches.js'
 import { deriveBAutres, deriveMPrestations } from '../internal-derivations.js'
 import { supplyPhase, sigmaFiscal, sigmaFiscalCase, partReelle, supplyForCase, coutUsageParPoint, impliedJobs, roundJobs, SUPPLY_BY_LEVER } from '../supply.js'
@@ -1168,4 +1168,46 @@ describe('dérivations internes documentées (src/engine/internal-derivations.js
     expect(deriveMPrestations({ ...P, 'dem.lambda': 0 }).frBdfEq4).toBeCloseTo(1.15, 10)
   })
 })
+
+describe('durcissement sécurité et robustesse (Gemini 4 Neon)', () => {
+  it('resolveParams rejette les clés du prototype et les séries mal formées', () => {
+    expect(() => resolveParams({ toString: 1 })).toThrow(/identifiant inconnu/)
+    expect(() => resolveParams({ constructor: 1 })).toThrow(/identifiant inconnu/)
+    expect(() => resolveParams(JSON.parse('{"__proto__": 1}'))).toThrow(/identifiant inconnu/)
+    for (const bad of [null, [], {}, { 2025: NaN }, { foo: 13.7 }, { '': 13.7 }, { 2025: '13.7' }]) {
+      expect(() => resolveParams({ 'ref.derive.a_retraites': bad })).toThrow(/valeur invalide/)
+    }
+  })
+  it('divisions par zéro et dénominateurs non positifs neutralisés sans NaN ni Infinity', () => {
+    expect(issuanceRate({ ...P, 'dette.part_btf': 0, 'dette.part_moyen': 0, 'dette.part_long': 0 })).toBe(0)
+    expect(thetaAtRate(0.2, 0, 0.25, 'elasticite')).toBe(0)
+    expect(thetaAtRate(0.2, 0, 0.25, 'is')).toBe(0)
+    expect(() => projectScenario({ overrides: { 'base.pib.2025': 0 } })).toThrow(/base\.pib\.2025/)
+    expect(() => projectScenario({ overrides: { 'base.pib.2025': -10 } })).toThrow(/base\.pib\.2025/)
+    const rNegM = projectScenario({ overrides: { 'dette.M': -2 } })
+    const rYS = projectScenario({ yS: Array(11).fill(-1.5) })
+    const rCrash = projectScenario({ overrides: { 'macro.g.2026': -150, 'macro.pi.2026': 0 } })
+    for (const r of [rNegM, rYS, rCrash]) {
+      for (const row of r.total) {
+        for (const k of ['gdp', 'gdpBase', 'balance', 'balanceRatio', 'debt', 'debtRatio', 'avgRate', 'interest']) {
+          expect(Number.isFinite(row[k]), `${row.year}.${k}=${row[k]}`).toBe(true)
+        }
+        expect(row.gdp).toBeGreaterThan(0)
+        expect(row.avgRate).toBeGreaterThanOrEqual(0)
+      }
+    }
+  })
+  it('modules : rejette les bornes inversées/non finies et les sorties nulles ou non objets', () => {
+    const badBornes = { ...TEST_MODULE, leviers: [{ ...TEST_MODULE.leviers[0], bornes: [2, 1] }] }
+    expect(validateModuleDefinition(badBornes).length).toBeGreaterThan(0)
+    const nanBornes = { ...TEST_MODULE, leviers: [{ ...TEST_MODULE.leviers[0], bornes: [NaN, 1] }] }
+    expect(validateModuleDefinition(nanBornes).length).toBeGreaterThan(0)
+    const ctx = { startYear: 2026, endYear: 2036, nYears: 10, years: Array.from({ length: 11 }, (_, t) => 2026 + t), gdpBase2025: Y0, params: P }
+    expect(() => runModule({ ...TEST_MODULE, calculer: () => null }, {}, ctx)).toThrow(/objet de sortie attendu/)
+    expect(() => runModule({ ...TEST_MODULE, calculer: () => ({ annees: Array(11).fill(null) }) }, {}, ctx)).toThrow(/objet attendu/)
+    expect(() => runModule({ ...TEST_MODULE, calculer: (v, c) => { const o = TEST_MODULE.calculer(v, c); o.annees[0].yS = null; return o } }, {}, ctx)).toThrow(/yS doit être un objet/)
+    expect(() => runModule({ ...TEST_MODULE, calculer: (v, c) => ({ ...TEST_MODULE.calculer(v, c), flux: 'oops' }) }, {}, ctx)).toThrow(/flux doit être un tableau/)
+  })
+})
+
 

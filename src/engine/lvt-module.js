@@ -93,7 +93,8 @@ export function lvtComponents(scenarioCode, P, {
   const capiCentrales = partAssiettePerdue > 0 ? -partAssiettePerdue * s.national : 0
   // Borne OCDE (revue §4.3) : effet en % du PIB = coefficient × part des prélèvements obligatoires déplacée (en points) ;
   // prélèvements obligatoires = fisc.eps_offre × PIB 2025 (≈ 1 304 Md€ ; la revue retient ≈ 1 290). En fraction : coef × nA / PO.
-  const ysHaut = P['lvt.ys.ocde_par_point'] * nationalAdditionnel / (P['fisc.eps_offre'] * pib)
+  const poBase = P['fisc.eps_offre'] * pib
+  const ysHaut = poBase > 0 ? (P['lvt.ys.ocde_par_point'] * nationalAdditionnel) / poBase : 0
   return {
     scenario: s, pib, totalNouvelle, local: s.local, departemental: s.departemental, national: s.national,
     secuPerte, nationalAdditionnel, impotsSupprimes, valeurCapitalisee, valeurInverse, partBrute, partInverse, partAssiettePerdue,

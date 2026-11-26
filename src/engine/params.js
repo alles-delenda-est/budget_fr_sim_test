@@ -394,13 +394,19 @@ if (Object.keys(PARAM_BY_ID).length !== PARAMS.length) throw new Error('params: 
 
 export const STATUSES = ['calculé (estimation)', 'sourcé', 'sourcé (calcul)', 'sourcé (secondaire)', 'sourcé (fourchette), centre choisi', 'de mémoire', 'à collecter', 'non validé', 'à valider']
 
+function isValidSeries(v) {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return false
+  const entries = Object.entries(v)
+  return entries.length > 0 && entries.every(([k, val]) => k.trim() !== '' && Number.isFinite(Number(k)) && typeof val === 'number' && Number.isFinite(val))
+}
+
 /** Valeurs centrales, avec remplacements éventuels { id: valeur }. Rejette les ids inconnus et les valeurs non finies. */
 export function resolveParams(overrides = {}) {
   const out = Object.fromEntries(PARAMS.map((q) => [q.id, q.value]))
   for (const [id, v] of Object.entries(overrides ?? {})) {
-    if (!(id in out)) throw new Error(`params: identifiant inconnu « ${id} »`)
+    if (!Object.hasOwn(out, id)) throw new Error(`params: identifiant inconnu « ${id} »`)
     const isSeries = typeof out[id] === 'object'
-    if (isSeries ? typeof v !== 'object' : !Number.isFinite(v)) throw new Error(`params: valeur invalide pour « ${id} »`)
+    if (isSeries ? !isValidSeries(v) : !Number.isFinite(v)) throw new Error(`params: valeur invalide pour « ${id} »`)
     out[id] = v
   }
   return out
@@ -408,6 +414,7 @@ export function resolveParams(overrides = {}) {
 
 /** Interpolation linéaire d'une série {année: valeur}, plate hors bornes. */
 export function interpolateSeries(series, year) {
+  if (!isValidSeries(series)) throw new Error('params: série invalide')
   const ys = Object.keys(series).map(Number).sort((a, b) => a - b)
   if (year <= ys[0]) return series[ys[0]]
   if (year >= ys[ys.length - 1]) return series[ys[ys.length - 1]]

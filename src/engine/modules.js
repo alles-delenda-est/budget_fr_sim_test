@@ -31,7 +31,7 @@ export function validateModuleDefinition(mod) {
   if (!['validé', 'non validé'].includes(mod.statut)) errs.push('statut doit être « validé » ou « non validé »')
   if (!Array.isArray(mod.leviers)) errs.push('leviers[] manquant')
   else for (const l of mod.leviers) {
-    if (!l.id || !l.unite || !Array.isArray(l.bornes) || l.bornes.length !== 2 || !finite(l.defaut) || typeof l.aide !== 'string') errs.push(`levier mal formé : ${l.id}`)
+    if (!l || typeof l !== 'object' || !l.id || !l.unite || !Array.isArray(l.bornes) || l.bornes.length !== 2 || !finite(l.bornes[0]) || !finite(l.bornes[1]) || l.bornes[0] > l.bornes[1] || !finite(l.defaut) || typeof l.aide !== 'string') errs.push(`levier mal formé : ${l?.id}`)
   }
   if (typeof mod.calculer !== 'function') errs.push('calculer() manquant')
   if (!Array.isArray(mod.explications)) errs.push('explications[] manquant')
@@ -54,7 +54,8 @@ export function runModule(mod, values, context) {
   const errs = validateModuleDefinition(mod)
   if (errs.length) throw new Error(`module « ${mod?.id} » invalide : ${errs.join(' ; ')}`)
   const out = mod.calculer(moduleLeverValues(mod, values), context)
-  for (const k of Object.keys(out ?? {})) {
+  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error(`module « ${mod.id} » : objet de sortie attendu`)
+  for (const k of Object.keys(out)) {
     if (!OUT_KEYS.has(k)) throw new Error(`module « ${mod.id} » : sortie interdite « ${k} » (un module n'écrit jamais dans la dette ni dans les intérêts)`)
   }
   const n = context.nYears + 1
@@ -65,6 +66,7 @@ export function runModule(mod, values, context) {
   const yS = { bas: [], central: [], haut: [] }
   let hasYS = false
   out.annees.forEach((y, t) => {
+    if (!y || typeof y !== 'object' || Array.isArray(y)) throw new Error(`module « ${mod.id} », année ${t} : objet attendu`)
     for (const k of Object.keys(y)) if (!YEAR_KEYS.has(k)) throw new Error(`module « ${mod.id} », année ${t} : clé interdite « ${k} »`)
     for (const b of BLOCKS) {
       const v = y.a?.[b] ?? 0
@@ -82,6 +84,7 @@ export function runModule(mod, values, context) {
       m.push(context.params[`dem.m.${y.categorie}`])
     } else throw new Error(`module « ${mod.id} », année ${t} : m ou categorie requis`)
     if (y.yS !== undefined) {
+      if (!y.yS || typeof y.yS !== 'object' || Array.isArray(y.yS)) throw new Error(`module « ${mod.id} », année ${t} : yS doit être un objet`)
       hasYS = true
       for (const c of ['bas', 'central', 'haut']) {
         if (!finite(y.yS[c])) throw new Error(`module « ${mod.id} », année ${t} : yS.${c} non fini`)
@@ -89,8 +92,12 @@ export function runModule(mod, values, context) {
       }
     } else for (const c of ['bas', 'central', 'haut']) yS[c].push(0)
   })
+  if (out.flux !== undefined && !Array.isArray(out.flux)) throw new Error(`module « ${mod.id} » : flux doit être un tableau`)
   for (const f of out.flux ?? []) {
-    if (!BLOCKS.includes(f.bloc) || !finite(f.montant) || typeof f.libelle !== 'string') throw new Error(`module « ${mod.id} » : flux mal formé`)
+    if (!f || typeof f !== 'object' || !BLOCKS.includes(f.bloc) || !finite(f.montant) || typeof f.libelle !== 'string') throw new Error(`module « ${mod.id} » : flux mal formé`)
+  }
+  if (out.explications !== undefined && (!Array.isArray(out.explications) || !out.explications.every((s) => typeof s === 'string'))) {
+    throw new Error(`module « ${mod.id} » : explications doit être un tableau de textes`)
   }
   return {
     id: mod.id, titre: mod.titre, source: 'module', statut: mod.statut, aBlocks, theta, mByYear: m,

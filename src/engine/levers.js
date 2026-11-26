@@ -38,6 +38,7 @@ const clampTau = (t) => Math.min(TAU_MAX, Math.max(0, t))
 export function thetaAtRate(theta0, tau0, tau1, form = 'elasticite') {
   const t0 = clampTau(tau0)
   const t1 = clampTau(tau1)
+  if (!(t0 > 0)) return 0
   if (form === 'is') return thetaIS(theta0 / t0, t1)
   return thetaElasticity((theta0 * (1 - t0)) / t0, t1)
 }
