@@ -160,22 +160,30 @@ export function deltaTone(delta, lowerIsBetter) {
  */
 export function decomposeAtYear(result, reference, t, eps, epsOffre) {
   const tot = result.total[t]
+  const refTot = reference.total[t]
   const lines = []
   const refPrimaryDelta = BLOCKS.reduce((s, b) => s + (result.blocks[b][t].referencePrimary - reference.blocks[b][t].referencePrimary), 0)
-  if (Math.abs(refPrimaryDelta) > 1e-12) {
+  const hasExog = Number.isFinite(tot.refPrimaryExog) && Number.isFinite(refTot.refPrimaryExog)
+  const macroRefDelta = hasExog ? tot.refPrimaryExog - refTot.refPrimaryExog : refPrimaryDelta
+  const inflRefDelta = refPrimaryDelta - macroRefDelta
+  if (Math.abs(macroRefDelta) > 1e-12) {
     lines.push({
       key: 'macro',
       kind: 'macro',
       label: 'Hypothèses macroéconomiques (écart de référence)',
       detail: 'Écart de solde primaire de référence dû aux hypothèses de croissance et d\'inflation (comparateur).',
-      montant: refPrimaryDelta,
+      montant: macroRefDelta,
     })
   }
   const modById = Object.fromEntries((result.modules ?? []).map((m) => [m.id, m]))
   for (const [id, v] of Object.entries(tot.byInstrument)) {
     const lever = LEVER_BY_ID[id]
     const titre = lever?.titre ?? modById[id]?.titre ?? id
-    const behavSuffix = lever?.type === 'depense' ? 'effets de report (autres prestations)' : 'réaction des contribuables'
+    let behavSuffix = 'réaction des contribuables'
+    if (lever?.offsetParam === 'comp.offset.pensions_hautes') behavSuffix = 'retour fiscal hautes pensions (IR/CSG)'
+    else if (lever?.offsetParam === 'comp.offset.age_legal') behavSuffix = 'effets de report (autres prestations)'
+    else if (lever?.offsetGroup === 'prestations' || id === 'comptes_notionnels') behavSuffix = 'retour fiscal et aides (IR/CSG/ASPA/APL)'
+    else if (lever?.type === 'depense') behavSuffix = 'effets de report (autres prestations)'
     lines.push({ key: `static:${id}`, kind: 'statique', leverId: id, label: `${titre} : effet statique`, montant: v.exAnte })
     lines.push({ key: `behav:${id}`, kind: 'comportement', leverId: id, label: `${titre} : ${behavSuffix}`, montant: v.exPost - v.exAnte })
   }
@@ -191,18 +199,18 @@ export function decomposeAtYear(result, reference, t, eps, epsOffre) {
   const stab = BLOCKS.reduce((s, b) => s + result.blocks[b][t].stabilisers, 0)
   lines.push({ key: 'demande', kind: 'demande', label: 'Effet de demande (stabilisateurs automatiques)', detail: 'Part de l\'écart de PIB due à la demande, avant effets d\'offre.', gdpPct: tot.yD * 100, montant: stab - offreTotal })
   lines.push(...offreLines)
-  const inflDelta = (tot.inflFiscal ?? 0) - (reference.total[t].inflFiscal ?? 0)
+  const inflDelta = (tot.inflFiscal ?? 0) - (refTot.inflFiscal ?? 0) + inflRefDelta
   if (Math.abs(inflDelta) > 1e-12) {
     lines.push({
       key: 'inflation',
       kind: 'inflation',
-      label: 'Inflation endogène (indexation retardée des pensions, CSS L. 161-25)',
-      detail: 'Décalage d\'un an entre le déflateur du PIB (t) et l\'indexation des pensions sur l\'IPC (t−1) lorsque l\'inflation endogène est activée.',
+      label: 'Inflation endogène (indexation retardée des pensions et déflateur)',
+      detail: 'Effet cumulé de l\'écart entre IPC(t−1) et déflateur du PIB(t) sur les pensions (CSS L. 161-25) et revalorisation nominale du solde primaire de référence.',
       montant: inflDelta,
     })
   }
-  lines.push({ key: 'interets', kind: 'interets', label: 'Intérêts (taux et dette supplémentaire, boule de neige)', detail: 'Variation de la charge d\'intérêts par rapport à la référence ; une charge plus basse améliore le solde.', montant: -(tot.interest - reference.total[t].interest) })
-  const ecart = tot.balance - reference.total[t].balance
+  lines.push({ key: 'interets', kind: 'interets', label: 'Intérêts (taux et dette supplémentaire, boule de neige)', detail: 'Variation de la charge d\'intérêts par rapport à la référence ; une charge plus basse améliore le solde.', montant: -(tot.interest - refTot.interest) })
+  const ecart = tot.balance - refTot.balance
   return { year: tot.year, ecart, lines }
 }
 
@@ -249,6 +257,7 @@ export function paramIdsFor(values, result, macroId = null) {
     else if (PARAM_BY_ID[`rend.${l.id}`]) ids.push(`rend.${l.id}`)
     if (l.theta) ids.push(l.theta.id, l.theta.tau0)
     if (l.offsetParam) ids.push(l.offsetParam)
+    if (l.offsetGroup === 'prestations') ids.push('comp.offset.prestations')
     if (l.categorie) ids.push(`dem.m.${l.categorie}`)
     const reg = SUPPLY_BY_LEVER[l.id]
     if (reg) ids.push(...(reg.sigma ? [reg.sigma] : reg.sigmaParams), reg.L, reg.t0)

@@ -21,6 +21,8 @@ const AIDE_IR = `Variation proportionnelle du barème : 1 % du produit vaut envi
 
 export const BLOCKS = ['centrales', 'securiteSociale', 'locales']
 export const ZERO_BLOCKS = () => ({ centrales: 0, securiteSociale: 0, locales: 0 })
+/** Âge légal de droit en vigueur (reprise progressive vers 64 ans après le gel LFSS 2026 jusqu'en janv. 2028). */
+export const LEGAL_AGE_BASE = 64
 
 /** θ = e·τ/(1−τ) : élasticité e de l'assiette au taux net, au taux τ (§3.2). */
 export const thetaElasticity = (e, tau) => (e * tau) / (1 - tau)

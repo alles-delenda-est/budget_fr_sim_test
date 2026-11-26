@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { PARAMS, PARAM_BY_ID, STATUSES, resolveParams } from '../params.js'
 import { LEVERS, LEVER_BY_ID, STRUCTURAL_LEVERS, QUALITATIVE_NOTES, staticYield, thetaElasticity, thetaAtRate, leverTheta, BLOCKS } from '../levers.js'
-import { projectScenario, HORIZONS, issuanceRate, deepFreeze, effectiveMultiplier, DEMAND_REGIMES } from '../project.js'
+import { projectScenario, HORIZONS, issuanceRate, deepFreeze, effectiveMultiplier, DEMAND_REGIMES, DECOMPOSITION_LABELS } from '../project.js'
 import { TEST_MODULE, validateModuleDefinition, runModule } from '../modules.js'
+import { NDC_MODULE } from '../ndc-module.js'
+import { LVT_MODULE } from '../lvt-module.js'
 import { irTranches, irDeltaLnNet, thetaIrTranches, thetaReelIr, facteurCsgDeductible, coinMarginal } from '../ir-tranches.js'
 import { deriveBAutres, deriveMPrestations } from '../internal-derivations.js'
 import { supplyPhase, sigmaFiscal, sigmaFiscalCase, partReelle, supplyForCase, coutUsageParPoint, impliedJobs, roundJobs, SUPPLY_BY_LEVER } from '../supply.js'
@@ -1275,6 +1277,10 @@ describe('Phase 3 (opt-in) : multiplicateurs de récession et inflation endogèn
         expect(Math.abs(row.deltaPiDefl)).toBeLessThanOrEqual(P['infl.clamp_max'] / 100 + 1e-12)
         const sumBal = BLOCKS.reduce((s, b) => s + r.blocks[b][t].balance, 0)
         expect(Math.abs(sumBal - row.balance)).toBeLessThan(1e-6)
+        for (const b of BLOCKS) {
+          const br = r.blocks[b][t]
+          expect(br.referencePrimary + br.leversExAnte + br.behavioural + br.stabilisers + br.inflation).toBeCloseTo(br.primaryBalance, 6)
+        }
         if (t > 0) {
           const d = r.decomposition[t]
           const s = d.refGrowth + d.refDrift + d.leviers + d.comportement + d.stabilisateurs + d.offre.reduce((a, o) => a + o.montant, 0) + d.inflation + d.interetsTaux + d.interetsStock
@@ -1282,6 +1288,23 @@ describe('Phase 3 (opt-in) : multiplicateurs de récession et inflation endogèn
         }
       }
     }
+  })
+  it('M-01..M-05 (durcissement QA) : coin cumulé IPC/déflateur persistant sur TVA, modules sensibles au régime E4, DECOMPOSITION_LABELS.inflation et garde INT=0', () => {
+    // M-01 : hausse de +2 pts TVA normale -> l'écart de niveau de prix IPC/déflateur reste négatif sur les années 2 à 10 (ne disparaît pas en t = 3)
+    const tvaInfl = projectScenario({ levers: { tva_normal: 2 }, horizon: 'dixAns', endogenousInflation: true })
+    expect(tvaInfl.total[1].inflFiscal).toBeGreaterThan(0)
+    for (let t = 2; t <= 10; t++) expect(tvaInfl.total[t].inflFiscal).toBeLessThan(-0.5)
+    // M-03 : NDC_MODULE (categorie: 'prestations') suit demandRegime, contrairement à LVT_MODULE (m: 0 explicite)
+    const ndcNorm = projectScenario({ modules: [{ module: NDC_MODULE, levers: { actif: 1 } }], horizon: 'dixAns', demandRegime: 'normal' })
+    const ndcRec = projectScenario({ modules: [{ module: NDC_MODULE, levers: { actif: 1 } }], horizon: 'dixAns', demandRegime: 'recession' })
+    expect(Math.abs(ndcRec.total[5].yD)).toBeGreaterThan(Math.abs(ndcNorm.total[5].yD) * 1.1)
+    const lvtRec = projectScenario({ modules: [{ module: LVT_MODULE, levers: { scenario: 2 } }], horizon: 'dixAns', demandRegime: 'recession' })
+    expect(lvtRec.total[5].yD).toBe(0)
+    // M-05 : DECOMPOSITION_LABELS contient inflation ; INT=0 neutralise interetsStock
+    expect(DECOMPOSITION_LABELS.inflation).toBeTruthy()
+    const zeroInt = projectScenario({ overrides: { 'dette.i_moy_2025': 0, 'dette.y_btf': 0, 'dette.y_moyen': 0, 'dette.y_long': 0, 'dette.beta': 0 } })
+    expect(zeroInt.total[2].interest).toBe(0)
+    expect(zeroInt.decomposition[2].interetsStock).toBe(0)
   })
 })
 

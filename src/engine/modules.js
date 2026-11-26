@@ -63,6 +63,7 @@ export function runModule(mod, values, context) {
   const aBlocks = { centrales: [], securiteSociale: [], locales: [] }
   const theta = []
   const m = []
+  const categorieByYear = []
   const yS = { bas: [], central: [], haut: [] }
   let hasYS = false
   out.annees.forEach((y, t) => {
@@ -79,9 +80,11 @@ export function runModule(mod, values, context) {
     if (y.m !== undefined) {
       if (!finite(y.m) || y.m < 0) throw new Error(`module « ${mod.id} », année ${t} : m invalide`)
       m.push(y.m)
+      categorieByYear.push(null)
     } else if (y.categorie !== undefined) {
       if (!CATEGORIES.includes(y.categorie)) throw new Error(`module « ${mod.id} », année ${t} : catégorie inconnue « ${y.categorie} »`)
       m.push(context.params[`dem.m.${y.categorie}`])
+      categorieByYear.push(y.categorie)
     } else throw new Error(`module « ${mod.id} », année ${t} : m ou categorie requis`)
     if (y.yS !== undefined) {
       if (!y.yS || typeof y.yS !== 'object' || Array.isArray(y.yS)) throw new Error(`module « ${mod.id} », année ${t} : yS doit être un objet`)
@@ -100,7 +103,7 @@ export function runModule(mod, values, context) {
     throw new Error(`module « ${mod.id} » : explications doit être un tableau de textes`)
   }
   return {
-    id: mod.id, titre: mod.titre, source: 'module', statut: mod.statut, aBlocks, theta, mByYear: m,
+    id: mod.id, titre: mod.titre, source: 'module', statut: mod.statut, aBlocks, theta, mByYear: m, categorieByYear,
     yS: hasYS ? yS : null, flux: out.flux ?? [], explications: [...(mod.explications ?? []), ...(out.explications ?? [])],
   }
 }

@@ -132,6 +132,21 @@
   letter-spacing: 0.04em;
   color: var(--color-ink-muted);
   background: var(--color-background);
+  overflow-wrap: normal;
+}
+
+.hyp-math {
+  text-transform: none;
+}
+
+.hyp-param-table {
+  min-width: 760px;
+}
+
+.hyp-param-table thead th:first-child,
+.hyp-param-table tbody th {
+  min-width: 190px;
+  overflow-wrap: break-word;
 }
 
 .hyp-table tbody th {

@@ -105,7 +105,11 @@ export function projectScenario(options = {}) {
   // ---- Instruments : leviers natifs + modules ----
   const years = Array.from({ length: N + 1 }, (_, t) => START_YEAR + t)
   // Contrat de module (note §7) : le module reçoit une copie profondément gelée, jamais l'objet vivant des paramètres.
-  const context = deepFreeze(structuredClone({ startYear: START_YEAR, endYear: horizon.endYear, nYears: N, years, gdpBase2025: P['base.pib.2025'], params: P }))
+  // Évite le coût de structuredClone + deepFreeze lorsqu'aucun module n'est actif.
+  const hasModules = (options.modules?.length ?? 0) > 0
+  const context = hasModules
+    ? deepFreeze(structuredClone({ startYear: START_YEAR, endYear: horizon.endYear, nYears: N, years, gdpBase2025: P['base.pib.2025'], params: P }))
+    : null
   const instruments = leversToInstruments(options.levers, P, N, options.ramp, { sigma: options.sigma, ysCase })
   const moduleRuns = []
   for (const { module, levers } of options.modules ?? []) {
@@ -115,8 +119,9 @@ export function projectScenario(options = {}) {
   }
   const aTot = (inst, t) => BLOCKS.reduce((s, b) => s + inst.aBlocks[b][t], 0)
   const mOf = (inst, t, slackProb) => {
-    const baseM = inst.mByYear ? inst.mByYear[t] : P[`dem.m.${inst.categorie}`]
-    return inst.mByYear ? baseM : effectiveMultiplier(inst.categorie, baseM, demandRegime, slackProb, P)
+    const cat = inst.categorieByYear ? inst.categorieByYear[t] : inst.categorie
+    const baseM = inst.mByYear ? inst.mByYear[t] : P[`dem.m.${cat}`]
+    return cat ? effectiveMultiplier(cat, baseM, demandRegime, slackProb, P) : baseM
   }
   const tvaShareAt = (t) => instruments.reduce((s, inst) => (inst.id === 'tva_normal' || inst.id === 'tva_tous_taux' ? s + aTot(inst, t) : s), 0)
 
@@ -156,6 +161,7 @@ export function projectScenario(options = {}) {
 
   // ---- État initial : 2025 observé ----
   let YbPrev = P['base.pib.2025']
+  let YbExogPrev = P['base.pib.2025']
   let Dprev = P['base.dette.2025']
   let Dprev2 = P['base.dette.2024']
   let iAvgPrev = P['dette.i_moy_2025'] / 100
@@ -163,7 +169,8 @@ export function projectScenario(options = {}) {
   let ratioRef = null
   let uPrev = ub
   let deltaPiPhilPrev = 0
-  let deltaPiCpiPrev = 0
+  let relDefl = 1
+  let relCpi = 1
   const S = instruments.map(() => 0) // demande cumulée pondérée par m (E4), par instrument
 
   const clampInfl = (x) => {
@@ -209,6 +216,7 @@ export function projectScenario(options = {}) {
     }
 
     // E1
+    const YbExog = YbExogPrev * Math.max(1e-6, 1 + g(t) + pi(t))
     const Yb = YbPrev * Math.max(1e-6, 1 + g(t) + pi(t) + deltaPiDefl)
     const Y = Yb * Math.max(1e-6, 1 + gap) // E6
 
@@ -225,8 +233,14 @@ export function projectScenario(options = {}) {
     const oatiAdj = endogenousInflation ? P['infl.oati.part_stock'] * deltaPiCpi * Dprev : 0
     const INT = Math.max(0, iAvg * Dprev + oatiAdj)
 
-    // E8 : effet budgétaire de l'indexation retardée des pensions (CSS L. 161-25) en mode inflation endogène
-    const inflFiscal = endogenousInflation ? (corAt(START_YEAR + t) / 100) * (deltaPiDefl - deltaPiCpiPrev) * Yb : 0
+    // E8 : effet budgétaire de l'indexation retardée des pensions (CSS L. 161-25) en mode inflation endogène :
+    // écart cumulé de niveaux de prix entre IPC(t−1) et déflateur du PIB(t) par rapport à la référence.
+    const relCpiLag = relCpi
+    if (endogenousInflation) {
+      relDefl *= Math.max(1e-6, 1 + deltaPiDefl)
+      relCpi *= Math.max(1e-6, 1 + deltaPiCpi)
+    }
+    const inflFiscal = endogenousInflation ? (corAt(START_YEAR + t) / 100) * (1 - relCpiLag / relDefl) * Yb : 0
 
     // E2/E3/E8 par bloc
     const dA = driftA(t)
@@ -235,10 +249,13 @@ export function projectScenario(options = {}) {
     let exAnteTot = 0
     let behavTot = 0
     let refTot = 0
+    let refExogTot = 0
     let stabTot = 0
     const perInstrument = {}
     for (const b of BLOCKS) {
-      const ref = (spb0 * share('primaire', b) - (b === 'securiteSociale' ? dA - dA0 : 0) - (dB - dB0) * share('depenses', b)) * Yb
+      const refShare = spb0 * share('primaire', b) - (b === 'securiteSociale' ? dA - dA0 : 0) - (dB - dB0) * share('depenses', b)
+      const ref = refShare * Yb
+      refExogTot += refShare * YbExog
       let exAnte = 0
       let behav = 0
       instruments.forEach((inst) => {
@@ -280,7 +297,7 @@ export function projectScenario(options = {}) {
       blocks[b].push({
         year: START_YEAR + t, primaryBalance: blk[b].primary, interest: blk[b].interest, balance: blk[b].balance,
         balanceRatio: blk[b].balance / Y, referencePrimary: blk[b].ref, leversExAnte: blk[b].exAnte,
-        behavioural: blk[b].behav, stabilisers: blk[b].stab,
+        behavioural: blk[b].behav, stabilisers: blk[b].stab, inflation: blk[b].inflBlk,
         // Affichage seulement : flux bruts des modules (% du PIB et Md€), jamais ajoutés au solde. Appliqués dès 2027 (leviers dès 2027, D1).
         moduleFlux: t === 0 ? [] : moduleRuns.flatMap((inst) => inst.flux.filter((f) => f.bloc === b)
           .map((f) => ({ moduleId: inst.id, libelle: f.libelle, montantPibPct: f.montant, montant: f.montant * Y }))),
@@ -289,8 +306,9 @@ export function projectScenario(options = {}) {
       })
     }
     total.push({
-      year: START_YEAR + t, t, gdp: Y, gdpBase: Yb, gdpEffect: gap, yD, yS,
+      year: START_YEAR + t, t, gdp: Y, gdpBase: Yb, gdpBaseExog: YbExog, gdpEffect: gap, yD, yS,
       balance, balanceRatio: balance / Y, primaryBalance: primary, primaryBalanceRatio: primary / Y,
+      refPrimaryExog: refExogTot,
       revenue, interest: INT, interestRatio: INT / Y, avgRate: iAvg, newRate: iNew, riskPremium: premium,
       debt: D, debtRatio: ratio, unemployment: u, byInstrument: perInstrument, driftA: dA, driftB: dB, issuanceRate: iStar,
       slackProb, deltaPiCpi, deltaPiDefl, inflFiscal, oatiAdj,
@@ -305,7 +323,7 @@ export function projectScenario(options = {}) {
       const refGrowth = (q.ref / q.Yb) * (Yb - q.Yb)
       const offre = ysLines.map((l, k) => ({ id: l.id, libelle: l.libelle, cas: ysCase, montant: lv.offre[k] - q.offre[k] }))
       const offreSum = offre.reduce((sum, o) => sum + o.montant, 0)
-      const interetsStock = -q.iAvg * (Dprev - Dprev2)
+      const interetsStock = (INT === 0 && q.INT === 0) ? 0 : -q.iAvg * (Dprev - Dprev2)
       const interetsTaux = -(INT - q.INT) - interetsStock
       decomposition.push({
         year: START_YEAR + t,
@@ -324,8 +342,8 @@ export function projectScenario(options = {}) {
     levels.push(lv)
 
     if (ratioRef === null) ratioRef = ratio
-    YbPrev = Yb; Dprev2 = Dprev; Dprev = D; iAvgPrev = iAvg; ratioPrev = ratio; uPrev = u
-    deltaPiPhilPrev = deltaPiPhil; deltaPiCpiPrev = deltaPiCpi
+    YbPrev = Yb; YbExogPrev = YbExog; Dprev2 = Dprev; Dprev = D; iAvgPrev = iAvg; ratioPrev = ratio; uPrev = u
+    deltaPiPhilPrev = deltaPiPhil
   }
 
   return {
@@ -344,6 +362,7 @@ export const DECOMPOSITION_LABELS = {
   comportement: 'Réaction des contribuables (θ)',
   stabilisateurs: 'Stabilisateurs automatiques (écart de PIB dû à la demande)',
   offre: 'Effets d\'offre (E5), une ligne par mesure',
+  inflation: 'Inflation endogène (indexation retardée des pensions)',
   interetsTaux: 'Intérêts : hausse du taux moyen',
   interetsStock: 'Intérêts : dette supplémentaire',
 }

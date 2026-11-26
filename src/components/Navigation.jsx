@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import './Navigation.css'
 
 const TABS = [
@@ -8,11 +9,18 @@ const TABS = [
 ]
 
 export default function Navigation({ currentPage, navigateTo }) {
+  const activeTabRef = useRef(null)
+
+  useEffect(() => {
+    activeTabRef.current?.scrollIntoView?.({ behavior: 'instant', inline: 'nearest', block: 'nearest' })
+  }, [currentPage])
+
   return (
     <nav className="nav-tabs" role="tablist" aria-label="Navigation principale">
       {TABS.map(tab => (
         <button
           key={tab.id}
+          ref={currentPage === tab.id ? activeTabRef : null}
           role="tab"
           aria-selected={currentPage === tab.id}
           className={`nav-tab ${currentPage === tab.id ? 'active' : ''}`}

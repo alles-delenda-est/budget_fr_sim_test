@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback, useDeferredValue } from 'react'
 import { projectScenario, HORIZONS } from '../engine/project.js'
 import { resolveParams, PARAM_BY_ID } from '../engine/params.js'
 import LeverPanel from './budget/LeverPanel'
@@ -41,9 +41,12 @@ export default function SimulateurBudgetPage() {
   const lvtSetting = useMemo(() => (lvtScenario ? { scenario: lvtScenario.code, ocde: lvtScenario.code >= 2 && lvt.ocde === 1 ? 1 : 0 } : null), [lvtScenario, lvt.ocde])
   const modules = useMemo(() => (lvtSetting ? [{ module: LVT_MODULE, levers: { scenario: lvtSetting.scenario, offre_ocde: lvtSetting.ocde } }] : []), [lvtSetting])
 
+  // Curseurs fluides à 60 fps : les valeurs de calcul des graphiques/tableaux sont différées pendant le glissement.
+  const deferredValues = useDeferredValue(values)
+
   // Référence (médiane des prévisionnistes indépendants, sans levier) et scénario : recalculés seulement si nécessaire.
   const reference = useMemo(() => projectScenario({ levers: {}, horizon, ysCase, demandRegime, endogenousInflation }), [horizon, ysCase, demandRegime, endogenousInflation])
-  const result = useMemo(() => projectScenario({ levers: values, overrides, horizon, ysCase, modules, demandRegime, endogenousInflation }), [values, overrides, horizon, ysCase, modules, demandRegime, endogenousInflation])
+  const result = useMemo(() => projectScenario({ levers: deferredValues, overrides, horizon, ysCase, modules, demandRegime, endogenousInflation }), [deferredValues, overrides, horizon, ysCase, modules, demandRegime, endogenousInflation])
 
   const N = result.years.length - 1
   const yearIdx = Math.min(Math.max(yearIdxRaw, 1), N)
@@ -57,7 +60,7 @@ export default function SimulateurBudgetPage() {
   ], [result, reference, N])
   const decomposition = useMemo(() => decomposeAtYear(result, reference, yearIdx, EPS, EPS_OFFRE), [result, reference, yearIdx])
   const blocks = useMemo(() => blocksAt(result, reference, yearIdx), [result, reference, yearIdx])
-  const paramIds = useMemo(() => [...new Set([...paramIdsFor(values, result, macroId), ...(lvtSetting ? LVT_PARAM_IDS : [])])].filter((id) => PARAM_BY_ID[id]), [values, result, macroId, lvtSetting])
+  const paramIds = useMemo(() => [...new Set([...paramIdsFor(deferredValues, result, macroId), ...(lvtSetting ? LVT_PARAM_IDS : [])])].filter((id) => PARAM_BY_ID[id]), [deferredValues, result, macroId, lvtSetting])
 
   // Aucune ligne d'offre non nulle dans le résultat du moteur : le choix bas / central / haut ne change rien.
   const noSupplyEffect = !hasSupplyEffect(result)
@@ -86,7 +89,9 @@ export default function SimulateurBudgetPage() {
     downloadCsv(csv, `simulateur-budget-${horizon}-${ysCase}${macroId ? `-${macroId}` : ''}${lvtScenario ? `-lvt-${lvtScenario.id}` : ''}.csv`)
   }
 
-  const setLever = (id, x) => setValues((v) => ({ ...v, [id]: x }))
+  const setLever = useCallback((id, x) => setValues((v) => ({ ...v, [id]: x })), [])
+  const handleReset = useCallback(() => { setValues({}); setLvt(DEFAULT_LVT) }, [])
+  const handleExtreme = useCallback((w) => setValues(extremeLevers(w)), [])
   const applyScenario = (scenario) => {
     setValues({ ...scenario.levers })
     setMacroId(scenario.macroId ?? null)
@@ -166,7 +171,7 @@ export default function SimulateurBudgetPage() {
       </section>
 
       <div className="sb-layout">
-        <LeverPanel values={values} onChange={setLever} onReset={() => { setValues({}); setLvt(DEFAULT_LVT) }} onExtreme={(w) => setValues(extremeLevers(w))} P={P} ysCase={ysCase}>
+        <LeverPanel values={values} onChange={setLever} onReset={handleReset} onExtreme={handleExtreme} P={P} ysCase={ysCase}>
           <LvtModuleControl lvt={lvt} onChange={setLvt} />
         </LeverPanel>
         <div className="sb-results">

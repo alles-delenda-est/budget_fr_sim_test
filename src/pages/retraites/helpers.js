@@ -3,12 +3,11 @@
 
 import { PARAM_BY_ID, interpolateSeries } from '../../engine/params.js'
 import { START_YEAR } from '../../engine/project.js'
-import { LEVER_BY_ID } from '../../engine/levers.js'
+import { LEVER_BY_ID, LEGAL_AGE_BASE } from '../../engine/levers.js'
 import { NDC_START_T, NDC_RAMP_YEARS } from '../../engine/ndc-module.js'
 import { num, fmt } from '../budget/helpers.js'
 
-/** Âge légal de droit en vigueur (reprise progressive vers 64 ans après le gel LFSS 2026 jusqu'en janv. 2028). */
-export const LEGAL_AGE_BASE = 64
+export { LEGAL_AGE_BASE }
 
 /**
  * Sources citées sur la page Retraites, avec leur adresse (docs/model-note.md §9). Les balises [Sxx] des textes

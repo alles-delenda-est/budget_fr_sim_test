@@ -1,12 +1,10 @@
 import { useMemo } from 'react'
 import { projectScenario, issuanceRate, HORIZONS, RATE_MAX, START_YEAR } from '../engine/project.js'
-import { resolveParams, PARAM_BY_ID } from '../engine/params.js'
-import { LEVERS, STRUCTURAL_LEVERS, LEVER_BY_ID } from '../engine/levers.js'
+import { resolveParams, PARAM_BY_ID, macroGrowthSourceLabel } from '../engine/params.js'
+import { LEVERS, STRUCTURAL_LEVERS, LEVER_BY_ID, LEGAL_AGE_BASE } from '../engine/levers.js'
 import { WARNING_THRESHOLDS as W } from '../config.js'
 import { fmt, FLAGGED_STATUSES } from './budget/helpers'
 import { evaluateWarnings } from './budget/warnings'
-import { macroGrowthSourceLabel } from './hypotheses/helpers'
-import { LEGAL_AGE_BASE } from './retraites/helpers'
 import './IntroPage.css'
 
 const AGE_LEVER = LEVER_BY_ID['age_legal']
@@ -233,9 +231,10 @@ export default function IntroPage({ navigateTo }) {
             les trois cas d'effets d'offre (bas / central / haut) et les fourchettes des paramètres.
           </li>
           <li>
-            <strong>Inflation exogène :</strong> trajectoire tirée d'un petit nombre de prévisions publiées pour 2026–2027
-            (statut « {statusOf('macro.pi.2026', 'macro.pi.2027')} »), sans boucle prix-salaires ni réponse endogène de
-            l'inflation.
+            <strong>Inflation exogène par défaut :</strong> trajectoire tirée de quatre prévisions institutionnelles pour
+            2026–2027 (statut « {statusOf('macro.pi.2026', 'macro.pi.2027')} ») ; une boucle optionnelle d'inflation
+            endogène (répercussion TVA, courbe de Phillips bornée, OATi, décalage pensions) est activable dans{' '}
+            <em>Dynamiques avancées</em> sur l'onglet Budget.
           </li>
           <li>
             <strong>Hypothèses de référence estimées ou non validées :</strong> la référence intègre une dérive des autres
@@ -246,8 +245,8 @@ export default function IntroPage({ navigateTo }) {
             {statusOf('macro.g.2026', 'macro.g.2027', 'macro.pi.2026', 'macro.pi.2027')} ».
           </li>
           <li>
-            <strong>Régime unique de multiplicateurs :</strong> multiplicateurs de demande d'expansion uniquement (pas de
-            basculement automatique en récession).
+            <strong>Multiplicateurs d'expansion par défaut :</strong> régimes optionnels de récession, de taux plancher
+            (ELB) ou de transition endogène activables dans <em>Dynamiques avancées</em> sur l'onglet Budget.
           </li>
           <li>
             <strong>Pas de contagion financière :</strong> la boucle dette–taux prolonge linéairement <code>β</code>, le

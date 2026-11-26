@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { fmt, deltaTone, visibleLines, HIDE_BELOW, debtMovesAgainstBalance, YEAR1_PARADOX_TEXT } from './helpers'
 import { betaRegimeText, tier1Text, tier2Text, tier2Explanation } from './warnings'
 import { InfoPopover } from './InfoPopover'
@@ -33,7 +34,7 @@ function SnapshotCard({ titre, snap, explainParadox = false }) {
   )
 }
 
-export function Snapshots({ snaps }) {
+export const Snapshots = memo(function Snapshots({ snaps }) {
   return (
     <section className="sb-section" aria-labelledby="sb-fiches">
       <h2 id="sb-fiches">Résultats clés</h2>
@@ -43,7 +44,7 @@ export function Snapshots({ snaps }) {
       </div>
     </section>
   )
-}
+})
 
 const KIND_ORDER = ['macro', 'statique', 'comportement', 'demande', 'offre', 'inflation', 'interets']
 const KIND_TITLES = {
@@ -52,7 +53,7 @@ const KIND_TITLES = {
   offre: 'Effets d\'offre', inflation: 'Inflation endogène (Phase 3)', interets: 'Intérêts',
 }
 
-export function DecompositionTable({ decomposition, years, yearIdx, onYear }) {
+export const DecompositionTable = memo(function DecompositionTable({ decomposition, years, yearIdx, onYear }) {
   const lines = visibleLines(decomposition.lines)
   const hidden = decomposition.lines.length - lines.length
   return (
@@ -74,7 +75,7 @@ export function DecompositionTable({ decomposition, years, yearIdx, onYear }) {
                   {i === 0 && <span className="sb-kind-title">{KIND_TITLES[kind]}</span>}
                   {l.label}
                   {l.gdpPct !== undefined && Math.abs(l.gdpPct) >= 0.0005 && <span className="sb-muted"> · PIB {fmt(l.gdpPct, 3, { signed: true })} %</span>}
-                  {l.detail && <InfoPopover label={l.label}><span className="sb-info-line">{l.detail}</span></InfoPopover>}
+                  {l.detail && <>{' '}<InfoPopover label={l.label}><span className="sb-info-line">{l.detail}</span></InfoPopover></>}
                 </th>
                 <td className="sb-num">{fmt(l.montant, 1, { signed: true })}</td>
               </tr>
@@ -86,9 +87,9 @@ export function DecompositionTable({ decomposition, years, yearIdx, onYear }) {
       {hidden > 0 && <p className="sb-help">{hidden} ligne(s) inférieure(s) à {fmt(HIDE_BELOW, 2)} Md€ masquée(s) ; le total les inclut.</p>}
     </section>
   )
-}
+})
 
-export function BlocksTable({ blocks, year }) {
+export const BlocksTable = memo(function BlocksTable({ blocks, year }) {
   return (
     <section className="sb-section" aria-labelledby="sb-blocs">
       <h2 id="sb-blocs">Trois blocs en {year}</h2>
@@ -108,4 +109,4 @@ export function BlocksTable({ blocks, year }) {
       </table>
     </section>
   )
-}
+})

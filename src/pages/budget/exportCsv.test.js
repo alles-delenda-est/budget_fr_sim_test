@@ -33,6 +33,7 @@ describe('formats CSV', () => {
     expect(csvText('@SUM(A1:A2)')).toBe("'@SUM(A1:A2)")
     expect(csvText('\t=1')).toBe("'\t=1")
     expect(csvText('\r=1')).toBe(`"'\r=1"`)
+    expect(csvText('\n=1+1')).toBe(`"'\n=1+1"`)
     expect(csvNumber(-12.5)).toBe('-12,5')
   })
 })
