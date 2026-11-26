@@ -98,8 +98,8 @@ describe('solde primaire de référence : comparateurs seulement', () => {
     const gouv = P['cmp.gouv.solde.2027'] + P['cmp.gouv.interets.2027'] // −2,1
     expect(gouv).toBeCloseTo(-2.1, 10)
     expect(r[1].primaryBalanceRatio * 100 - gouv).toBeLessThan(-0.5) // écart rapporté, non comblé
-    const ce = P['cmp.ce.solde.2027'] + P['cmp.ce.interets.2027'] // −2,9 (Commission, printemps 2026)
-    expect(Math.abs(r[1].primaryBalanceRatio * 100 - ce)).toBeLessThan(0.2)
+    const ce = P['cmp.ce.solde.2027'] + P['cmp.ce.interets.2027'] // −2,6 (Commission, automne 2026)
+    expect(Math.abs(r[1].primaryBalanceRatio * 100 - ce)).toBeLessThan(0.3)
   })
 })
 
@@ -576,7 +576,7 @@ describe('remarques de la revue de la PR n° 6', () => {
   })
   it('ref.derive.a_sante : le haut (longue durée comprise) est documenté et seule cette composante porte la longue durée', () => {
     const q = PARAM_BY_ID['ref.derive.a_sante']
-    expect(q.high).toBeCloseTo(1.0 / 48, 10)
+    expect(q.high).toBeCloseTo(1.37 / 45, 10)
     expect(q.explanation).toMatch(/double comptage/)
     // b_autres est estimé hors GF07 (santé) et GF1002 (vieillesse) : aucun double comptage avec la longue durée
     expect(PARAM_BY_ID['ref.derive.b_autres'].explanation).toMatch(/GF07.*GF1002/)
@@ -782,16 +782,22 @@ describe('vérification primaire Day 0 : ventilation COFOG Eurostat 2024 et para
     expect(PARAM_BY_ID['comp.tau0.csg'].status).toBe('sourcé')
     expect(PARAM_BY_ID['offre.csg.tmi_salarie'].status).toBe('sourcé')
     expect(PARAM_BY_ID['ref.derive.b_autres'].status).toBe('calculé (estimation)')
-    expect([PARAM_BY_ID['ref.derive.b_autres'].low, PARAM_BY_ID['ref.derive.b_autres'].value, PARAM_BY_ID['ref.derive.b_autres'].high]).toEqual([0, 0.05, 0.11])
+    expect([PARAM_BY_ID['ref.derive.b_autres'].low, PARAM_BY_ID['ref.derive.b_autres'].value, PARAM_BY_ID['ref.derive.b_autres'].high]).toEqual([0, 0.03, 0.09])
   })
-  it('plus aucun paramètre « de mémoire » ni « à valider », seul cmp.aft.taux_emission.2026 « à collecter »', () => {
+  it('plus aucun paramètre « de mémoire », « à valider » ni « à collecter » (Phase 1)', () => {
     expect(PARAMS.filter((q) => q.status === 'de mémoire')).toEqual([])
-    expect(PARAMS.filter((q) => q.status === 'à collecter').map((q) => q.id)).toEqual(['cmp.aft.taux_emission.2026'])
+    expect(PARAMS.filter((q) => q.status === 'à collecter')).toEqual([])
     expect(PARAMS.filter((q) => q.status === 'à valider')).toEqual([])
+    expect(PARAMS.filter((q) => q.status === 'sourcé (secondaire)').map((q) => q.id)).toEqual(['dem.m.is'])
     expect(PARAM_BY_ID['dem.m.ir_csg'].source).toMatch(/Mésange.*0,41/)
     expect(PARAM_BY_ID['comp.theta.cotis'].source).toMatch(/Bozio, Breda et Grenet/)
-    expect([PARAM_BY_ID['comp.offset.prestations'].value, PARAM_BY_ID['comp.offset.prestations'].status]).toEqual([0.20, 'sourcé (secondaire)'])
+    expect([PARAM_BY_ID['comp.offset.prestations'].value, PARAM_BY_ID['comp.offset.prestations'].status]).toEqual([0.20, 'sourcé (fourchette), centre choisi'])
     expect([PARAM_BY_ID['comp.theta.csg'].value, PARAM_BY_ID['comp.theta.csg'].status]).toEqual([0.03, 'sourcé (fourchette), centre choisi'])
+    expect([PARAM_BY_ID['dette.y_long'].value, PARAM_BY_ID['dette.y_long'].status]).toEqual([4.89, 'sourcé'])
+    expect([PARAM_BY_ID['cmp.aft.taux_emission.2026'].value, PARAM_BY_ID['cmp.aft.taux_emission.2026'].status]).toEqual([3.50, 'sourcé (calcul)'])
+    expect(PARAM_BY_ID['ref.derive.a_sante'].value).toBeCloseTo(0.66 / 45, 8)
+    expect(PARAM_BY_ID['ref.derive.a_sante'].high).toBeCloseTo(1.37 / 45, 8)
+    expect(PARAM_BY_ID['ref.derive.a_sante'].status).toBe('sourcé (fourchette), centre choisi')
     expect(PARAM_BY_ID['rend.is'].status).toBe('calculé (estimation)')
     expect(PARAM_BY_ID['macro.pi.long'].status).toBe('sourcé (fourchette), centre choisi')
   })
@@ -1126,12 +1132,12 @@ describe('barème de l\'IR par tranche : données communes au θ (documenté) et
 })
 
 describe('dérivations internes documentées (src/engine/internal-derivations.js)', () => {
-  it('ref.derive.b_autres correspond exactement à la médiane Eurostat D7 arrondie (0,05 pt/an)', () => {
+  it('ref.derive.b_autres correspond exactement à la médiane Eurostat D7 arrondie (0,03 pt/an à g_pot = 1,05 %)', () => {
     const b = deriveBAutres(P)
     expect(b.windows.length).toBe(5)
     expect(b.rawMedian).toBeCloseTo(b.window2007Implied, 10)
-    expect(b.rawMedian).toBeCloseTo(0.0497, 3)
-    expect(b.rounded).toBe(0.05)
+    expect(b.rawMedian).toBeCloseTo(0.0334, 3)
+    expect(b.rounded).toBe(0.03)
     expect(PARAM_BY_ID['ref.derive.b_autres'].value).toBe(b.rounded)
     // Sensibilité à macro.g.potentielle : une croissance potentielle plus haute abaisse la dérive implicite
     const hiG = deriveBAutres(resolveParams({ 'macro.g.potentielle': 1.2 }))

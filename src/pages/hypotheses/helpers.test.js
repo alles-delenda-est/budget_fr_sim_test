@@ -177,7 +177,7 @@ describe('Hypothèses : vue avancée — méthodologie des dérivations internes
     expect(d.bAutres.param.id).toBe('ref.derive.b_autres')
     expect(d.bAutres.rounded).toBe(P['ref.derive.b_autres'])
     expect(d.bAutres.windows.length).toBe(5)
-    expect(d.bAutres.debt2036Sensitivity.map((s) => s.b)).toEqual([0, 0.05, 0.11])
+    expect(d.bAutres.debt2036Sensitivity.map((s) => s.b)).toEqual([0, 0.03, 0.09])
     d.bAutres.debt2036Sensitivity.forEach((s) => {
       expect(Number.isFinite(s.debt2036Pct)).toBe(true)
       expect(Number.isFinite(s.balance2036Pct)).toBe(true)
