@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { PARAMS, PARAM_BY_ID, STATUSES, resolveParams } from '../params.js'
 import { LEVERS, LEVER_BY_ID, STRUCTURAL_LEVERS, QUALITATIVE_NOTES, staticYield, thetaElasticity, thetaAtRate, leverTheta, BLOCKS } from '../levers.js'
-import { projectScenario, HORIZONS, issuanceRate, deepFreeze } from '../project.js'
+import { projectScenario, HORIZONS, issuanceRate, deepFreeze, effectiveMultiplier, DEMAND_REGIMES } from '../project.js'
 import { TEST_MODULE, validateModuleDefinition, runModule } from '../modules.js'
 import { irTranches, irDeltaLnNet, thetaIrTranches, thetaReelIr, facteurCsgDeductible, coinMarginal } from '../ir-tranches.js'
 import { deriveBAutres, deriveMPrestations } from '../internal-derivations.js'
@@ -1228,5 +1228,62 @@ describe('durcissement sécurité et robustesse (Gemini 4 Neon)', () => {
     expect(() => runModule({ ...TEST_MODULE, calculer: (v, c) => ({ ...TEST_MODULE.calculer(v, c), flux: 'oops' }) }, {}, ctx)).toThrow(/flux doit être un tableau/)
   })
 })
+
+describe('Phase 3 (opt-in) : multiplicateurs de récession et inflation endogène', () => {
+  it('par défaut (normal, endogenousInflation = false), le moteur reste strictement identique aux options omises', () => {
+    const a = projectScenario({ levers: { tva_normal: 2, dep_defense: -10 }, horizon: 'trenteAns' })
+    const b = projectScenario({ levers: { tva_normal: 2, dep_defense: -10 }, horizon: 'trenteAns', demandRegime: 'normal', endogenousInflation: false })
+    expect(b.total).toEqual(a.total)
+    expect(b.blocks).toEqual(a.blocks)
+    expect(() => projectScenario({ demandRegime: 'inconnu' })).toThrow(/demandRegime/)
+  })
+  it('régimes récession / ELB / endogène : amplifient les dépenses plus que les impôts et respectent les plafonds', () => {
+    expect(effectiveMultiplier('achats_invest', 0.9, 'recession', 1, P)).toBeCloseTo(0.9 * 1.35, 6)
+    expect(effectiveMultiplier('achats_invest', 0.9, 'elb', 1, P)).toBeCloseTo(0.9 * 1.35 + 0.25, 6)
+    expect(effectiveMultiplier('achats_invest', 5.0, 'elb', 1, P)).toBe(1.60)
+    expect(effectiveMultiplier('is', 0.2, 'recession', 1, P)).toBeCloseTo(0.2, 6)
+    expect(effectiveMultiplier('tva', 0.4, 'recession', 1, P)).toBeCloseTo(0.4 * 1.05, 6)
+
+    const norm = projectScenario({ levers: { dep_affaires_eco: -10 }, demandRegime: 'normal' })
+    const rec = projectScenario({ levers: { dep_affaires_eco: -10 }, demandRegime: 'recession' })
+    const elb = projectScenario({ levers: { dep_affaires_eco: -10 }, demandRegime: 'elb' })
+    expect(rec.total[1].yD).toBeLessThan(norm.total[1].yD)
+    expect(elb.total[1].yD).toBeLessThan(rec.total[1].yD)
+    // En régime endogène, un fort choc d'austérité élève u_{t-1} et active la transition logistique F_t > 0
+    const endo = projectScenario({ levers: { dep_affaires_eco: -30, dep_enseignement: -30, dep_defense: -30 }, demandRegime: 'endogene' })
+    expect(endo.total[2].slackProb).toBeGreaterThan(endo.total[0].slackProb)
+  })
+  it('inflation endogène : hausse de TVA provoque une poussée IPC (~80 % pass-through), une hausse OATi et un décalage pensions t−1 ; identités de blocs et décomposition exactes', () => {
+    const base = projectScenario({ levers: { tva_tous_taux: 3 }, endogenousInflation: false })
+    const infl = projectScenario({ levers: { tva_tous_taux: 3 }, endogenousInflation: true })
+    // En t = 1 (2027), +3 pts de TVA tous taux (~34,2 Md€ ≈ 1,14 % PIB ≈ 2,21 % conso) -> Δπ IPC > Δπ PIB > 0
+    expect(infl.total[1].deltaPiCpi).toBeGreaterThan(0.01)
+    expect(infl.total[1].deltaPiCpi).toBeGreaterThan(infl.total[1].deltaPiDefl)
+    expect(infl.total[1].deltaPiDefl).toBeGreaterThan(0)
+    // OATi accroît les intérêts en t = 1
+    expect(infl.total[1].oatiAdj).toBeGreaterThan(0)
+    expect(infl.total[1].interest).toBeGreaterThan(base.total[1].interest)
+    // Année 1 : gain temporaire sur pensions (déflateur monte avant l'indexation) ; année 2 : rattrapage négatif (CSS L. 161-25)
+    expect(infl.total[1].inflFiscal).toBeGreaterThan(0)
+    expect(infl.total[2].inflFiscal).toBeLessThan(0)
+    // Clamp ±3 pts respecté même sous chocs extrêmes ; identité blocs et décomposition exactes à 1e-6
+    for (const regime of DEMAND_REGIMES) {
+      const r = projectScenario({ levers: { tva_tous_taux: 5, dep_affaires_eco: -30, dep_defense: -30 }, horizon: 'trenteAns', demandRegime: regime, endogenousInflation: true })
+      for (let t = 0; t < r.total.length; t++) {
+        const row = r.total[t]
+        expect(Math.abs(row.deltaPiCpi)).toBeLessThanOrEqual(P['infl.clamp_max'] / 100 + 1e-12)
+        expect(Math.abs(row.deltaPiDefl)).toBeLessThanOrEqual(P['infl.clamp_max'] / 100 + 1e-12)
+        const sumBal = BLOCKS.reduce((s, b) => s + r.blocks[b][t].balance, 0)
+        expect(Math.abs(sumBal - row.balance)).toBeLessThan(1e-6)
+        if (t > 0) {
+          const d = r.decomposition[t]
+          const s = d.refGrowth + d.refDrift + d.leviers + d.comportement + d.stabilisateurs + d.offre.reduce((a, o) => a + o.montant, 0) + d.inflation + d.interetsTaux + d.interetsStock
+          expect(s).toBeCloseTo(d.total, 6)
+        }
+      }
+    }
+  })
+})
+
 
 

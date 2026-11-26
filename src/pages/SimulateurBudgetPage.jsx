@@ -8,12 +8,12 @@ import { evaluateWarnings } from './budget/warnings'
 import ShareButton from './budget/ShareButton'
 import { buildCsv, buildExportRows, downloadCsv } from './budget/exportCsv'
 import { versionStamp } from '../version'
-import { decodeScenario, queryFromHash, scenarioHash, scenarioUrl, DEFAULT_LVT } from './budget/share'
+import { decodeScenario, queryFromHash, scenarioHash, scenarioUrl, DEFAULT_LVT, DEFAULT_REGIME } from './budget/share'
 import { LvtModuleControl, LvtModuleResults } from './budget/LvtModule'
 import { LVT_MODULE, LVT_PARAM_IDS } from '../engine/lvt-module.js'
 import { LVT_SCENARIO_BY_CODE } from '../engine/lvt-snapshot.js'
 import { InfoPopover, ParamInfo, StatusBadge } from './budget/InfoPopover'
-import { buildSeries, snapshotAt, decomposeAtYear, hasSupplyEffect, blocksAt, paramIdsFor, extremeLevers, fmt, SUPPLY_CASES, FLAGGED_STATUSES } from './budget/helpers'
+import { buildSeries, snapshotAt, decomposeAtYear, hasSupplyEffect, blocksAt, paramIdsFor, extremeLevers, fmt, SUPPLY_CASES, DEMAND_REGIME_OPTIONS, FLAGGED_STATUSES } from './budget/helpers'
 import { NEUTRAL_SCENARIOS, MACRO_VARIANT_BY_ID, overridesForMacro, matchesScenario } from './budget/presets'
 import './SimulateurBudgetPage.css'
 
@@ -30,6 +30,8 @@ export default function SimulateurBudgetPage() {
   const [ysCase, setYsCase] = useState(initial.ysCase)
   const [macroId, setMacroId] = useState(initial.macroId)
   const [lvt, setLvt] = useState(initial.lvt ?? DEFAULT_LVT)
+  const [demandRegime, setDemandRegime] = useState(initial.demandRegime ?? DEFAULT_REGIME)
+  const [endogenousInflation, setEndogenousInflation] = useState(Boolean(initial.endogenousInflation))
   const [yearIdxRaw, setYearIdx] = useState(DEFAULT_YEAR_IDX)
 
   const macroVariant = macroId && Object.hasOwn(MACRO_VARIANT_BY_ID, macroId) ? MACRO_VARIANT_BY_ID[macroId] : null
@@ -40,8 +42,8 @@ export default function SimulateurBudgetPage() {
   const modules = useMemo(() => (lvtSetting ? [{ module: LVT_MODULE, levers: { scenario: lvtSetting.scenario, offre_ocde: lvtSetting.ocde } }] : []), [lvtSetting])
 
   // Référence (médiane des prévisionnistes indépendants, sans levier) et scénario : recalculés seulement si nécessaire.
-  const reference = useMemo(() => projectScenario({ levers: {}, horizon, ysCase }), [horizon, ysCase])
-  const result = useMemo(() => projectScenario({ levers: values, overrides, horizon, ysCase, modules }), [values, overrides, horizon, ysCase, modules])
+  const reference = useMemo(() => projectScenario({ levers: {}, horizon, ysCase, demandRegime, endogenousInflation }), [horizon, ysCase, demandRegime, endogenousInflation])
+  const result = useMemo(() => projectScenario({ levers: values, overrides, horizon, ysCase, modules, demandRegime, endogenousInflation }), [values, overrides, horizon, ysCase, modules, demandRegime, endogenousInflation])
 
   const N = result.years.length - 1
   const yearIdx = Math.min(Math.max(yearIdxRaw, 1), N)
@@ -63,15 +65,22 @@ export default function SimulateurBudgetPage() {
   // Adresse du scénario mise à jour sans entrée d'historique, avec un délai pour ne pas écrire à chaque cran de curseur.
   useEffect(() => {
     const timer = setTimeout(() => {
-      window.history.replaceState(window.history.state, '', scenarioHash({ values, horizon, ysCase, macroId, lvt: lvtSetting }))
+      window.history.replaceState(window.history.state, '', scenarioHash({ values, horizon, ysCase, macroId, lvt: lvtSetting, demandRegime, endogenousInflation }))
     }, 300)
     return () => clearTimeout(timer)
-  }, [values, horizon, ysCase, macroId, lvtSetting])
+  }, [values, horizon, ysCase, macroId, lvtSetting, demandRegime, endogenousInflation])
+
+  const dynamicsLabel = useMemo(() => {
+    const parts = []
+    if (demandRegime !== DEFAULT_REGIME) parts.push(`Régime E4 : ${DEMAND_REGIME_OPTIONS.find((o) => o.id === demandRegime)?.label ?? demandRegime}`)
+    if (endogenousInflation) parts.push('Inflation endogène et répercussion TVA actives')
+    return parts.length ? parts.join(' · ') : null
+  }, [demandRegime, endogenousInflation])
 
   const exportCsv = () => {
     const csv = buildCsv({
-      stamp: versionStamp(), url: scenarioUrl(window.location, { values, horizon, ysCase, macroId, lvt: lvtSetting }),
-      horizonLabel: HORIZONS[horizon].label, ysCase, macroLabel: macroVariant?.label ?? null, values, rows: buildExportRows(result, reference, EPS, EPS_OFFRE),
+      stamp: versionStamp(), url: scenarioUrl(window.location, { values, horizon, ysCase, macroId, lvt: lvtSetting, demandRegime, endogenousInflation }),
+      horizonLabel: HORIZONS[horizon].label, ysCase, macroLabel: macroVariant?.label ?? null, dynamicsLabel, values, rows: buildExportRows(result, reference, EPS, EPS_OFFRE),
       modules: lvtScenario ? [[`Module ${LVT_MODULE.titre}`, `${lvtScenario.libelle}${lvtSetting.ocde ? ' ; borne haute OCDE incluse dans le cas « haut »' : ''}`]] : [],
     })
     downloadCsv(csv, `simulateur-budget-${horizon}-${ysCase}${macroId ? `-${macroId}` : ''}${lvtScenario ? `-lvt-${lvtScenario.id}` : ''}.csv`)
@@ -109,13 +118,31 @@ export default function SimulateurBudgetPage() {
           </div>
         </div>
         <p className="sb-help">Bas et haut désignent les résultats les moins et les plus favorables pour le PIB, et non l'ordre statistique des valeurs (σ). Au-delà de dix ans, lisez les trois cas ensemble : le modèle reste déterministe.</p>
+        <details className="sb-module-details" open={demandRegime !== DEFAULT_REGIME || endogenousInflation}>
+          <summary>
+            Dynamiques avancées (Day 1, optionnelles){dynamicsLabel ? ` — actives : ${dynamicsLabel}` : ' — désactivées par défaut'}
+          </summary>
+          <div className="sb-options">
+            <div>
+              <label htmlFor="sb-regime">Régime des multiplicateurs (E4)</label>
+              <select id="sb-regime" value={demandRegime} onChange={(e) => setDemandRegime(e.target.value)}>
+                {DEMAND_REGIME_OPTIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+              </select>
+            </div>
+            <div className="sb-module-check">
+              <input id="sb-infl" type="checkbox" checked={endogenousInflation} onChange={(e) => setEndogenousInflation(e.target.checked)} />
+              <label htmlFor="sb-infl">Inflation endogène et répercussion TVA (courbe de Phillips, indexation pensions t−1, OATi)</label>
+            </div>
+          </div>
+          <p className="sb-help">Désactivées par défaut (identique au Day 0). En régime de récession ou ELB, les multiplicateurs de dépense sont relevés (Gechert &amp; Rannenberg 2018 ; BdF WP 883) ; l'inflation endogène ajoute la répercussion TVA (~80 %), une courbe de Phillips bornée à ±3 pts, l'indexation OATi et le décalage d'un an des pensions (CSS L. 161-25).</p>
+        </details>
       </section>
 
       <section className="sb-section" aria-labelledby="sb-partage">
         <h2 id="sb-partage">Partager et exporter</h2>
-        <p className="sb-help">Le lien reprend les leviers, l'horizon, le cas des effets d'offre, l'éventuel comparateur macroéconomique et le module « taxe sur la valeur du sol » s'il est actif ; il rouvre exactement ce scénario. L'export CSV (séparateur « ; », virgule décimale, ouverture directe dans Excel) donne, année par année, le scénario, la référence et la décomposition par cause.</p>
+        <p className="sb-help">Le lien reprend les leviers, l'horizon, le cas des effets d'offre, l'éventuel comparateur macroéconomique, les dynamiques avancées et le module « taxe sur la valeur du sol » s'il est actif ; il rouvre exactement ce scénario. L'export CSV (séparateur « ; », virgule décimale, ouverture directe dans Excel) donne, année par année, le scénario, la référence et la décomposition par cause.</p>
         <div className="sb-toolbar">
-          <ShareButton getUrl={() => scenarioUrl(window.location, { values, horizon, ysCase, macroId, lvt: lvtSetting })} />
+          <ShareButton getUrl={() => scenarioUrl(window.location, { values, horizon, ysCase, macroId, lvt: lvtSetting, demandRegime, endogenousInflation })} />
           <button type="button" className="sb-btn" onClick={exportCsv}>Exporter (CSV)</button>
         </div>
       </section>

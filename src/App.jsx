@@ -1,12 +1,14 @@
+import { lazy, Suspense } from 'react'
 import './App.css'
 import useHashNavigation from './hooks/useHashNavigation'
 import Navigation from './components/Navigation'
 import ReviewBanner from './components/ReviewBanner'
 import { versionStamp } from './version'
 import IntroPage from './pages/IntroPage'
-import SimulateurBudgetPage from './pages/SimulateurBudgetPage'
-import SimulateurRetraitesPage from './pages/SimulateurRetraitesPage'
-import HypothesesPage from './pages/HypothesesPage'
+
+const SimulateurBudgetPage = lazy(() => import('./pages/SimulateurBudgetPage'))
+const SimulateurRetraitesPage = lazy(() => import('./pages/SimulateurRetraitesPage'))
+const HypothesesPage = lazy(() => import('./pages/HypothesesPage'))
 
 function App() {
   const { currentPage, navigateTo } = useHashNavigation('intro')
@@ -25,10 +27,12 @@ function App() {
         <Navigation currentPage={currentPage} navigateTo={navigateTo} />
 
         <main className="main-content">
-          {currentPage === 'intro' && <IntroPage navigateTo={navigateTo} />}
-          {currentPage === 'budget' && <SimulateurBudgetPage />}
-          {currentPage === 'retraites' && <SimulateurRetraitesPage />}
-          {currentPage === 'hypotheses' && <HypothesesPage />}
+          <Suspense fallback={<div className="sb-help" role="status">Chargement de la page…</div>}>
+            {currentPage === 'intro' && <IntroPage navigateTo={navigateTo} />}
+            {currentPage === 'budget' && <SimulateurBudgetPage />}
+            {currentPage === 'retraites' && <SimulateurRetraitesPage />}
+            {currentPage === 'hypotheses' && <HypothesesPage />}
+          </Suspense>
         </main>
 
         <footer className="footer">

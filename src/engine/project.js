@@ -19,6 +19,47 @@ const SECU = { centrales: 'centrales', securiteSociale: 'secu', locales: 'locale
 /** Plafond du taux à l'émission i_new (fraction) dans E9 : s'applique au taux total (i* + prime β), non à la seule prime. */
 export const RATE_MAX = 0.25
 
+/** Régimes de multiplicateurs de demande (Phase 3, opt-in ; 'normal' par défaut = identique au Day 0). */
+export const DEMAND_REGIMES = ['normal', 'recession', 'elb', 'endogene']
+
+const DEMAND_CAPS = {
+  achats_invest: 1.60,
+  remunerations: 1.50,
+  prestations: 1.20,
+  tva: 0.70,
+  ir_csg: 0.70,
+  cotisations: 0.70,
+  is: 0.40,
+}
+
+/**
+ * Multiplicateur effectif selon le régime de demande (E4 étendue, Phase 3).
+ * En régime 'normal', renvoie strictement `baseM` (bit-identique au Day 0).
+ */
+export function effectiveMultiplier(categorie, baseM, regime, slackProb, P) {
+  if (!Number.isFinite(baseM) || baseM <= 0 || regime === 'normal') return baseM
+  const f = Math.min(1, Math.max(0, slackProb))
+  const elb = regime === 'elb' ? 1 : 0
+  const elbBonus = P['dem.elb.bonus_depenses']
+  let mult = 1
+  let add = 0
+  if (categorie === 'achats_invest' || categorie === 'remunerations') {
+    mult = 1 + f * (P['dem.recession.mult_depenses'] - 1)
+    add = elb * elbBonus
+  } else if (categorie === 'prestations') {
+    mult = 1 + f * (P['dem.recession.mult_prestations'] - 1)
+    add = elb * 0.8 * elbBonus
+  } else if (categorie === 'tva' || categorie === 'ir_csg' || categorie === 'cotisations') {
+    mult = 1 + f * (P['dem.recession.mult_impots'] - 1)
+    add = elb * 0.4 * elbBonus
+  } else if (categorie === 'is') {
+    mult = 1
+    add = elb * 0.2 * elbBonus
+  }
+  const cap = DEMAND_CAPS[categorie] ?? Math.max(baseM * 1.5, 1.6)
+  return Math.min(cap, Math.max(0, baseM * mult + add))
+}
+
 /** Gèle récursivement un objet (tableaux et objets imbriqués compris). */
 export function deepFreeze(o) {
   if (o && typeof o === 'object' && !Object.isFrozen(o)) {
@@ -46,6 +87,8 @@ export function issuanceRate(P) {
  * @param {object} [options.sigma]      { idLevier: { sigma | sigmaHausse, sigmaBaisse, L, t0 } } remplace les paramètres offre.* d'un levier (E5) ;
  *                                      σ en % du PIB par unité du levier, t0 = 0 par défaut (voir supply.js)
  * @param {object} [options.ramp]       { start, years } rampe commune des leviers natifs
+ * @param {'normal'|'recession'|'elb'|'endogene'} [options.demandRegime] régime des multiplicateurs E4 (défaut : 'normal')
+ * @param {boolean} [options.endogenousInflation] active la boucle réduite d'inflation endogène et répercussion TVA (défaut : false)
  */
 export function projectScenario(options = {}) {
   const horizon = HORIZONS[options.horizon ?? 'dixAns']
@@ -55,6 +98,9 @@ export function projectScenario(options = {}) {
   if (!(P['base.pib.2025'] > 0)) throw new Error('params: base.pib.2025 doit être strictement positif')
   const ysCase = options.ysCase ?? 'central'
   if (!['bas', 'central', 'haut'].includes(ysCase)) throw new Error(`ysCase invalide « ${ysCase} »`)
+  const demandRegime = options.demandRegime ?? 'normal'
+  if (!DEMAND_REGIMES.includes(demandRegime)) throw new Error(`demandRegime invalide « ${demandRegime} »`)
+  const endogenousInflation = Boolean(options.endogenousInflation)
 
   // ---- Instruments : leviers natifs + modules ----
   const years = Array.from({ length: N + 1 }, (_, t) => START_YEAR + t)
@@ -68,7 +114,11 @@ export function projectScenario(options = {}) {
     moduleRuns.push(inst)
   }
   const aTot = (inst, t) => BLOCKS.reduce((s, b) => s + inst.aBlocks[b][t], 0)
-  const mOf = (inst, t) => inst.mByYear ? inst.mByYear[t] : P[`dem.m.${inst.categorie}`]
+  const mOf = (inst, t, slackProb) => {
+    const baseM = inst.mByYear ? inst.mByYear[t] : P[`dem.m.${inst.categorie}`]
+    return inst.mByYear ? baseM : effectiveMultiplier(inst.categorie, baseM, demandRegime, slackProb, P)
+  }
+  const tvaShareAt = (t) => instruments.reduce((s, inst) => (inst.id === 'tva_normal' || inst.id === 'tva_tous_taux' ? s + aTot(inst, t) : s), 0)
 
   // ---- Paramètres convertis ----
   const lambda = P['dem.lambda']
@@ -111,7 +161,16 @@ export function projectScenario(options = {}) {
   let iAvgPrev = P['dette.i_moy_2025'] / 100
   let ratioPrev = Dprev / YbPrev
   let ratioRef = null
+  let uPrev = ub
+  let deltaPiPhilPrev = 0
+  let deltaPiCpiPrev = 0
   const S = instruments.map(() => 0) // demande cumulée pondérée par m (E4), par instrument
+
+  const clampInfl = (x) => {
+    const c = Math.max(0, P['infl.clamp_max'] / 100)
+    return Math.min(c, Math.max(-c, x))
+  }
+  const tvaToCpiRatio = P['base.conso_menages'] > 0 ? P['base.pib.2025'] / P['base.conso_menages'] : 1
 
   const total = []
   const blocks = Object.fromEntries(BLOCKS.map((b) => [b, []]))
@@ -119,31 +178,55 @@ export function projectScenario(options = {}) {
   const levels = []
 
   for (let t = 0; t <= N; t++) {
-    // E1
-    const Yb = YbPrev * Math.max(1e-6, 1 + g(t) + pi(t))
+    // Probabilité de récession (E4 étendue, Phase 3) : nulle en 'normal', 1 en 'recession'/'elb', logistique retardée en 'endogene'.
+    let slackProb = 0
+    if (demandRegime === 'recession' || demandRegime === 'elb') slackProb = 1
+    else if (demandRegime === 'endogene') {
+      const z = (uPrev - ub) - P['dem.slack.z_mid']
+      slackProb = 1 / (1 + Math.exp(-P['dem.slack.gamma'] * z))
+    }
 
-    // E4 : demande en niveau, qui s'estompe. S_j(t) = λ S_j(t−1) + m_j Δa_j(t) ; yD = −Σ S_j
+    // E4 : demande en niveau, qui s'estompe. S_j(t) = λ S_j(t−1) + m_j(t) Δa_j(t) ; yD = −Σ S_j
     let yD = 0
     instruments.forEach((inst, j) => {
       const da = aTot(inst, t) - (t > 0 ? aTot(inst, t - 1) : 0)
-      S[j] = lambda * S[j] + mOf(inst, t) * da
+      S[j] = lambda * S[j] + mOf(inst, t, slackProb) * da
       yD -= S[j]
     })
     const yS = yOf(t) // E5 (cœur + modules + chemin externe)
     const gap = yD + yS
+
+    // E1b : inflation endogène & répercussion TVA (opt-in Phase 3 ; strictement nul si désactivé).
+    let deltaPiPhil = 0
+    let deltaPiCpi = 0
+    let deltaPiDefl = 0
+    if (endogenousInflation) {
+      const dTva = tvaShareAt(t) - (t > 0 ? tvaShareAt(t - 1) : 0)
+      const psi = P['infl.tva.passthrough']
+      deltaPiPhil = P['infl.phillips.rho'] * deltaPiPhilPrev + P['infl.phillips.gamma'] * yD
+      deltaPiCpi = clampInfl(deltaPiPhil + psi * dTva * tvaToCpiRatio)
+      deltaPiDefl = clampInfl(P['infl.deflateur.ratio'] * deltaPiPhil + psi * dTva)
+    }
+
+    // E1
+    const Yb = YbPrev * Math.max(1e-6, 1 + g(t) + pi(t) + deltaPiDefl)
     const Y = Yb * Math.max(1e-6, 1 + gap) // E6
 
     // E9 : taux à l'émission. INTERPRÉTATION : en 2026 la référence de dette est celle de 2025 (pas de prime en t = 0) ;
     // dette/PIB(0) devient la référence dès 2027.
-    // premium : fraction de taux (0,0003 = 3 pb = 0,03 point de pourcentage) par point de ratio dette/PIB.
     const premium = beta * (ratioPrev - (ratioRef ?? ratioPrev)) * 100
-    const iNew = Math.min(RATE_MAX, Math.max(0, iStar + premium))
+    const inflRateFeedback = endogenousInflation ? P['infl.zone_euro.poids_fr'] * 1.5 * deltaPiCpi : 0
+    const iNew = Math.min(RATE_MAX, Math.max(0, iStar + premium + inflRateFeedback))
     // E10 : taux moyen du stock
     const invM = M > 0 ? 1 / M : 1
     const phi = Math.min(1, Math.max(0, invM + Math.max(0, Dprev - Dprev2) / Math.max(Dprev, 1)))
     const iAvg = (1 - phi) * iAvgPrev + phi * iNew
-    // E11 : intérêts
-    const INT = iAvg * Dprev
+    // E11 : intérêts (+ indexation directe OATi si inflation endogène active)
+    const oatiAdj = endogenousInflation ? P['infl.oati.part_stock'] * deltaPiCpi * Dprev : 0
+    const INT = Math.max(0, iAvg * Dprev + oatiAdj)
+
+    // E8 : effet budgétaire de l'indexation retardée des pensions (CSS L. 161-25) en mode inflation endogène
+    const inflFiscal = endogenousInflation ? (corAt(START_YEAR + t) / 100) * (deltaPiDefl - deltaPiCpiPrev) * Yb : 0
 
     // E2/E3/E8 par bloc
     const dA = driftA(t)
@@ -169,9 +252,10 @@ export function projectScenario(options = {}) {
       })
       // E7 : la demande passe au solde par ε (stabilisateurs), l'offre par le taux de prélèvements obligatoires (D13).
       const stab = (eps * yD + epsOffre * yS) * share('recettes', b) * Yb
-      const primary = ref + exAnte + behav + stab
+      const inflBlk = b === 'securiteSociale' ? inflFiscal : 0
+      const primary = ref + exAnte + behav + stab + inflBlk
       const interest = INT * share('interets', b)
-      blk[b] = { ref, exAnte, behav, stab, primary, interest, balance: primary - interest }
+      blk[b] = { ref, exAnte, behav, stab, inflBlk, primary, interest, balance: primary - interest }
       exAnteTot += exAnte; behavTot += behav; refTot += ref; stabTot += stab
     }
     const primary = BLOCKS.reduce((s, b) => s + blk[b].primary, 0)
@@ -209,17 +293,20 @@ export function projectScenario(options = {}) {
       balance, balanceRatio: balance / Y, primaryBalance: primary, primaryBalanceRatio: primary / Y,
       revenue, interest: INT, interestRatio: INT / Y, avgRate: iAvg, newRate: iNew, riskPremium: premium,
       debt: D, debtRatio: ratio, unemployment: u, byInstrument: perInstrument, driftA: dA, driftB: dB, issuanceRate: iStar,
+      slackProb, deltaPiCpi, deltaPiDefl, inflFiscal, oatiAdj,
     })
 
     // Décomposition de la variation du solde (Md€) : exacte par construction.
     // E7 : la demande passe par ε, chaque effet d'offre par ε_offre : on isole la part due à chaque effet d'offre.
     const offreLvl = ysLines.map((l) => epsOffre * l.yS[t] * Yb)
-    const lv = { Yb, ref: refTot, exAnte: exAnteTot, behav: behavTot, stab: stabTot, offre: offreLvl, iAvg, INT, balance, Dprev, Dprev2, dA, dB }
+    const lv = { Yb, ref: refTot, exAnte: exAnteTot, behav: behavTot, stab: stabTot, inflFiscal, offre: offreLvl, iAvg, INT, balance, Dprev, Dprev2, dA, dB }
     if (t > 0) {
       const q = levels[t - 1]
       const refGrowth = (q.ref / q.Yb) * (Yb - q.Yb)
       const offre = ysLines.map((l, k) => ({ id: l.id, libelle: l.libelle, cas: ysCase, montant: lv.offre[k] - q.offre[k] }))
       const offreSum = offre.reduce((sum, o) => sum + o.montant, 0)
+      const interetsStock = -q.iAvg * (Dprev - Dprev2)
+      const interetsTaux = -(INT - q.INT) - interetsStock
       decomposition.push({
         year: START_YEAR + t,
         refGrowth,
@@ -228,19 +315,22 @@ export function projectScenario(options = {}) {
         comportement: lv.behav - q.behav,
         stabilisateurs: lv.stab - q.stab - offreSum, // demande seule ; l'offre est dans `offre`
         offre,
-        interetsTaux: -(iAvg - q.iAvg) * Dprev,
-        interetsStock: -q.iAvg * (Dprev - Dprev2),
+        inflation: lv.inflFiscal - q.inflFiscal,
+        interetsTaux,
+        interetsStock,
         total: balance - q.balance,
       })
     } else decomposition.push(null)
     levels.push(lv)
 
     if (ratioRef === null) ratioRef = ratio
-    YbPrev = Yb; Dprev2 = Dprev; Dprev = D; iAvgPrev = iAvg; ratioPrev = ratio
+    YbPrev = Yb; Dprev2 = Dprev; Dprev = D; iAvgPrev = iAvg; ratioPrev = ratio; uPrev = u
+    deltaPiPhilPrev = deltaPiPhil; deltaPiCpiPrev = deltaPiCpi
   }
 
   return {
     horizon: horizon.id, startYear: START_YEAR, endYear: horizon.endYear, years, total, blocks, decomposition,
+    demandRegime, endogenousInflation,
     supply: { cas: ysCase, lignes: ysLines.map(({ id, libelle, origine, statut, nomCourt, sigma, L, t0, yS }) => ({ id, libelle, origine, statut, nomCourt, cas: ysCase, sigma, L, t0, yS })) },
     modules: moduleRuns.map(({ id, titre, statut, flux, explications }) => ({ id, titre, statut, flux, explications })),
     instruments: instruments.map(({ id, source }) => ({ id, source })),

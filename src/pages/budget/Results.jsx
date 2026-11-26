@@ -45,11 +45,11 @@ export function Snapshots({ snaps }) {
   )
 }
 
-const KIND_ORDER = ['macro', 'statique', 'comportement', 'demande', 'offre', 'interets']
+const KIND_ORDER = ['macro', 'statique', 'comportement', 'demande', 'offre', 'inflation', 'interets']
 const KIND_TITLES = {
   macro: 'Hypothèses macroéconomiques',
   statique: 'Mesures : effet statique', comportement: 'Réaction comportementale et reports', demande: 'Demande',
-  offre: 'Effets d\'offre', interets: 'Intérêts',
+  offre: 'Effets d\'offre', inflation: 'Inflation endogène (Phase 3)', interets: 'Intérêts',
 }
 
 export function DecompositionTable({ decomposition, years, yearIdx, onYear }) {

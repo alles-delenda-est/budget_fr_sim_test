@@ -24,7 +24,7 @@ export function csvText(s) {
   return /[;"\r\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t
 }
 
-const KIND_SUM = ['macro', 'statique', 'comportement', 'demande', 'offre', 'interets']
+const KIND_SUM = ['macro', 'statique', 'comportement', 'demande', 'offre', 'inflation', 'interets']
 
 export const COLUMNS = [
   'Année',
@@ -33,7 +33,7 @@ export const COLUMNS = [
   'Écart de solde total (Md€)',
   'Cause : hypothèses macroéconomiques (Md€)',
   'Cause : mesures, effet statique (Md€)', 'Cause : réaction comportementale et reports (Md€)', 'Cause : demande (Md€)',
-  'Cause : effets d\'offre (Md€)', 'Cause : intérêts (Md€)',
+  'Cause : effets d\'offre (Md€)', 'Cause : inflation endogène (Md€)', 'Cause : intérêts (Md€)',
 ]
 
 /** Lignes numériques du tableau, une par année (2026 comprise). Ratios en %, montants en Md€. */
@@ -47,17 +47,16 @@ export function buildExportRows(result, reference, eps, epsOffre) {
       r.gdp, r.balanceRatio * 100, r.debtRatio * 100, r.interest, r.unemployment,
       b.gdp, b.balanceRatio * 100, b.debtRatio * 100, b.interest, b.unemployment,
       d.ecart,
-      byKind.macro, byKind.statique, byKind.comportement, byKind.demande, byKind.offre, byKind.interets,
+      byKind.macro, byKind.statique, byKind.comportement, byKind.demande, byKind.offre, byKind.inflation, byKind.interets,
     ]
   })
 }
 
 /**
- * Contenu complet du CSV (avec BOM) : bloc d'en-tête (version, lien, horizon, cas, variante macro éventuelle, modules actifs, leviers),
+ * Contenu complet du CSV (avec BOM) : bloc d'en-tête (version, lien, horizon, cas, variante macro éventuelle, dynamiques avancées, modules actifs, leviers),
  * ligne vide, tableau. `modules` : [[libellé du module, réglage]] des modules actifs (p. ex. taxe sur la valeur du sol).
- * @param {{stamp: string, url: string, horizonLabel: string, ysCase: string, macroLabel?: string | null, modules?: string[][], values: object, rows: number[][]}} o
  */
-export function buildCsv({ stamp, url, horizonLabel, ysCase, macroLabel = null, modules = [], values, rows }) {
+export function buildCsv({ stamp, url, horizonLabel, ysCase, macroLabel = null, dynamicsLabel = null, modules = [], values, rows }) {
   const headerRows = [
     ['Simulateur Budget France : export du scénario'],
     ['Version', stamp],
@@ -66,6 +65,7 @@ export function buildCsv({ stamp, url, horizonLabel, ysCase, macroLabel = null, 
     ['Cas des effets d\'offre', ysCase],
   ]
   if (macroLabel) headerRows.push(['Hypothèses macroéconomiques', macroLabel])
+  if (dynamicsLabel) headerRows.push(['Dynamiques avancées (Day 1)', dynamicsLabel])
   for (const m of modules ?? []) headerRows.push(m.map(String))
   headerRows.push(['Leviers (dès 2027, âge légal dès 2028 en hausse [2028–2034] ou 2029 en baisse [2029–2033])'])
   const lines = headerRows.map((cells) => cells.map(csvText).join(SEP))
