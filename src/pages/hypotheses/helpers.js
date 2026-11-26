@@ -2,8 +2,10 @@
 // comptes 2025, COFOG, équations E1–E12, catalogue des leviers et effets d'offre σ,
 // regroupement complet des paramètres PARAMS, formatage sans NaN et questions aux relecteurs.
 
-import { PARAMS, PARAM_BY_ID, resolveParams } from '../../engine/params.js'
+import { PARAMS, PARAM_BY_ID, resolveParams, macroGrowthSourceLabel } from '../../engine/params.js'
 import { LEVERS, staticYield } from '../../engine/levers.js'
+
+export { macroGrowthSourceLabel }
 import { SUPPLY_BY_LEVER, sigmaFiscal, sigmaFiscalCase } from '../../engine/supply.js'
 import { IR_TRANCHES, irTranches, thetaIrTranches, thetaReelIr, facteurCsgDeductible } from '../../engine/ir-tranches.js'
 import { deriveBAutres, deriveMPrestations } from '../../engine/internal-derivations.js'
@@ -56,18 +58,6 @@ export function buildCofogRows(P) {
       return { id: q.id, label: COFOG_LABELS[slug] ?? slug, value: P[q.id], unit: q.unit, status: q.status }
     })
     .sort((a, b) => b.value - a.value)
-}
-
-/**
- * Description courte de la croissance 2026–2027 de référence, lue dans les paramètres macro.g.2026 / macro.g.2027 :
- * nombre de prévisions (tiré de la source, « Médiane de N … ») et statut. Exemple : « médiane de 4 prévisions (non validé) ».
- */
-export function macroGrowthSourceLabel() {
-  const qs = [PARAM_BY_ID['macro.g.2026'], PARAM_BY_ID['macro.g.2027']]
-  const counts = [...new Set(qs.map((q) => Number(/Médiane de (\d+)/.exec(q.source ?? '')?.[1])).filter(Number.isFinite))]
-  const statuses = [...new Set(qs.map((q) => q.status))].join(' / ')
-  const what = counts.length === 1 ? `médiane de ${counts[0]} prévisions` : 'médiane de quelques prévisions'
-  return `${what} (${statuses})`
 }
 
 /** Équations E1–E12 du moteur v2 (source : docs/model-note.md §2), valeurs numériques lues dans P. */
@@ -237,22 +227,22 @@ const lastRow = (r) => r.total[r.total.length - 1]
 export const debt30AtBeta = (beta) => lastRow(projectScenario({ horizon: 'trenteAns', overrides: { 'dette.beta': beta } })).debtRatio * 100
 
 /** Écart de solde primaire (Md€) en fin d'horizon 30 ans dû à +1 % du produit de l'IR, pour une élasticité e_L donnée. */
-export function irPrimaryGap30(eL) {
-  const overrides = { 'offre.e_L': eL }
-  const ref = lastRow(projectScenario({ horizon: 'trenteAns', overrides }))
-  const res = lastRow(projectScenario({ horizon: 'trenteAns', overrides, levers: { ir: 1 } }))
+export function irPrimaryGap30(eL, refRow = null) {
+  const ref = refRow ?? lastRow(projectScenario({ horizon: 'trenteAns' }))
+  const res = lastRow(projectScenario({ horizon: 'trenteAns', overrides: { 'offre.e_L': eL }, levers: { ir: 1 } }))
   return res.primaryBalance - ref.primaryBalance
 }
 
 /** Élasticité e_L qui annule l'écart de solde primaire à 30 ans d'une hausse de l'IR (bissection sur [0 ; 2 × haut]) ; null si aucun changement de signe. */
-export function irBreakEvenEL() {
+export function irBreakEvenEL(refRow = null) {
+  const ref = refRow ?? lastRow(projectScenario({ horizon: 'trenteAns' }))
   let lo = 0
   let hi = 2 * PARAM_BY_ID['offre.e_L'].high
-  let fLo = irPrimaryGap30(lo)
-  if (Math.sign(fLo) === Math.sign(irPrimaryGap30(hi))) return null
-  for (let k = 0; k < 24; k++) {
+  let fLo = irPrimaryGap30(lo, ref)
+  if (Math.sign(fLo) === Math.sign(irPrimaryGap30(hi, ref))) return null
+  for (let k = 0; k < 14; k++) {
     const mid = (lo + hi) / 2
-    const fMid = irPrimaryGap30(mid)
+    const fMid = irPrimaryGap30(mid, ref)
     if (Math.sign(fMid) === Math.sign(fLo)) { lo = mid; fLo = fMid } else hi = mid
   }
   return (lo + hi) / 2
@@ -272,13 +262,14 @@ export function buildReviewerQuestions() {
   const sigmaIr = sigmaFiscalCase('ir', P, 'value')
   const tr = irTranches(P)
   const tauImplicite = tr ? tr.tranches.reduce((a, r) => a + (r.taux / 100) * r.revenu, 0) / tr.total : Number.NaN
-  const gapCentral = irPrimaryGap30(eL.value)
-  const gapLow = irPrimaryGap30(eL.low)
-  const gapHigh = irPrimaryGap30(eL.high)
-  const breakEven = irBreakEvenEL()
+  const ref30 = lastRow(projectScenario({ horizon: 'trenteAns' }))
+  const gapCentral = irPrimaryGap30(eL.value, ref30)
+  const gapLow = irPrimaryGap30(eL.low, ref30)
+  const gapHigh = irPrimaryGap30(eL.high, ref30)
+  const breakEven = irBreakEvenEL(ref30)
   const outcome = (gap) => (gap >= 0 ? 'la hausse reste rentable' : 'elle coûte')
   const pctTxt = (v) => `${fmt(v * 100, 1)} %`
-  const debts = [beta.low, beta.value, beta.high, 0].map((b) => ({ b, d: debt30AtBeta(b) }))
+  const debts = [beta.low, beta.value, beta.high, 0].map((b) => ({ b, d: b === beta.value ? ref30.debtRatio * 100 : debt30AtBeta(b) }))
   const thetaIr = PARAM_BY_ID['comp.theta.ir']
   const thetaReel = thetaReelIr(P, sigmaIr)
   const partActifs = P['offre.ir_csg.part_actifs']
@@ -307,7 +298,7 @@ export function buildReviewerQuestions() {
     {
       numero: 4,
       titre: 'Élasticité réelle de l\'offre de travail (e_L) et élasticité totale de l\'IR (θ) : laquelle retenir ?',
-      resume: `L'élasticité uniforme équivalente à θ_IR = ${fmt(thetaIr.value, 2)} est ≈ ${fmt(etiUniforme, 2)}. Or e_L = ${fmt(eL.value, 2)}, retenue pour l'effet d'offre, ${etiUniforme < eL.value ? `la dépasse : la part réelle de la réponse (θ_réel ≈ ${fmt(thetaReel, 2)}) excède la réponse totale dont elle devrait n'être qu'une partie, et la part non réelle de θ tombe à 0 à plein effet d'offre.` : `reste en deçà : la part réelle de la réponse (θ_réel ≈ ${fmt(thetaReel, 2)}) est une partie de la réponse totale θ.`} Les deux chiffres viennent de littératures différentes (offre de travail agrégée pour e_L, élasticité du revenu imposable pour θ). En outre, l'effet d'offre passe au solde par ε_offre = ${pctTxt(epsOffre.value)} sur toutes les recettes publiques : une hausse de 1 % de l'IR ${gapCentral < 0 ? `coûte ${md(-gapCentral)}` : `rapporte ${md(gapCentral)}`} au solde primaire en ${endYear}. Le seuil de rentabilité de la question 1 se lit donc sur e_L seule, non sur θ. Faut-il rapprocher e_L de l'élasticité totale de l'IR, relever θ, ou garder les deux sources en le signalant ?`,
+      resume: `L'élasticité uniforme équivalente à θ_IR = ${fmt(thetaIr.value, 2)} est ≈ ${fmt(etiUniforme, 2)}. Or e_L = ${fmt(eL.value, 2)} (pondérée par ${fmt(partActifs * 100, 0)} % de revenus d'activité), retenue pour l'effet d'offre, ${thetaReel > thetaIr.value ? `la dépasse en effet réel : la part réelle de la réponse (θ_réel ≈ ${fmt(thetaReel, 2)}) excède la réponse totale dont elle devrait n'être qu'une partie, et la part non réelle de θ tombe à 0 à plein effet d'offre.` : `reste en deçà : la part réelle de la réponse (θ_réel ≈ ${fmt(thetaReel, 2)}) est une partie de la réponse totale θ.`} Les deux chiffres viennent de littératures différentes (offre de travail agrégée pour e_L, élasticité du revenu imposable pour θ). En outre, l'effet d'offre passe au solde par ε_offre = ${pctTxt(epsOffre.value)} sur toutes les recettes publiques : une hausse de 1 % de l'IR ${gapCentral < 0 ? `coûte ${md(-gapCentral)}` : `rapporte ${md(gapCentral)}`} au solde primaire en ${endYear}. Le seuil de rentabilité de la question 1 se lit donc sur e_L seule, non sur θ. Faut-il rapprocher e_L de l'élasticité totale de l'IR, relever θ, ou garder les deux sources en le signalant ?`,
       statut: 'Paramètres offre.e_L (non validé) et comp.theta.ir — question 6 de la note de modèle, avis demandé.',
     },
   ]

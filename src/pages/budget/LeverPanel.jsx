@@ -1,4 +1,4 @@
-import { useId } from 'react'
+import { useId, memo } from 'react'
 import { staticYield, defaultRampFor, STRUCTURAL_LEVERS, QUALITATIVE_NOTES } from '../../engine/levers.js'
 import { START_YEAR } from '../../engine/project.js'
 import { SUPPLY_BY_LEVER } from '../../engine/supply.js'
@@ -7,7 +7,9 @@ import { fmt, groupedLevers, sliderStep } from './helpers'
 import { InfoPopover, StatusBadge, ParamInfo } from './InfoPopover'
 import JobsNote from './JobsNote'
 
-function LeverSlider({ lever, value, onChange, P, ysCase }) {
+const GROUPED_LEVERS = groupedLevers()
+
+const LeverSlider = memo(function LeverSlider({ lever, value, onChange, P, ysCase }) {
   const id = useId()
   const yieldMd = staticYield(lever, value, P)
   const rendIds = lever.rendParams ?? [`rend.${lever.id}`]
@@ -53,7 +55,7 @@ function LeverSlider({ lever, value, onChange, P, ysCase }) {
       <JobsNote leverId={lever.id} x={value} P={P} ysCase={ysCase} />
     </div>
   )
-}
+})
 
 export default function LeverPanel({ values, onChange, onReset, onExtreme, P, ysCase = 'central', children }) {
   return (
@@ -65,7 +67,7 @@ export default function LeverPanel({ values, onChange, onReset, onExtreme, P, ys
         <button type="button" className="sb-btn" onClick={() => onExtreme('min')}>Tout au minimum</button>
         <button type="button" className="sb-btn" onClick={() => onExtreme('max')}>Tout au maximum</button>
       </div>
-      {groupedLevers().map((g) => (
+      {GROUPED_LEVERS.map((g) => (
         <fieldset key={g.id} className="sb-group">
           <legend>{g.titre}</legend>
           <p className="sb-help">{g.aide}</p>

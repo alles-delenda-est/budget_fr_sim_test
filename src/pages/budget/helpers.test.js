@@ -234,6 +234,19 @@ describe('blocs et paramètres', () => {
     const behavAge = dAge.lines.find((l) => l.key === 'behav:age_legal')
     expect(behavAge?.label).toBe('Âge légal de départ en retraite : effets de report (autres prestations)')
     expect(behavAge?.montant).toBeLessThan(0)
+    // M-06 & M-09 : indexation_pensions expose comp.offset.prestations et des libellés comportementaux distincts
+    const { r: rPen, ref: refPen } = run({ indexation_pensions: -1, sous_indexation_ciblee: -1 }, 'central')
+    expect(paramIdsFor({ indexation_pensions: -1 }, rPen)).toContain('comp.offset.prestations')
+    const dPen = decomposeAtYear(rPen, refPen, 5, EPS, EPS_OFFRE)
+    expect(dPen.lines.find((l) => l.key === 'behav:indexation_pensions')?.label).toContain('retour fiscal et aides (IR/CSG/ASPA/APL)')
+    expect(dPen.lines.find((l) => l.key === 'behav:sous_indexation_ciblee')?.label).toContain('retour fiscal hautes pensions (IR/CSG)')
+    // M-02 : inflation endogène sans comparateur macro ne crée aucune fausse ligne « macro »
+    const refInf = projectScenario({ levers: {}, horizon: 'dixAns', endogenousInflation: true })
+    const rInf = projectScenario({ levers: { tva_normal: 2 }, horizon: 'dixAns', endogenousInflation: true })
+    const dInf = decomposeAtYear(rInf, refInf, 5, EPS, EPS_OFFRE)
+    expect(dInf.lines.some((l) => l.kind === 'macro')).toBe(false)
+    expect(dInf.lines.some((l) => l.kind === 'inflation')).toBe(true)
+    expect(dInf.lines.reduce((s, l) => s + l.montant, 0)).toBeCloseTo(dInf.ecart, 6)
   })
 })
 

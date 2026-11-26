@@ -8,7 +8,7 @@ import { decomposeAtYear } from './helpers.js'
 const SEP = ';'
 const EOL = '\r\n'
 const BOM = '\uFEFF'
-const FORMULA_TRIGGER = /^[ \t\r]*[=+\-@]|^[\t\r]/
+const FORMULA_TRIGGER = /^[ \t\r\n]*[=+\-@]|^[\t\r\n]/
 
 /** Nombre avec virgule décimale et sans séparateur de milliers ; cellule vide si la valeur n'est pas un nombre fini. */
 export function csvNumber(v, decimals = 3) {

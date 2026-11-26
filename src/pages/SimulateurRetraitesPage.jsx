@@ -89,13 +89,16 @@ function DualLineChart({ id, titre, unite, data, dataKey, refKey, dec = 1, tier1
   const tick = { fontSize: 11 }
   const beyond = tier2 ? `${dataKey}Beyond` : null
   const domain = visibleDomain(data, dataKey, refKey, tier2?.year)
-  const nice = isDebt ? niceAxis(...extentOf(data, dataKey, refKey, domain), { minStep: 10 }) : null
+  const nice = (domain !== null || isDebt) ? niceAxis(...extentOf(data, dataKey, refKey, domain), { minStep: isDebt ? 10 : 1 }) : null
+  const firstYear = data.length ? data[0].year : null
   const lastYear = data.length ? data[data.length - 1].year : null
+  const showTier2Label = tier2 && lastYear > tier2.year && firstYear !== null && (lastYear - tier2.year) / Math.max(1, lastYear - firstYear) >= 0.22
+  const maxDebt = isDebt ? Math.max(...data.flatMap((r) => [r[dataKey], r[refKey]]).filter(Number.isFinite), 0) : 0
 
   return (
     <figure className="sb-chart" aria-label={`${titre} (${unite})`} data-chart-id={id}>
       <figcaption>{titre} <span className="sb-muted">({unite})</span></figcaption>
-      <ResponsiveContainer width="100%" height={235}>
+      <ResponsiveContainer width="100%" height={tier2 ? 260 : 235}>
         <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
           <XAxis dataKey="year" tick={tick} minTickGap={24} />
@@ -117,10 +120,10 @@ function DualLineChart({ id, titre, unite, data, dataKey, refKey, dec = 1, tier1
               fillOpacity={0.12}
               stroke="none"
               ifOverflow="hidden"
-              label={{ value: 'Hors expérience', position: 'insideTopRight', fontSize: 10, fill: '#6b6b6b' }}
+              label={showTier2Label ? { value: 'Hors expérience', position: 'insideTopRight', fontSize: 10, fill: '#6b6b6b' } : undefined}
             />
           )}
-          {isDebt && (
+          {isDebt && (tier1 || maxDebt >= 220) && (
             <ReferenceLine
               y={W.tier1DebtPct}
               stroke="#bf4000"
@@ -680,7 +683,7 @@ export default function SimulateurRetraitesPage() {
               <div className="ret-demo-card">
                 <h3>Santé et soins de longue durée</h3>
                 <p>
-                  Commission européenne (<em>2024 Ageing Report</em>, tableau 5) : dépense publique de santé de 8,8 % du PIB
+                  Commission européenne (<em>2024 Ageing Report</em>, tableau 5) : dépense publique de santé de 8,4 % du PIB
                   en {AGEING_REPORT_YEARS.from}, en hausse de{' '}
                   <strong>{fmt(healthRiseOverSpan(SANTE_PARAM.value), 1, { signed: true })} pt</strong> d'ici{' '}
                   {AGEING_REPORT_YEARS.to} hors dépendance, et de{' '}

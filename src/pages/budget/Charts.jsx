@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, ReferenceArea } from 'recharts'
 import { WARNING_THRESHOLDS as W } from '../../config'
 import { fmt, niceAxis } from './helpers'
@@ -26,21 +27,24 @@ function SimpleChart({ spec, data, tier1, tier2 }) {
   const beyond = tier2 ? `${spec.key}Beyond` : null
   // Après le palier 2, le trait du scénario est grisé et pointillé ; l'axe vertical ignore cette partie pour ne pas écraser les autres courbes.
   const domain = visibleDomain(data, spec.key, spec.ref, tier2?.year)
-  // Axe de la dette : bornes et graduations rondes (multiples de 10, 20, 50, 100…), calculées sur la partie visible.
-  const nice = spec.id === 'debt' ? niceAxis(...extent(data, spec, domain), { minStep: 10 }) : null
+  // Graduations rondes sur l'axe de la dette et sur tout graphique borné par le palier 2.
+  const nice = (domain !== null || spec.id === 'debt') ? niceAxis(...extent(data, spec, domain), { minStep: spec.id === 'debt' ? 10 : 1 }) : null
+  const firstYear = data.length ? data[0].year : null
   const lastYear = data.length ? data[data.length - 1].year : null
+  const showTier2Label = tier2 && lastYear > tier2.year && firstYear !== null && (lastYear - tier2.year) / Math.max(1, lastYear - firstYear) >= 0.22
+  const maxDebt = spec.id === 'debt' ? Math.max(...data.flatMap((r) => [r[spec.key], r[spec.ref]]).filter(Number.isFinite), 0) : 0
   return (
     <figure className="sb-chart" aria-label={`${spec.titre} (${spec.unite})`}>
       <figcaption>{spec.titre} <span className="sb-muted">({spec.unite})</span></figcaption>
-      <ResponsiveContainer width="100%" height={230}>
+      <ResponsiveContainer width="100%" height={tier2 ? 255 : 230}>
         <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
           <XAxis dataKey="year" tick={tick} minTickGap={24} />
           <YAxis tick={tick} width={44} tickFormatter={(v) => fmt(v, spec.tickDec ?? (spec.dec === 1 ? 0 : 1))} domain={nice?.domain ?? domain ?? ['auto', 'auto']} ticks={nice?.ticks} allowDataOverflow={domain !== null || nice !== null} />
           <Tooltip formatter={(v) => `${fmt(v, spec.dec)} ${tooltipUnit(spec)}`.trim()} labelFormatter={(y) => `Année ${y}`} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
-          {tier2 && lastYear > tier2.year && <ReferenceArea x1={tier2.year} x2={lastYear} fill="#9e9e9e" fillOpacity={0.12} stroke="none" ifOverflow="hidden" label={{ value: 'Hors expérience', position: 'insideTopRight', fontSize: 10, fill: '#6b6b6b' }} />}
-          {spec.id === 'debt' && <ReferenceLine y={W.tier1DebtPct} stroke="#bf4000" strokeDasharray="2 4" ifOverflow="hidden" label={{ value: `${W.tier1DebtPct} %`, position: 'insideBottomLeft', fontSize: 10, fill: '#bf4000' }} />}
+          {tier2 && lastYear > tier2.year && <ReferenceArea x1={tier2.year} x2={lastYear} fill="#9e9e9e" fillOpacity={0.12} stroke="none" ifOverflow="hidden" label={showTier2Label ? { value: 'Hors expérience', position: 'insideTopRight', fontSize: 10, fill: '#6b6b6b' } : undefined} />}
+          {spec.id === 'debt' && (tier1 || maxDebt >= 220) && <ReferenceLine y={W.tier1DebtPct} stroke="#bf4000" strokeDasharray="2 4" ifOverflow="hidden" label={{ value: `${W.tier1DebtPct} %`, position: 'insideBottomLeft', fontSize: 10, fill: '#bf4000' }} />}
           {spec.id === 'debt' && tier1 && <ReferenceLine x={tier1.year} stroke="#bf4000" strokeDasharray="2 4" />}
           {tier2 && <ReferenceLine x={tier2.year} stroke="#b71c1c" strokeWidth={1.5} />}
           <Line type="monotone" dataKey={spec.key} name="Scénario" stroke="#5c6bc0" strokeWidth={2.5} dot={false} connectNulls={false} isAnimationActive={false} />
@@ -52,7 +56,7 @@ function SimpleChart({ spec, data, tier1, tier2 }) {
   )
 }
 
-export default function Charts({ data, tier1 = null, tier2 = null, hasMacroOverride = false }) {
+const Charts = memo(function Charts({ data, tier1 = null, tier2 = null, hasMacroOverride = false }) {
   const shown = splitSeriesAtYear(data, tier2?.year)
   return (
     <section className="sb-section" aria-labelledby="sb-graphiques">
@@ -63,4 +67,6 @@ export default function Charts({ data, tier1 = null, tier2 = null, hasMacroOverr
       </div>
     </section>
   )
-}
+})
+
+export default Charts

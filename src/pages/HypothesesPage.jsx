@@ -45,12 +45,12 @@ export default function HypothesesPage() {
       iStarPct: issuanceRate(P) * 100,
       counts: paramStatusCounts(PARAMS),
       questions: buildReviewerQuestions(),
-      derivations: buildInternalDerivations(P),
     }
   }, [])
 
   const paramGroups = useMemo(() => groupParams(PARAMS, { flaggedOnly }), [flaggedOnly])
-  const { P, apu, cofog, equations, levers, lvt, iStarPct, counts, questions, derivations } = model
+  const { P, apu, cofog, equations, levers, lvt, iStarPct, counts, questions } = model
+  const derivations = useMemo(() => (showAdvanced ? buildInternalDerivations(P) : null), [showAdvanced, P])
 
   const jumpTo = (id) => {
     if (id === 'hyp-methodo-avancee' && !showAdvanced) {
@@ -244,7 +244,7 @@ export default function HypothesesPage() {
                 <th scope="col">Unité (bornes)</th>
                 <th scope="col" className="hyp-num">Étalon (+1 u.)</th>
                 <th scope="col">Bloc(s) et rampe</th>
-                <th scope="col">Effet d'offre σ (% PIB / u.)</th>
+                <th scope="col">Effet d'offre <span className="hyp-math">σ</span> (% PIB / u.)</th>
                 <th scope="col">Statut</th>
               </tr>
             </thead>
@@ -276,7 +276,7 @@ export default function HypothesesPage() {
                           </span>
                         </div>
                         <div className="hyp-sub">
-                          σ {l.supply.mode} · L = {fmt(l.supply.L, 0)} ans{l.supply.t0 > 0 ? `, t0 = ${fmt(l.supply.t0, 0)} ans` : ''}
+                          σ {l.supply.mode} · L = {fmt(l.supply.L, 0)} ans{l.supply.t0 > 0 ? `, t0 = ${fmt(l.supply.t0, 0)} ${l.supply.t0 > 1 ? 'ans' : 'an'}` : ''}
                         </div>
                         {l.supply.statut === 'non validé' && (
                           <div className="hyp-flag-note"><StatusBadge status="non validé" /> avis demandé</div>
@@ -405,7 +405,7 @@ export default function HypothesesPage() {
           </button>
         </div>
 
-        {showAdvanced && (
+        {showAdvanced && derivations && (
           <div id="hyp-advanced-panel" className="hyp-advanced-panel">
             {/* A. ref.derive.b_autres */}
             <article className="hyp-method-card">
@@ -648,11 +648,11 @@ export default function HypothesesPage() {
                 <table className="hyp-table">
                   <thead>
                     <tr>
-                      <th scope="col">Sensibilité IR (audit DGFiP Stat 53 &amp; e_L)</th>
+                      <th scope="col">Sensibilité IR (audit DGFiP Stat 53 &amp; <span className="hyp-math">e_L</span>)</th>
                       <th scope="col" className="hyp-num">Assiette totale (Md€)</th>
-                      <th scope="col" className="hyp-num">θ prop.</th>
-                      <th scope="col" className="hyp-num">θ_réel</th>
-                      <th scope="col" className="hyp-num">σ IR (% PIB / %)</th>
+                      <th scope="col" className="hyp-num"><span className="hyp-math">θ</span> prop.</th>
+                      <th scope="col" className="hyp-num"><span className="hyp-math">θ</span>_réel</th>
+                      <th scope="col" className="hyp-num"><span className="hyp-math">σ</span> IR (% PIB / %)</th>
                     </tr>
                   </thead>
                   <tbody>
