@@ -11,8 +11,8 @@ describe('liens de scénario', () => {
     const s = { values: { tva_normal: 2.5, ir: -10, is: 4 }, horizon: 'trenteAns', ysCase: 'haut', macroId: null }
     expect(decodeScenario(encodeScenario(s))).toEqual(s)
   })
-  it('aller-retour sur tous les leviers au maximum', () => {
-    const values = Object.fromEntries(LEVERS.map((l) => [l.id, l.max]))
+  it('aller-retour sur tous les leviers actifs aux bornes non nulles', () => {
+    const values = Object.fromEntries(LEVERS.map((l) => [l.id, l.max !== 0 ? l.max : l.min]))
     const s = { values, horizon: 'jusqua2040', ysCase: 'bas', macroId: null }
     expect(decodeScenario(encodeScenario(s))).toEqual(s)
   })

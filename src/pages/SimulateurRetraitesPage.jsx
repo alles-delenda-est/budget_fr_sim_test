@@ -55,6 +55,7 @@ const EPS = BASE_P['fisc.eps']
 const EPS_OFFRE = BASE_P['fisc.eps_offre']
 const AGE_LEVER = LEVER_BY_ID['age_legal']
 const INDEX_LEVER = LEVER_BY_ID['indexation_pensions']
+const TARGETED_INDEX_LEVER = LEVER_BY_ID['sous_indexation_ciblee']
 const AGE_SIGMA = PARAM_BY_ID['offre.sigma.age_legal']
 const COR_PARAM = PARAM_BY_ID['ref.derive.a_retraites']
 const SANTE_PARAM = PARAM_BY_ID['ref.derive.a_sante']
@@ -158,11 +159,13 @@ export default function SimulateurRetraitesPage() {
   const [ysCase, setYsCase] = useState('central')
   const [ageDelta, setAgeDelta] = useState(0)
   const [indexDelta, setIndexDelta] = useState(0)
+  const [targetedIndexDelta, setTargetedIndexDelta] = useState(0)
   const [ndcActive, setNdcActive] = useState(false)
   const [yearIdxRaw, setYearIdx] = useState(10)
 
   const ageId = useId()
   const idxId = useId()
+  const targetedIdxId = useId()
   const ndcId = useId()
 
   const overrides = useMemo(
@@ -175,8 +178,9 @@ export default function SimulateurRetraitesPage() {
     const out = {}
     if (ageDelta !== 0) out.age_legal = ageDelta
     if (indexDelta !== 0) out.indexation_pensions = indexDelta
+    if (targetedIndexDelta !== 0) out.sous_indexation_ciblee = targetedIndexDelta
     return out
-  }, [ageDelta, indexDelta])
+  }, [ageDelta, indexDelta, targetedIndexDelta])
 
   const modules = useMemo(
     () => (ndcActive ? [{ module: NDC_MODULE, levers: { actif: 1 } }] : []),
@@ -214,19 +218,22 @@ export default function SimulateurRetraitesPage() {
   const ageYield = staticYield(AGE_LEVER, ageDelta, activeP)
   const ageOffsetPct = activeP['comp.offset.age_legal'] * 100
   const idxYield = staticYield(INDEX_LEVER, indexDelta, activeP)
+  const targetedIdxYield = staticYield(TARGETED_INDEX_LEVER, targetedIndexDelta, activeP)
   const ndcStartYear = START_YEAR + NDC_START_T
   const ndcFullYear = ndcStartYear + NDC_RAMP_YEARS - 1
-  const isNdcPresetActive = matchesNdcPreset({ ageDelta, indexDelta, ndcActive })
+  const isNdcPresetActive = matchesNdcPreset({ ageDelta, indexDelta, targetedIndexDelta, ndcActive })
 
   const applyNdcPreset = () => {
     setAgeDelta(NDC_PRESET.ageDelta)
     setIndexDelta(NDC_PRESET.indexDelta)
+    setTargetedIndexDelta(0)
     setNdcActive(NDC_PRESET.ndcActive)
   }
 
   const resetLevers = () => {
     setAgeDelta(0)
     setIndexDelta(0)
+    setTargetedIndexDelta(0)
     setNdcActive(false)
   }
 
@@ -436,6 +443,49 @@ export default function SimulateurRetraitesPage() {
               <p className="ret-lever-note">
                 −1 = 1 point sous l'inflation ({fmt(staticYield(INDEX_LEVER, -1, activeP), 1, { signed: true })} Md€/an),
                 effet de niveau permanent. Décalage <code>comp.offset.prestations</code> à {fmt(activeP['comp.offset.prestations'] * 100, 0)} % par défaut.
+              </p>
+            </div>
+
+            {/* SOUS-INDEXATION CIBLÉE (> 2 000 €/MOIS, DÉCISION D-P6) */}
+            <div className="sb-lever">
+              <div className="sb-lever-head">
+                <label htmlFor={targetedIdxId}>{TARGETED_INDEX_LEVER.titre}</label>
+                <LeverStatus leverId="sous_indexation_ciblee" />
+                <InfoPopover label={TARGETED_INDEX_LEVER.titre}>
+                  <span className="sb-info-line">{TARGETED_INDEX_LEVER.aide}</span>
+                  <span className="sb-info-sub">
+                    <strong>rend.sous_indexation_ciblee</strong>
+                    <ParamInfo param={PARAM_BY_ID['rend.sous_indexation_ciblee']} />
+                  </span>
+                  <span className="sb-info-sub">
+                    <strong>comp.offset.pensions_hautes</strong>
+                    <ParamInfo param={PARAM_BY_ID['comp.offset.pensions_hautes']} />
+                  </span>
+                </InfoPopover>
+              </div>
+              <input
+                id={targetedIdxId}
+                type="range"
+                className="sb-slider"
+                min={TARGETED_INDEX_LEVER.min}
+                max={TARGETED_INDEX_LEVER.max}
+                step={0.5}
+                value={targetedIndexDelta}
+                aria-valuetext={`${fmt(targetedIndexDelta, 1, { signed: true })} point sous l'inflation (pensions > 2 000 €/mois)`}
+                onChange={(e) => setTargetedIndexDelta(parseFloat(e.target.value))}
+              />
+              <div className="sb-lever-foot">
+                <span className="sb-lever-value">
+                  <strong>{fmt(targetedIndexDelta, 1, { signed: true })} pt</strong> sous l'inflation
+                </span>
+                <span className="sb-lever-yield">
+                  Étalon : <strong>{fmt(targetedIdxYield, 1, { signed: true })} Md€</strong>/an (dès {INDEX_START_YEAR})
+                </span>
+              </div>
+              <p className="ret-lever-note">
+                Alternative légalement standard au plafonnement (D-P6) : −1 pt ={' '}
+                {fmt(staticYield(TARGETED_INDEX_LEVER, -1, activeP), 2, { signed: true })} Md€ bruts/an, corrigé de{' '}
+                <strong>{fmt(activeP['comp.offset.pensions_hautes'] * 100, 0)} %</strong> de retour fiscal hautes pensions (IR + CSG).
               </p>
             </div>
           </fieldset>

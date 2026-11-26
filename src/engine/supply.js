@@ -25,7 +25,7 @@ const IR_SIGMA_PARAMS = [
   ...IR_TRANCHES.flatMap((t) => [`offre.ir.tranche.${t}.foyers`, `offre.ir.tranche.${t}.impot`, `offre.ir.tranche.${t}.parts`]),
   'offre.ir.tranche.45.hors_bareme', 'offre.ir.tranche.0.revenu', 'offre.ir.coin.crds', 'offre.ir.coin.cehr',
   'offre.ir.bareme.seuil1', 'offre.ir.bareme.seuil2', 'offre.ir.bareme.seuil3', 'offre.ir.bareme.seuil4',
-  'comp.tau0.csg', 'offre.csg.part_deductible',
+  'comp.tau0.csg', 'offre.csg.part_deductible', 'offre.ir_csg.part_actifs',
 ]
 
 const finite = (v) => Number.isFinite(v)
@@ -73,7 +73,7 @@ export const SUPPLY_EFFECTS = [
     sigmaParams: ['offre.e_L', 'comp.tau0.cotis'], L: 'offre.lag.cotis', t0: 'offre.t0.cotis',
     sigmaFn: 'cotis_patronales', propre: (P) => (P['comp.tau0.cotis'] * P['rend.cotis']) },
   { lever: 'csg', libelle: 'CSG : effet d\'offre',
-    sigmaParams: ['offre.e_L', 'offre.csg.assiette', 'offre.csg.part_deductible', 'offre.csg.tmi_salarie', 'comp.coin.part_nette'], L: 'offre.lag.csg', t0: 'offre.t0.csg',
+    sigmaParams: ['offre.e_L', 'offre.ir_csg.part_actifs', 'offre.csg.assiette', 'offre.csg.part_deductible', 'offre.csg.tmi_salarie', 'comp.coin.part_nette'], L: 'offre.lag.csg', t0: 'offre.t0.csg',
     sigmaFn: 'csg', propre: (P) => P['comp.tau0.csg'] * P['rend.csg'] },
 ]
 export const SUPPLY_BY_LEVER = Object.fromEntries(SUPPLY_EFFECTS.map((e) => [e.lever, e]))
@@ -87,8 +87,8 @@ const pc = (P, id, c) => (c === 'value' ? P[id] : (PARAM_BY_ID[id][c] ?? P[id]))
 const DLN = {
   // cotisations patronales : 1 point de plus augmente le coût du travail de 0,01 / (1 + τ_patronal)
   cotis_patronales: (P) => 0.01 / (1 + P['comp.tau0.cotis'] / 100),
-  // CSG : assiette 98,25 % ; part déductible (6,8 / 9,2) imposée au taux marginal d'IR du salarié moyen ; le reste coûte plein pot
-  csg: (P) => (0.01 * P['offre.csg.assiette'] * (P['offre.csg.part_deductible'] * (1 - P['offre.csg.tmi_salarie'] / 100) + (1 - P['offre.csg.part_deductible']))) / P['comp.coin.part_nette'],
+  // CSG : assiette 98,25 % ; part déductible (6,8 / 9,2) imposée au taux marginal d'IR du salarié moyen ; pondéré par la part active (D-P3)
+  csg: (P) => ((P['offre.ir_csg.part_actifs'] ?? 1) * 0.01 * P['offre.csg.assiette'] * (P['offre.csg.part_deductible'] * (1 - P['offre.csg.tmi_salarie'] / 100) + (1 - P['offre.csg.part_deductible']))) / P['comp.coin.part_nette'],
   // TVA : 1 point de taux = rendement du point / consommation des ménages, en baisse du pouvoir d'achat
   tva_normal: (P) => P['rend.tva_normal'] / P['base.conso_menages'],
   tva_tous_taux: (P) => P['rend.tva_tous_taux'] / P['base.conso_menages'],

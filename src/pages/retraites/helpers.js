@@ -45,6 +45,7 @@ export const paramStatuses = (ids) => [...new Set(ids.map((id) => PARAM_BY_ID[id
 export const LEVER_STATUS_PARAMS = {
   age_legal: ['rend.age_legal.hausse', 'rend.age_legal.baisse', 'comp.offset.age_legal', 'offre.sigma.age_legal'],
   indexation_pensions: ['ref.derive.a_retraites'],
+  sous_indexation_ciblee: ['rend.sous_indexation_ciblee', 'comp.offset.pensions_hautes'],
 }
 
 const COR = PARAM_BY_ID['ref.derive.a_retraites']
@@ -139,18 +140,18 @@ export const NDC_PRESET = {
 }
 
 /** Vrai si les réglages courants correspondent exactement au préréglage Comptes notionnels (D8). */
-export function matchesNdcPreset({ ageDelta = 0, indexDelta = 0, ndcActive = false } = {}) {
-  return ageDelta === NDC_PRESET.ageDelta && indexDelta === NDC_PRESET.indexDelta && Boolean(ndcActive) === NDC_PRESET.ndcActive
+export function matchesNdcPreset({ ageDelta = 0, indexDelta = 0, targetedIndexDelta = 0, ndcActive = false } = {}) {
+  return ageDelta === NDC_PRESET.ageDelta && indexDelta === NDC_PRESET.indexDelta && targetedIndexDelta === 0 && Boolean(ndcActive) === NDC_PRESET.ndcActive
 }
 
 /** Mesures affichées en transparence mais désactivées (« non validé — avis demandé »). */
 export const UNVALIDATED_PENSION_ITEMS = [
   {
     id: 'plafonnement_pensions',
-    titre: 'Plafonnement des hautes pensions',
+    titre: 'Plafonnement rétroactif des hautes pensions',
     statut: 'non validé',
     badge: 'Non validé — avis demandé',
-    detail: 'Désactivé dans le moteur v2 (note de modèle §6) : aucun rendement net ni effet de report validé sur sources primaires à ce stade.',
+    detail: 'Désactivé (décision D-P6) : un plafond dur à 3 000 €/mois représente ~15,2 Md€ bruts / ~8,4–9,9 Md€ nets (DREES 2024–2025, retour fiscal 35–45 %, loin des 40–50 Md€ parfois avancés) et se heurte à des obstacles constitutionnels, CEDH (art. 1 P1) et de périmètre Agirc-Arrco. Utiliser plutôt le levier actif « Sous-indexation ciblée (> 2 000 €/mois) » ci-dessus.',
   },
 ]
 

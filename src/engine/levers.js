@@ -96,6 +96,10 @@ export const LEVERS = [
     rendement: (P) => (P['ref.derive.a_retraites'][2025] / 100) * P['base.pib.2025'] / 100, categorie: 'prestations', blocs: () => ALL_SECU,
     offsetGroup: 'prestations', statut: 'sourcé',
     aide: '−1 = 1 point sous l\'inflation (+4,2 Md€/an sur le solde) ; +1 = 1 point au-dessus (−4,2 Md€). Effet de niveau permanent (1 % des dépenses de retraites du COR, 14,1 % du PIB 2025).' },
+  { id: 'sous_indexation_ciblee', titre: 'Sous-indexation ciblée des pensions (> 2 000 €/mois)', unite: 'points sous l\'inflation', min: -3, max: 0, type: 'depense', signe: -1,
+    rendement: (P) => P['rend.sous_indexation_ciblee'], categorie: 'prestations', blocs: () => ALL_SECU,
+    offsetParam: 'comp.offset.pensions_hautes', statut: 'sourcé (fourchette), centre choisi',
+    aide: 'Décision D-P6 (alternative légalement standard au plafonnement rétroactif) : −1 = 1 point sous l\'inflation sur les pensions > 2 000 € bruts/mois (+1,65 Md€/an brut ; ≈ +1,02 Md€/an net après 38 % de retour fiscal IR/CSG sur hautes pensions). Ne pas cumuler mécaniquement sur la même assiette avec une sous-indexation générale.' },
   { id: 'age_legal', titre: 'Âge légal de départ en retraite', unite: 'années par rapport au droit en vigueur', min: -2, max: 3, type: 'depense', signe: 1,
     asymmetric: true, rendParams: ['rend.age_legal.hausse', 'rend.age_legal.baisse'],
     rendement: (P, x = 1) => (x < 0 ? P['rend.age_legal.baisse'] : P['rend.age_legal.hausse']),
@@ -111,13 +115,20 @@ export const LEVERS = [
     aide: 'Variation par rapport au droit en vigueur (64 ans, atteint pour la gén. 1969 en 2033 après gel LFSS 2026), avec translation symétrique des bornes carrières longues. Pensions brutes seules (hors cotisations retraites déjà comptées dans E7) : +4,95 Md€/an en hausse (dès 2028 accéléré, plein effet 2034) et −3,90 Md€/an en baisse (dès 2029, plein effet 2033), corrigées de 20 % d\'effets de report sociaux (Unédic, IJ maladie, minima — DREES/DARES) et couplées à l\'effet d\'offre emploi seniors (+0,50 % PIB par année d\'âge, L = 6 ans).' },
 ]
 
-// Leviers de réforme du logement et du marché du travail (D5) : visibles, désactivés, sans effet budgétaire (σ = 0).
-// L'assurance chômage n'en fait plus partie : c'est un levier de dépense actif (voir LEVERS).
+// Leviers de réforme du logement et du marché du travail (D5 / D-P5) : visibles, désactivés, sans effet budgétaire (σ = 0).
+// L'encadrement des loyers a été reclassé en note qualitative (IPP Note n° 125, mai 2026 : effet macro-budgétaire négligeable).
 export const STRUCTURAL_LEVERS = [
-  ['logement_offre', 'Offre de logement'], ['logement_loyers', 'Encadrement des loyers'],
-  ['travail_licenciement', 'Règles de licenciement'],
-].map(([id, titre]) => ({ id, titre, unite: 'intensité (0 à 1)', min: 0, max: 1, defaut: 0, actif: false, statut: 'non validé',
-  aide: 'Non validé — avis demandé. σ = 0 en attendant la revue de preuves (docs/brief-supply-effects.md) : aucun effet.' }))
+  { id: 'logement_offre', titre: 'Offre de logement (urbanisme / foncier)', unite: 'intensité (0 à 1)', min: 0, max: 1, defaut: 0, actif: false, statut: 'non validé',
+    aide: 'Non validé — avis demandé (D-P5). σ = 0 : Chapelle, Eyméoud et Wolf (2023) documentent la forte rigidité d\'offre (élasticité ~0,5 en moyenne, 0,45 à Paris) sans estimer un σ macroéconomique directement calibrable.' },
+  { id: 'travail_licenciement', titre: 'Règles de licenciement', unite: 'intensité (0 à 1)', min: 0, max: 1, defaut: 0, actif: false, statut: 'non validé',
+    aide: 'Non validé — avis demandé (D-P5). σ = 0 au centre : les évaluations françaises (France Stratégie 2021 ; Cahuc et al. févr. 2024) montrent un doublement des demandes de nullité (10–15 % → 20–25 %) et un effet net sur l\'emploi CDI non démontré.' },
+]
+
+/** Notes qualitatives sur des réformes reclassées hors leviers budgétaires (D-P5). */
+export const QUALITATIVE_NOTES = [
+  { id: 'logement_loyers', titre: 'Encadrement des loyers (reclassé en note qualitative, D-P5)',
+    detail: 'IPP Note n° 125 (mai 2026) : modération des loyers de −2 à −5 %, coût fiscal ~200 M€/an, aucune contraction causale avérée de l\'offre locative ; périmètre limité à ~4–5 % du parc national → effet macro-budgétaire négligeable (σ = 0).' },
+]
 
 export const LEVER_BY_ID = Object.fromEntries(LEVERS.map((l) => [l.id, l]))
 

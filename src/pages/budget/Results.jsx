@@ -1,5 +1,5 @@
 import { fmt, deltaTone, visibleLines, HIDE_BELOW, debtMovesAgainstBalance, YEAR1_PARADOX_TEXT } from './helpers'
-import { tier1Text, tier2Text, tier2Explanation } from './warnings'
+import { betaRegimeText, tier1Text, tier2Text, tier2Explanation } from './warnings'
 import { InfoPopover } from './InfoPopover'
 
 function Delta({ value, unit, lowerIsBetter }) {
@@ -7,13 +7,14 @@ function Delta({ value, unit, lowerIsBetter }) {
   return <span className={`sb-delta sb-delta-${tone}`}>{fmt(value, 1, { signed: true })} {unit} vs réf.</span>
 }
 
-/** Bandeau au-dessus des résultats : un palier 1 (trajectoire au-delà du record des économies avancées) et/ou un palier 2 (hors de toute expérience). */
+/** Bandeau au-dessus des résultats : indicateur β hors échantillon (> 180 % PIB), palier 1 (> 260 %) et/ou palier 2 (hors de toute expérience). */
 export function WarningBanner({ warnings }) {
-  if (!warnings?.tier1 && !warnings?.tier2) return null
+  if (!warnings?.betaRegime && !warnings?.tier1 && !warnings?.tier2) return null
   return (
     <div className="sb-warnings">
       {warnings.tier2 && <p className="sb-warning sb-warning-2" role="alert"><strong>Attention.</strong> {tier2Text(warnings.tier2)} <span className="sb-warning-why">{tier2Explanation()}</span></p>}
       {warnings.tier1 && <p className="sb-warning sb-warning-1" role="status">{tier1Text(warnings.tier1)}</p>}
+      {warnings.betaRegime && !warnings.tier2 && <p className="sb-warning sb-warning-info" role="status">{betaRegimeText(warnings.betaRegime)}</p>}
     </div>
   )
 }
