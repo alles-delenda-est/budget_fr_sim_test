@@ -238,10 +238,12 @@ export default function IntroPage({ navigateTo }) {
             l'inflation.
           </li>
           <li>
-            <strong>Hypothèses de référence provisoires :</strong> la référence fixe la dérive des autres dépenses{' '}
-            <code>ref.derive.b_autres</code> à {fmt(P['ref.derive.b_autres'], 1)} point de PIB par an{' '}
-            (statut « {statusOf('ref.derive.b_autres')} »), ce qui la rend plus favorable que la règle prévue par la note de modèle ;
-            la croissance et l'inflation 2026–2027 ont le statut « {statusOf('macro.g.2026', 'macro.g.2027', 'macro.pi.2026', 'macro.pi.2027')} ».
+            <strong>Hypothèses de référence estimées ou non validées :</strong> la référence intègre une dérive des autres
+            dépenses <code>ref.derive.b_autres</code> de {fmt(P['ref.derive.b_autres'], 2)} point de PIB par an (fourchette{' '}
+            {fmt(PARAM_BY_ID['ref.derive.b_autres'].low, 2)} à {fmt(PARAM_BY_ID['ref.derive.b_autres'].high, 2)}, statut «{' '}
+            {statusOf('ref.derive.b_autres')} », estimation interne Eurostat 1995–2024 documentée dans la vue avancée de
+            l'onglet Hypothèses) ; la croissance et l'inflation 2026–2027 ont le statut «{' '}
+            {statusOf('macro.g.2026', 'macro.g.2027', 'macro.pi.2026', 'macro.pi.2027')} ».
           </li>
           <li>
             <strong>Régime unique de multiplicateurs :</strong> multiplicateurs de demande d'expansion uniquement (pas de

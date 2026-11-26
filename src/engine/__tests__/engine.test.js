@@ -4,6 +4,7 @@ import { LEVERS, LEVER_BY_ID, STRUCTURAL_LEVERS, staticYield, thetaElasticity, l
 import { projectScenario, HORIZONS, issuanceRate, deepFreeze } from '../project.js'
 import { TEST_MODULE, validateModuleDefinition } from '../modules.js'
 import { irTranches, irDeltaLnNet, thetaIrTranches, thetaReelIr, facteurCsgDeductible, coinMarginal } from '../ir-tranches.js'
+import { deriveBAutres, deriveMPrestations } from '../internal-derivations.js'
 import { supplyPhase, sigmaFiscal, sigmaFiscalCase, partReelle, supplyForCase, coutUsageParPoint, impliedJobs, roundJobs, SUPPLY_BY_LEVER } from '../supply.js'
 
 const P = resolveParams()
@@ -93,7 +94,7 @@ describe('dérive de référence mesurée depuis 2025', () => {
 describe('solde primaire de référence : comparateurs seulement', () => {
   it('la référence n\'est pas forcée sur la trajectoire du Gouvernement (−2,1 % en 2027)', () => {
     const r = projectScenario({}).total
-    expect(r[1].primaryBalanceRatio * 100).toBeCloseTo(-2.8, 1)
+    expect(r[1].primaryBalanceRatio * 100).toBeCloseTo(-2.86, 1)
     const gouv = P['cmp.gouv.solde.2027'] + P['cmp.gouv.interets.2027'] // −2,1
     expect(gouv).toBeCloseTo(-2.1, 10)
     expect(r[1].primaryBalanceRatio * 100 - gouv).toBeLessThan(-0.5) // écart rapporté, non comblé
@@ -577,7 +578,8 @@ describe('remarques de la revue de la PR n° 6', () => {
     const q = PARAM_BY_ID['ref.derive.a_sante']
     expect(q.high).toBeCloseTo(1.0 / 48, 10)
     expect(q.explanation).toMatch(/double comptage/)
-    expect(P['ref.derive.b_autres']).toBe(0) // aucune autre composante de dérive ne porte la longue durée
+    // b_autres est estimé hors GF07 (santé) et GF1002 (vieillesse) : aucun double comptage avec la longue durée
+    expect(PARAM_BY_ID['ref.derive.b_autres'].explanation).toMatch(/GF07.*GF1002/)
     const hi = projectScenario({ overrides: { 'ref.derive.a_sante': q.high } })
     const base = projectScenario({})
     // la dérive supplémentaire est portée par la seule sécurité sociale
@@ -773,19 +775,19 @@ describe('vérification primaire Day 0 : ventilation COFOG Eurostat 2024 et para
     const l1 = r.blocks.locales[1].leversExAnte
     expect(c1 / (c1 + l1)).toBeCloseTo(P['bloc.cofog.ordre_securite.centrales'], 8)
   })
-  it('fisc.eps, taux légaux (TVA, CSG, TMI 30 %) et ref.derive.b_autres : statuts et fourchettes mis à jour sans changer les centres', () => {
+  it('fisc.eps, taux légaux (TVA, CSG, TMI 30 %) et ref.derive.b_autres : statuts et fourchettes mis à jour', () => {
     expect(PARAM_BY_ID['fisc.eps'].status).toBe('sourcé (fourchette), centre choisi')
     expect(PARAM_BY_ID['fisc.eps'].source).toMatch(/Discussion Paper 098.*0,630/)
     expect(PARAM_BY_ID['comp.tau0.tva'].status).toBe('sourcé')
     expect(PARAM_BY_ID['comp.tau0.csg'].status).toBe('sourcé')
     expect(PARAM_BY_ID['offre.csg.tmi_salarie'].status).toBe('sourcé')
-    expect(PARAM_BY_ID['ref.derive.b_autres'].status).toBe('à valider')
-    expect([PARAM_BY_ID['ref.derive.b_autres'].low, PARAM_BY_ID['ref.derive.b_autres'].value, PARAM_BY_ID['ref.derive.b_autres'].high]).toEqual([0, 0, 0.11])
+    expect(PARAM_BY_ID['ref.derive.b_autres'].status).toBe('calculé (estimation)')
+    expect([PARAM_BY_ID['ref.derive.b_autres'].low, PARAM_BY_ID['ref.derive.b_autres'].value, PARAM_BY_ID['ref.derive.b_autres'].high]).toEqual([0, 0.05, 0.11])
   })
-  it('plus aucun paramètre « de mémoire », seul cmp.aft.taux_emission.2026 « à collecter », et 3 centres calibrés (24 nov. 2026)', () => {
+  it('plus aucun paramètre « de mémoire » ni « à valider », seul cmp.aft.taux_emission.2026 « à collecter »', () => {
     expect(PARAMS.filter((q) => q.status === 'de mémoire')).toEqual([])
     expect(PARAMS.filter((q) => q.status === 'à collecter').map((q) => q.id)).toEqual(['cmp.aft.taux_emission.2026'])
-    expect(PARAMS.filter((q) => q.status === 'à valider').map((q) => q.id).sort()).toEqual(['dem.m.prestations', 'ref.derive.b_autres'])
+    expect(PARAMS.filter((q) => q.status === 'à valider')).toEqual([])
     expect(PARAM_BY_ID['dem.m.ir_csg'].source).toMatch(/Mésange.*0,41/)
     expect(PARAM_BY_ID['comp.theta.cotis'].source).toMatch(/Bozio, Breda et Grenet/)
     expect([PARAM_BY_ID['comp.offset.prestations'].value, PARAM_BY_ID['comp.offset.prestations'].status]).toEqual([0.20, 'sourcé (secondaire)'])
@@ -795,25 +797,25 @@ describe('vérification primaire Day 0 : ventilation COFOG Eurostat 2024 et para
   })
 })
 
-describe('suivi de l\'audit Day 0 (PR #30/#32) : corrections de sources et fourchettes, centres inchangés', () => {
+describe('suivi de l\'audit Day 0 (PR #30/#32) : corrections de sources et fourchettes', () => {
   const range = (id) => [PARAM_BY_ID[id].low, PARAM_BY_ID[id].value, PARAM_BY_ID[id].high, PARAM_BY_ID[id].status]
-  it('fourchettes approuvées : θ CSG 0,01–0,05, θ IR 0,14–0,62 (levier proportionnel, dérivation par tranche avec CSG déductible ; centre 0,35 depuis le 25 nov. 2026), rend.cotis 7,0–10', () => {
+  it('fourchettes approuvées : θ CSG 0,01–0,05, θ IR 0,14–0,62 (levier proportionnel, dérivation par tranche avec CSG déductible ; centre 0,35 depuis le 25 nov. 2026), rend.cotis 7,0–10, prestations 0,45', () => {
     expect(range('comp.theta.csg')).toEqual([0.01, 0.03, 0.05, 'sourcé (fourchette), centre choisi'])
     expect(range('comp.theta.ir')).toEqual([0.14, 0.35, 0.62, 'sourcé (fourchette), centre choisi'])
     expect(range('rend.cotis')).toEqual([7.0, 7.4, 10, 'sourcé (fourchette), centre choisi'])
     expect(range('rend.is')).toEqual([2.0, 2.3, 3.0, 'calculé (estimation)'])
     expect(range('comp.theta.cotis')).toEqual([0.05, 0.15, 0.30, 'sourcé (fourchette), centre choisi'])
-    expect(range('dem.m.prestations')).toEqual([0.2, 0.5, 0.8, 'à valider'])
+    expect(range('dem.m.prestations')).toEqual([0.2, 0.45, 0.8, 'calculé (estimation)'])
     expect(range('dem.m.cotisations')).toEqual([0.2, 0.4, 0.7, 'sourcé (fourchette), centre choisi'])
   })
-  it('sources corrigées : IS (DGFiP n° 51 : 257 Md€ à 25 %, 83,7/70,7 = IS + IR), cotisations (REPSS 7,3 / 6,9 ; 71,5 = total exonérations), prestations (FR-BDF 0,09)', () => {
+  it('sources corrigées : IS (DGFiP n° 51 : 257 Md€ à 25 %, 83,7/70,7 = IS + IR), cotisations (REPSS 7,3 / 6,9 ; 71,5 = total exonérations), prestations (FR-BDF 0,09–0,43)', () => {
     expect(PARAM_BY_ID['rend.is'].source).toMatch(/257 Md€/)
     expect(PARAM_BY_ID['rend.is'].source).toMatch(/83,7 Md€.*IS et IR/)
     expect(PARAM_BY_ID['rend.is'].source).not.toMatch(/70,5 \/ 25/)
     expect(PARAM_BY_ID['rend.cotis'].source).toMatch(/7,3 Md€ \(dont secteur privé 6,9 Md€/)
     expect(PARAM_BY_ID['rend.cotis'].source).toMatch(/71,5 Md€ = coût total 2026 des exonérations/)
     expect(PARAM_BY_ID['rend.cotis'].source).not.toMatch(/≈ 750/)
-    expect(PARAM_BY_ID['dem.m.prestations'].source).toMatch(/FR-BDF.*\+0,09 % de PIB an 1/)
+    expect(PARAM_BY_ID['dem.m.prestations'].source).toMatch(/FR-BDF.*\+0,09 \/ \+0,26 \/ \+0,37 \/ \+0,43/)
     expect(PARAM_BY_ID['dem.m.cotisations'].source).toMatch(/entre l'an 1 et l'an 2/)
     expect(PARAM_BY_ID['comp.theta.cotis'].source).toMatch(/Source indirecte.*11 estimations/)
     expect(PARAM_BY_ID['comp.theta.ir'].source).toMatch(/Cabannes, Houdré et Landais.*0,31/)
@@ -1120,6 +1122,50 @@ describe('barème de l\'IR par tranche : données communes au θ (documenté) et
     expect(irTranches(bad)).toBeNull()
     expect(sigmaFiscalCase('ir', bad)).toBe(-0)
     expect(thetaIrTranches(bad)).toBe(0)
+  })
+})
+
+describe('dérivations internes documentées (src/engine/internal-derivations.js)', () => {
+  it('ref.derive.b_autres correspond exactement à la médiane Eurostat D7 arrondie (0,05 pt/an)', () => {
+    const b = deriveBAutres(P)
+    expect(b.windows.length).toBe(5)
+    expect(b.rawMedian).toBeCloseTo(b.window2007Implied, 10)
+    expect(b.rawMedian).toBeCloseTo(0.0497, 3)
+    expect(b.rounded).toBe(0.05)
+    expect(PARAM_BY_ID['ref.derive.b_autres'].value).toBe(b.rounded)
+    // Sensibilité à macro.g.potentielle : une croissance potentielle plus haute abaisse la dérive implicite
+    const hiG = deriveBAutres(resolveParams({ 'macro.g.potentielle': 1.2 }))
+    expect(hiG.rawMedian).toBeLessThan(b.rawMedian)
+  })
+  it('dem.m.prestations correspond exactement à l\'équivalent cumulé 4 ans FR-BDF dans E4 (0,45)', () => {
+    const m = deriveMPrestations(P)
+    expect(m.cum4).toBeCloseTo(1.15, 10)
+    expect(m.e4Factor4).toBeCloseTo(2.533, 6)
+    expect(m.frBdfEq4).toBeCloseTo(1.15 / 2.533, 10)
+    expect(m.rounded).toBe(0.45)
+    expect(PARAM_BY_ID['dem.m.prestations'].value).toBe(m.rounded)
+    // Borne basse cohérente avec l'équivalent 2 ans (0,206)
+    expect(m.frBdfEq2).toBeCloseTo(0.2059, 3)
+    // Recoupements Mésange encadrant 0,45
+    expect(m.mesangeIrCsgY1).toBe(0.41)
+    expect(m.mesangeResidualUnit).toBeCloseTo(0.4678, 3)
+    expect(m.mesangeResidualEngine).toBeCloseTo(0.6222, 3)
+  })
+  it('lvt.capi.part documente la non-héritabilité depuis LVTShift yields.json et conserve 0,80 [0,60 ; 1,00]', () => {
+    const q = PARAM_BY_ID['lvt.capi.part']
+    expect([q.low, q.value, q.high]).toEqual([0.60, 0.80, 1.00])
+    expect(q.status).toBe('sourcé (fourchette), centre choisi')
+    expect(q.source).toMatch(/yields\.json n'exporte aucun paramètre de capitalisation/)
+    expect(q.source).toMatch(/dynamic-effects\.md §5\.4/)
+  })
+  it('jamais de NaN ni de sortie aberrante sur entrées invalides (g_pot non fini, λ hors [0 ; 1])', () => {
+    expect(deriveBAutres({ 'macro.g.potentielle': Number.NaN })).toBeNull()
+    expect(deriveBAutres({ 'macro.g.potentielle': Infinity })).toBeNull()
+    expect(deriveMPrestations({ ...P, 'dem.lambda': Number.NaN })).toBeNull()
+    expect(deriveMPrestations({ ...P, 'dem.lambda': -0.5 })).toBeNull()
+    expect(deriveMPrestations({ ...P, 'dem.lambda': 1.2 })).toBeNull()
+    expect(deriveMPrestations({ ...P, 'dem.m.remunerations': Number.NaN })).toBeNull()
+    expect(deriveMPrestations({ ...P, 'dem.lambda': 0 }).frBdfEq4).toBeCloseTo(1.15, 10)
   })
 })
 

@@ -15,6 +15,7 @@ import {
   groupParams,
   paramStatusCounts,
   buildReviewerQuestions,
+  buildInternalDerivations,
   irPrimaryGap30,
   irBreakEvenEL,
   macroGrowthSourceLabel,
@@ -167,6 +168,39 @@ describe('Hypothèses : regroupement complet et filtrage des paramètres (PARAMS
       expect(formatted).toBeTruthy()
       expect(formatted).not.toMatch(/NaN|Infinity|undefined/)
     }
+  })
+})
+
+describe('Hypothèses : vue avancée — méthodologie des dérivations internes', () => {
+  it('construit les 4 blocs (b_autres, dem.m.prestations, lvt.capi.part, ir-tranches) sans NaN depuis PARAMS', () => {
+    const d = buildInternalDerivations(P)
+    expect(d.bAutres.param.id).toBe('ref.derive.b_autres')
+    expect(d.bAutres.rounded).toBe(P['ref.derive.b_autres'])
+    expect(d.bAutres.windows.length).toBe(5)
+    expect(d.bAutres.debt2036Sensitivity.map((s) => s.b)).toEqual([0, 0.05, 0.11])
+    d.bAutres.debt2036Sensitivity.forEach((s) => {
+      expect(Number.isFinite(s.debt2036Pct)).toBe(true)
+      expect(Number.isFinite(s.balance2036Pct)).toBe(true)
+    })
+    expect(d.bAutres.debt2036Sensitivity[0].debt2036Pct).toBeLessThan(d.bAutres.debt2036Sensitivity[1].debt2036Pct)
+    expect(d.bAutres.debt2036Sensitivity[1].debt2036Pct).toBeLessThan(d.bAutres.debt2036Sensitivity[2].debt2036Pct)
+
+    expect(d.mPrestations.param.id).toBe('dem.m.prestations')
+    expect(d.mPrestations.rounded).toBe(P['dem.m.prestations'])
+    expect(d.mPrestations.frBdfEq4).toBeCloseTo(1.15 / 2.533, 6)
+    expect(d.mPrestations.frBdfEq2).toBeCloseTo(0.35 / 1.7, 6)
+    expect(d.mPrestations.mesangeIrCsgY1).toBe(0.41)
+    expect(d.mPrestations.mesangeResidualUnit).toBeCloseTo(0.4678, 3)
+
+    expect(d.lvtCapi.param.id).toBe('lvt.capi.part')
+    expect(d.lvtCapi.param.value).toBe(0.80)
+    expect(d.lvtCapi.scenarios.length).toBe(5)
+    expect(d.lvtCapi.scenarios[0].netPct).toBe(0) // S1
+    expect(d.lvtCapi.scenarios[4].netPct).toBeLessThan(0) // S3_IFI
+    expect(d.lvtCapi.effectiveNetShare).toBeCloseTo(0.80 * (1 - P['lvt.capi.part_sol']), 6)
+
+    expect(d.irTranches.tranches.length).toBe(4)
+    expect(d.irTranches.thetaProp).toBeCloseTo(0.3465, 3)
   })
 })
 

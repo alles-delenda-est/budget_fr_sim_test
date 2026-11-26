@@ -2,7 +2,7 @@ USER ACCEPTANCE TESTS — Simulateur Budget France (moteur v2, version 0.9 / Day
 =================================================================================
 
 Checklist manuelle (navigateur) pour les comportements visuels, interactifs et
-responsives que la suite automatisée Vitest (15 fichiers, 366 tests) ne couvre pas.
+responsives que la suite automatisée Vitest (15 fichiers, 373 tests) ne couvre pas.
 Source de vérité des chiffres : src/engine/params.js (198 paramètres).
 
 
@@ -23,8 +23,8 @@ Source de vérité des chiffres : src/engine/params.js (198 paramètres).
 [ ] L'encadré à 30 ans (2056) montre la sensibilité à β (β = 1, 3, 5 et 0)
 [ ] Les 2 cartes « Simulateur Budget » et « Simulateur Retraites » ouvrent le bon onglet
     au clic et au clavier (Entrée / Espace)
-[ ] La liste des limites assumées mentionne ref.derive.b_autres = 0, les statuts
-    à vérifier (de mémoire, à collecter, non validé, calculé (estimation), à valider)
+[ ] La liste des limites assumées mentionne ref.derive.b_autres = 0,05 (calculé (estimation)),
+    les statuts à vérifier (de mémoire, à collecter, non validé, calculé (estimation), à valider)
     et le plafond de 25 % du taux à l'émission
 
 
@@ -108,10 +108,12 @@ Source de vérité des chiffres : src/engine/params.js (198 paramètres).
 
 9. HYPOTHÈSES & PARAMÈTRES (#/hypotheses)
 -----------------------------------------
-[ ] Sommaire interne (Comptes 2025, Équations E1–E12, Leviers & σ, Paramètres, Questions)
+[ ] Sommaire interne (Comptes 2025, Équations E1–E12, Leviers & σ, Paramètres, Méthodologie avancée, Questions)
 [ ] Comptes APU 2025 (3 blocs + total consolidé + 105,6 Md€ transferts) et 10 fonctions COFOG 2024
 [ ] Table des 198 paramètres : filtre « Tous » vs « À vérifier uniquement » fonctionnel,
     aucun paramètre orphelin ni valeur NaN / undefined
+[ ] Vue avancée « Méthodologie des dérivations internes » repliée par défaut ; dépliable au clic
+    (ou via le sommaire) et exposant ref.derive.b_autres, dem.m.prestations, lvt.capi.part et IR par tranche
 [ ] 4 questions ouvertes aux relecteurs (§12) affichées avec chiffres recalculés depuis le moteur
 
 

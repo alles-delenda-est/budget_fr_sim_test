@@ -25,6 +25,7 @@ src/
 │   ├── levers.js               # 14 leviers actifs (LEVERS) + 3 leviers structurels désactivés (STRUCTURAL_LEVERS)
 │   ├── supply.js               # Effets d'offre E5 (σ calculé fiscal + σ décidé) et θ_non_réel
 │   ├── ir-tranches.js          # Barème IR par tranche (revenus DGFiP 2024, coin marginal complet, σ IR et thetaIrTranches)
+│   ├── internal-derivations.js # Dérivations internes documentées (Eurostat b_autres = 0,05 ; FR-BDF/Mésange dem.m.prestations = 0,45)
 │   ├── modules.js              # Contrat de module autonome (validateModuleDefinition, runModule, TEST_MODULE)
 │   ├── ndc-module.js           # Module Comptes notionnels (NDC_MODULE, forme réduite, non validé, D8)
 │   ├── lvt-module.js           # Module Taxe sur la valeur du sol (LVT_MODULE, non validé, D11, D12)
@@ -101,7 +102,7 @@ Le modèle couvre l'ensemble des **administrations publiques (APU)** en comptabi
   - `σ` **décidé** (revue de preuves) pour `age_legal` (`+0,50 %` PIB/an, `+0,30 / +0,70`, `L = 6`, décision du 23 nov. 2026), `travail_assurance_chomage` (`−0,012 %` PIB par % de générosité, `L = 3`), `dep_enseignement` (`0 / 0 / +0,040 %` PIB par % de ligne, `L = 35`, `t0 = 8`), ainsi que `offre.sigma.lvt` (`+0,20 %`, `L = 12`, `t0 = 1`, non lu par `LVT_MODULE` minimal qui applique `yS = 0` au centre et la borne OCDE en cas haut si l'option est activée).
 - **E6 — PIB réalisé** : `Y(t) = Yb(t) * (1 + yD(t) + yS(t))`.
 - **E7 — Stabilisateurs et retour fiscal (D13)** : `stab = (ε * yD + ε_offre * yS) * Yb`, avec `ε = 0,6` (cyclique) et `ε_offre = 0,436` (taux de prélèvements obligatoires 2025, sans dépense cyclique).
-- **E8 — Solde primaire par bloc** : `sp(b, t) = ref(b, t) + exAnte(b, t) + behav(b, t) + stab(b, t)`. La dérive de référence combine le vieillissement `dA` (écart COR retraites à 2025 + dérive santé Commission européenne, affecté à `securiteSociale`) et `dB` (`ref.derive.b_autres`, actuellement `0`, réparti au prorata des dépenses), retranchés en variation depuis `t = 0` pour éviter de compter deux fois la dérive déjà incluse dans `ref.spb_2026`.
+- **E8 — Solde primaire par bloc** : `sp(b, t) = ref(b, t) + exAnte(b, t) + behav(b, t) + stab(b, t)`. La dérive de référence combine le vieillissement `dA` (écart COR retraites à 2025 + dérive santé Commission européenne, affecté à `securiteSociale`) et `dB` (`ref.derive.b_autres = 0,05` pt/an, estimation interne Eurostat 1995–2024 hors santé et vieillesse, réparti au prorata des dépenses), retranchés en variation depuis `t = 0` pour éviter de compter deux fois la dérive déjà incluse dans `ref.spb_2026`.
 - **E9 — Taux à l'émission** : `i*` est la moyenne pondérée BTF / OAT 2–8 ans / OAT 10 ans+ (≈ `4,38 %`). Prime de risque linéaire `β * (ratio(t-1) − ratio(2026)) * 100` (`β = 3 pb/pt`, fourchette `1–5`), bornée à `[0, 25 %]`.
 - **E10 — Taux moyen du stock** : `i_moy(t) = (1 − φ) i_moy(t-1) + φ i_new(t)` avec `φ = min(1, 1/M + max(0, D(t-1) − D(t-2)) / D(t-1))`, `M = 8,45 ans`.
 - **E11 — Intérêts et dette** : `INT(t) = i_moy(t) * D(t-1)` (ventilé par bloc via `bloc.part_interets.*`) et `D(t) = D(t-1) + INT(t) − primary(t)`.
