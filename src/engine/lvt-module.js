@@ -111,7 +111,7 @@ const CLE = QP('lvt.ps.cle_etat').value
 const SOL = QP('lvt.capi.part_sol')
 const TXT_CAPI = `part capitalisée ${fr(CAPI.value, 2)} (fourchette ${fr(CAPI.low, 2)} à ${fr(CAPI.high, 2)}, valeur centrale retenue le 24 nov. 2026), taux réel ${fr(TAUX.value, 1)} % (${fr(TAUX.low, 0)} à ${fr(TAUX.high, 0)} %)`
 const TXT_SOL = `part du sol dans la valeur des biens ${fr(SOL.value, 2)} (${fr(SOL.low, 2)} à ${fr(SOL.high, 2)} ; Insee, patrimoine des ménages fin 2025)`
-const TXT_CLE = `clé État / sécurité sociale de ${fr(CLE * 100, 1)} % / ${fr((1 - CLE) * 100, 1)} %, non vérifiée`
+const TXT_CLE = `clé État / sécurité sociale de ${fr(CLE * 100, 1)} % / ${fr((1 - CLE) * 100, 1)} % (CGI art. 235 ter et CSS art. L. 136-8 IV)`
 
 const fmtMd = (v) => new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(v)
 const fmtPct = (v) => new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v)

@@ -299,3 +299,43 @@ Deux choix assumés du moteur expliquent systématiquement l'écart d'environ **
 - **IPC au lieu du déflateur du PIB dans E1** : `Yb(2026) = 2 991 × (1 + g + π)` applique l'inflation à la consommation (`2,1 %` dans le RESF, `2,4 %` dans la prévision CE) au PIB nominal. Pour le RESF 2027, cela donne `3 068,8 Md€` contre `3 051 Md€` publiés (`+0,58 %`), car le déflateur implicite du PIB du RESF n'est que de `1,51 %`. Cet écart de dénominateur abaisse mécaniquement le ratio dette/PIB 2026 de **`−0,67 pt`** (et de **`−0,72 pt`** cumulés en 2027).
 - **Ajustements stock-flux nuls (`SFA = 0`) dans E11** : la comptabilité de dette du RESF implique un SFA positif d'environ **`+0,48 pt` de PIB en 2026** (`≈ +14,6 Md€`, puisque `(3 460,5 + 5,4 % × 3 051) / 3 051 = 118,82 %` contre `119,3 %` publiés) et **`+0,60 pt` en 2027** (`≈ +18,7 Md€`, puisque `(119,3 % × 3 051 + 5,0 % × 3 135) / 3 135 = 121,10 %` contre `121,7 %`). Comme E11 ne modélise pas de SFA, ces `−0,48 pt` (2026) et `−1,06 pt` cumulés (2027) s'ajoutent directement à l'écart de déflateur pour expliquer l'intégralité de l'écart de ratio dette/PIB.
 
+
+
+## Mise à jour Day 1 — Phase 1 : données primaires directes (26 novembre 2026)
+
+### Item 1 (clos) — Recettes fiscales 2025 par impôt (INSEE `T_3217_fr.xlsx`, `T_3216_fr.xlsx` & Eurostat `gov_10a_taxag`)
+
+Lecture directe des tableurs primaires officiels de l'INSEE (comptes nationaux 2025, base 2020) et d'Eurostat (`gov_10a_taxag`, 5 nov. 2026) :
+
+| Agrégat / impôt | 2023 (Md€) | 2024 (Md€) | 2025 (Md€) | Source primaire lue |
+|---|---:|---:|---:|---|
+| **Prélèvements obligatoires (S13 + S212)** | 1 222,915 | 1 254,024 | **1 305,067** (**43,632 %** PIB) | INSEE `T_3216_fr.xlsx` |
+| dont S1311 (État + ODAC) | 351,261 | 353,315 | **378,778** (12,664 % PIB) | INSEE `T_3216_fr.xlsx` |
+| dont S1313 (APUL) | 178,431 | 184,194 | **190,217** (6,360 % PIB) | INSEE `T_3216_fr.xlsx` |
+| dont S1314 (ASSO) | 686,652 | 713,915 | **733,209** (24,513 % PIB) | INSEE `T_3216_fr.xlsx` |
+| dont S212 (UE) | 6,571 | 2,600 | **2,863** (0,096 % PIB) | INSEE `T_3216_fr.xlsx` |
+| TVA (`D211`) | 206,312 | 207,753 | **208,821** | INSEE `T_3217_fr.xlsx` |
+| CSG | 147,450 | 153,148 | **156,583** | INSEE `T_3217_fr.xlsx` |
+| CRDS | 8,727 | 9,070 | **9,270** | INSEE `T_3217_fr.xlsx` |
+| IRPP (avant crédits d'impôt) | 96,925 | 96,018 | **103,626** | INSEE `T_3217_fr.xlsx` |
+| IS (avant crédits d'impôt) | 67,465 | 67,955 | **69,473** | INSEE `T_3217_fr.xlsx` |
+| Contribution sociale sur les bénéfices | 1,012 | 1,166 | **1,151** | INSEE `T_3217_fr.xlsx` |
+| CDHR (nouvelle en 2025) | — | — | **0,369** | INSEE `T_3217_fr.xlsx` |
+| IFI | 2,296 | 2,682 | **2,714** | INSEE `T_3217_fr.xlsx` |
+| Taxe foncière (ménages / hors ménages) | 41,126 | 42,940 | **44,179** (27,015 / 17,164) | INSEE `T_3217_fr.xlsx` |
+| Droits d'enregistrement (dont DMTO) | 19,381 | 17,199 | **20,207** | INSEE `T_3217_fr.xlsx` |
+
+### Item 4 (complément 2024) — Vieillesse COFOG (`GF1002`)
+
+Eurostat `gov_10a_exp` (France S13, 2024, lu directement) : `GF1002` Vieillesse = **`392,0 Md€`**.
+
+### Macroéconomie automne 2026 (médiane primaire `n = 4`) & taux AFT/Eurostat
+
+- **Médianes automne 2026 (`n = 4` primaires : CE `ip348_en.pdf` 17 nov., FMI WEO oct. API SDMX, OCDE EO 119 API SDMX, BdF sept. 2026) :**
+  - Croissance réelle : **`0,41 %`** (2026, `[0,40 ; 0,65]`), **`0,77 %`** (2027, `[0,60 ; 0,90]`), potentielle **`1,05 %`** (`[0,85 ; 1,15]`).
+  - Inflation : **`2,36 %`** (2026, `[2,06 ; 2,60]`), **`2,07 %`** (2027, `[1,84 ; 2,90]`).
+  - Comparateur CE automne 2026 (`ip348_en.pdf`) : solde `−5,5 %` (2026) / `−5,4 %` (2027) ; dette `119,2 %` (2026) / `122,1 %` (2027).
+- **Taux souverains & adjudications AFT 2026 :**
+  - `dette.y_long` : **`4,89 %`** (Eurostat `irt_lt_mcby_m` oct. 2026, décision D-P1) ; recoupement primaire AFT `2026-11_hist_mlt.xlsx` : `adju_LT` oct. 2026 = `5,043 %` (`15,61 Md€`).
+  - `cmp.aft.taux_emission.2026` : **`3,50 %`** (calcul direct sur AFT `2026-11_hist_mlt.xlsx`, 111 adjudications MLT janv.–oct. 2026, `308,83 Md€` émis : `adju_MT 3,219 %`, `adju_LT 3,989 %`, `adju_I 1,731 %` réel).
+- **Dérive santé (`ref.derive.a_sante`, décision D-P2) :** rebasée `2025 → 2070` sur EC *2024 Ageing Report* (`ip279_en.pdf` primaire) : `+0,66 pt / 45 ans = 0,0147 pt/an` (santé seule), `+1,37 pt / 45 ans = 0,0304 pt/an` (santé + dépendance).

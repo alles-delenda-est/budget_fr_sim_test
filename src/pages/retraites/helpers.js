@@ -88,10 +88,10 @@ export const COR_VARIANTS = [
 
 const SANTE = PARAM_BY_ID['ref.derive.a_sante']
 /**
- * Période de la projection de la Commission européenne (2024 Ageing Report : 2022 → 2070) sur laquelle la dérive annuelle
- * ref.derive.a_sante a été répartie (source citée dans le paramètre ; pas de paramètre propre).
+ * Période de la projection de la Commission européenne (2024 Ageing Report : rebasée 2025 → 2070, décision D-P2) sur laquelle
+ * la dérive annuelle ref.derive.a_sante est répartie (source citée dans le paramètre ; pas de paramètre propre).
  */
-export const AGEING_REPORT_YEARS = { from: 2022, to: 2070 }
+export const AGEING_REPORT_YEARS = { from: 2025, to: 2070 }
 const AR_SPAN = AGEING_REPORT_YEARS.to - AGEING_REPORT_YEARS.from
 /** Hausse cumulée (points de PIB) sur la période de l'Ageing Report pour une dérive annuelle donnée. */
 export const healthRiseOverSpan = (perYear) => perYear * AR_SPAN
