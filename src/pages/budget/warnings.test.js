@@ -71,6 +71,9 @@ describe('textes', () => {
     expect(tier2Text({ year: 2047, debtPct: 755, interestSharePct: 99.6 })).not.toMatch(/dépasseraient/)
     expect(tier2Explanation()).toContain('plafonné à 25 %')
     expect(tier2Text({ year: 2047, debtPct: 755, interestSharePct: null })).not.toMatch(/absorberaient/)
+    const debtOnly = tier2Text({ year: 2029, debtPct: 505, interestSharePct: 12, reasons: ['dette'] })
+    expect(debtOnly).toContain('en 2029, la dette atteindrait 505 % du PIB.')
+    expect(debtOnly).not.toMatch(/intérêts/)
   })
 })
 

@@ -68,9 +68,10 @@ export function tier2Explanation(betaPb = PARAM_BY_ID['dette.beta'].value) {
 export function tier2Text(w) {
   const x = w.interestSharePct
   const debut = 'Trajectoire hors de toute expérience historique : '
-  if (x === null || !Number.isFinite(x)) return `${debut}en ${w.year}, la dette atteindrait ${fmt(w.debtPct, 0)} % du PIB. ${TIER2_SUITE}`
-  if (x >= 100) return `${debut}en ${w.year}, les intérêts dépasseraient la totalité des recettes publiques (${fmt(x, 0)} %). ${TIER2_SUITE}`
   const seuil = W.tier2InterestShareRevenuePct
+  const byInterest = Array.isArray(w.reasons) ? w.reasons.includes('intérêts') : (x !== null && Number.isFinite(x) && x > seuil)
+  if (!byInterest || x === null || !Number.isFinite(x)) return `${debut}en ${w.year}, la dette atteindrait ${fmt(w.debtPct, 0)} % du PIB. ${TIER2_SUITE}`
+  if (x >= 100) return `${debut}en ${w.year}, les intérêts dépasseraient la totalité des recettes publiques (${fmt(x, 0)} %). ${TIER2_SUITE}`
   if (x > seuil && Number(fmt(x, 0)) === seuil) return `${debut}en ${w.year}, les intérêts absorberaient plus de ${seuil} % des recettes publiques. ${TIER2_SUITE}`
   return `${debut}en ${w.year}, les intérêts absorberaient ${fmt(x, 0)} % des recettes publiques. ${TIER2_SUITE}`
 }

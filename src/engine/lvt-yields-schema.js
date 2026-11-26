@@ -19,7 +19,10 @@ const TOL_MEUR = 1.5
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v)
 const num = (v) => typeof v === 'number' && Number.isFinite(v)
 const str = (v) => typeof v === 'string' && v.length > 0
-const https = (v) => str(v) && /^https:\/\/[^\s]+$/.test(v)
+const https = (v) => {
+  if (!str(v) || /\s/.test(v)) return false
+  try { return new URL(v).protocol === 'https:' } catch { return false }
+}
 const date = (v) => str(v) && /^\d{4}-\d{2}-\d{2}$/.test(v)
 const year = (v) => Number.isInteger(v) && v >= 1990 && v <= 2100
 
@@ -40,7 +43,7 @@ export function validateLvtYields(y) {
     if (!https(pb.url)) e.push('price_basis.url : URL https attendue')
   }
 
-  const byKey = {}
+  const byKey = Object.create(null)
   if (!Array.isArray(y.taxes) || y.taxes.length === 0) e.push('taxes : tableau non vide attendu')
   else {
     y.taxes.forEach((t, i) => {
@@ -59,7 +62,7 @@ export function validateLvtYields(y) {
       if (!isObj(t.values_meur) || Object.keys(t.values_meur).length === 0) e.push(`${at}.values_meur : objet non vide attendu`)
       else {
         for (const [k, v] of Object.entries(t.values_meur)) {
-          if (!year(Number(k)) || !num(v)) e.push(`${at}.values_meur.${k} : année -> nombre attendu`)
+          if (!/^\d{4}$/.test(k) || !year(Number(k)) || !num(v)) e.push(`${at}.values_meur.${k} : année -> nombre attendu`)
         }
       }
       if (!Array.isArray(t.reference_years) || t.reference_years.length === 0 || !t.reference_years.every(year)) e.push(`${at}.reference_years : tableau d'années attendu`)

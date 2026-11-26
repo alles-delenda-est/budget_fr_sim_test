@@ -43,27 +43,33 @@ const scenarios = Array.from({ length: 10 }, (_, i) => {
 
 const browser = await puppeteer.launch({ executablePath: chrome, headless: true, args: ['--no-sandbox'] })
 let failures = 0
-for (const [i, s] of scenarios.entries()) {
-  const url = `${base}/#/budget?${encodeScenario(s)}`
-  const page = await browser.newPage()
-  await page.setViewport({ width: 375, height: 812, deviceScaleFactor: 2, isMobile: true, hasTouch: true })
-  const errors = []
-  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()) })
-  page.on('pageerror', (e) => errors.push(String(e)))
-  await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 })
-  await new Promise((r) => setTimeout(r, 800))
-  const { text, scrollWidth, clientWidth } = await page.evaluate(() => ({
-    text: document.body.innerText, scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth,
-  }))
-  const problems = []
-  if (errors.length) problems.push(`erreurs de console : ${errors.slice(0, 3).join(' | ')}`)
-  if (/NaN|Infinity|undefined/.test(text)) problems.push('texte « NaN », « Infinity » ou « undefined » affiché')
-  if (scrollWidth > clientWidth + 1) problems.push(`débordement horizontal (${scrollWidth} > ${clientWidth})`)
-  if (text.trim().length < 200) problems.push('page quasi vide')
-  console.log(`${problems.length ? 'ÉCHEC' : 'OK   '} ${i + 1}/10 ${url}${problems.length ? '\n       ' + problems.join('\n       ') : ''}`)
-  failures += problems.length ? 1 : 0
-  await page.close()
+try {
+  for (const [i, s] of scenarios.entries()) {
+    const url = `${base}/#/budget?${encodeScenario(s)}`
+    const page = await browser.newPage()
+    try {
+      await page.setViewport({ width: 375, height: 812, deviceScaleFactor: 2, isMobile: true, hasTouch: true })
+      const errors = []
+      page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()) })
+      page.on('pageerror', (e) => errors.push(String(e)))
+      await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 })
+      await new Promise((r) => setTimeout(r, 800))
+      const { text, scrollWidth, clientWidth } = await page.evaluate(() => ({
+        text: document.body.innerText, scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth,
+      }))
+      const problems = []
+      if (errors.length) problems.push(`erreurs de console : ${errors.slice(0, 3).join(' | ')}`)
+      if (/NaN|Infinity|undefined/.test(text)) problems.push('texte « NaN », « Infinity » ou « undefined » affiché')
+      if (scrollWidth > clientWidth + 1) problems.push(`débordement horizontal (${scrollWidth} > ${clientWidth})`)
+      if (text.trim().length < 200) problems.push('page quasi vide')
+      console.log(`${problems.length ? 'ÉCHEC' : 'OK   '} ${i + 1}/10 ${url}${problems.length ? '\n       ' + problems.join('\n       ') : ''}`)
+      failures += problems.length ? 1 : 0
+    } finally {
+      await page.close()
+    }
+  }
+} finally {
+  await browser.close()
 }
-await browser.close()
 console.log(failures ? `${failures} scénario(s) en échec` : 'Tous les scénarios sont corrects.')
 process.exit(failures ? 1 : 0)

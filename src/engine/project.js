@@ -31,6 +31,7 @@ export function deepFreeze(o) {
 /** Taux à l'émission de référence i* (fraction) : moyenne pondérée BTF / OAT 2–8 ans / OAT 10 ans et plus. */
 export function issuanceRate(P) {
   const w = P['dette.part_btf'] + P['dette.part_moyen'] + P['dette.part_long']
+  if (!(w > 0)) return 0
   return (P['dette.part_btf'] * P['dette.y_btf'] + P['dette.part_moyen'] * P['dette.y_moyen'] + P['dette.part_long'] * P['dette.y_long']) / w / 100
 }
 
@@ -51,6 +52,7 @@ export function projectScenario(options = {}) {
   if (!horizon) throw new Error(`horizon inconnu « ${options.horizon} »`)
   const N = horizon.endYear - START_YEAR
   const P = resolveParams(options.overrides)
+  if (!(P['base.pib.2025'] > 0)) throw new Error('params: base.pib.2025 doit être strictement positif')
   const ysCase = options.ysCase ?? 'central'
   if (!['bas', 'central', 'haut'].includes(ysCase)) throw new Error(`ysCase invalide « ${ysCase} »`)
 
@@ -118,7 +120,7 @@ export function projectScenario(options = {}) {
 
   for (let t = 0; t <= N; t++) {
     // E1
-    const Yb = YbPrev * (1 + g(t) + pi(t))
+    const Yb = YbPrev * Math.max(1e-6, 1 + g(t) + pi(t))
 
     // E4 : demande en niveau, qui s'estompe. S_j(t) = λ S_j(t−1) + m_j Δa_j(t) ; yD = −Σ S_j
     let yD = 0
@@ -129,7 +131,7 @@ export function projectScenario(options = {}) {
     })
     const yS = yOf(t) // E5 (cœur + modules + chemin externe)
     const gap = yD + yS
-    const Y = Yb * (1 + gap) // E6
+    const Y = Yb * Math.max(1e-6, 1 + gap) // E6
 
     // E9 : taux à l'émission. INTERPRÉTATION : en 2026 la référence de dette est celle de 2025 (pas de prime en t = 0) ;
     // dette/PIB(0) devient la référence dès 2027.
@@ -137,7 +139,8 @@ export function projectScenario(options = {}) {
     const premium = beta * (ratioPrev - (ratioRef ?? ratioPrev)) * 100
     const iNew = Math.min(RATE_MAX, Math.max(0, iStar + premium))
     // E10 : taux moyen du stock
-    const phi = Math.min(1, 1 / M + Math.max(0, Dprev - Dprev2) / Math.max(Dprev, 1))
+    const invM = M > 0 ? 1 / M : 1
+    const phi = Math.min(1, Math.max(0, invM + Math.max(0, Dprev - Dprev2) / Math.max(Dprev, 1)))
     const iAvg = (1 - phi) * iAvgPrev + phi * iNew
     // E11 : intérêts
     const INT = iAvg * Dprev

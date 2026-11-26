@@ -402,4 +402,9 @@ describe('intégration au moteur : projectScenario', () => {
     expect(r.blocks.locales[t].moduleFlux.length).toBe(4)
     expect(r.blocks.locales[0].moduleFlux.length).toBe(0)
   })
+  it('fisc.eps_offre = 0 : ysHaut retombe à 0 sans Infinity ni NaN', () => {
+    const k = lvtComponents(5, resolveParams({ 'fisc.eps_offre': 0 }))
+    expect(k.ysHaut).toBe(0)
+    expect(Number.isFinite(k.ysHaut)).toBe(true)
+  })
 })

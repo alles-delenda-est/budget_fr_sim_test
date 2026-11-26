@@ -7,7 +7,8 @@ import { decomposeAtYear } from './helpers.js'
 
 const SEP = ';'
 const EOL = '\r\n'
-const BOM = '﻿'
+const BOM = '\uFEFF'
+const FORMULA_TRIGGER = /^[ \t\r]*[=+\-@]|^[\t\r]/
 
 /** Nombre avec virgule décimale et sans séparateur de milliers ; cellule vide si la valeur n'est pas un nombre fini. */
 export function csvNumber(v, decimals = 3) {
@@ -16,9 +17,10 @@ export function csvNumber(v, decimals = 3) {
   return String(Math.abs(r) < 1e-12 ? 0 : r).replace('.', ',')
 }
 
-/** Cellule de texte : entre guillemets si elle contient « ; », un guillemet ou un saut de ligne. */
+/** Cellule de texte : neutralise les préfixes de formule tableur (CWE-1236) et protège « ; », guillemets ou sauts de ligne. */
 export function csvText(s) {
-  const t = String(s ?? '')
+  let t = String(s ?? '')
+  if (FORMULA_TRIGGER.test(t)) t = `'${t}`
   return /[;"\r\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t
 }
 

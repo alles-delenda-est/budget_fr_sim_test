@@ -44,9 +44,10 @@ for (let i = 0; i < args.length; i++) {
 
 const source = JSON.parse(readFileSync(SOURCE, 'utf8'))
 for (const k of ['repo', 'path', 'commit']) if (typeof source[k] !== 'string' || !source[k]) fail(`${SOURCE} : champ « ${k} » manquant`)
-if (!/^[\w.-]+\/[\w.-]+$/.test(source.repo)) fail(`dépôt invalide « ${source.repo} »`)
+if (!/^[\w.-]+\/[\w.-]+$/.test(source.repo) || source.repo.includes('..')) fail(`dépôt invalide « ${source.repo} »`)
+if (!/^[\w./-]+$/.test(source.path) || source.path.startsWith('/') || source.path.startsWith('-') || source.path.includes('..')) fail(`chemin invalide « ${source.path} »`)
 ref = ref ?? source.commit
-if (!/^[\w./-]+$/.test(ref) || ref.startsWith('-')) fail(`référence invalide « ${ref} »`)
+if (!/^[\w./-]+$/.test(ref) || ref.startsWith('-') || ref.includes('..')) fail(`référence invalide « ${ref} »`)
 const repoUrl = `https://github.com/${source.repo}.git`
 
 // ---- Récupération par git ----
@@ -69,7 +70,7 @@ try {
   if (local) commit = local
   else {
     try {
-      git(workdir, ['fetch', '-q', '--depth', '1', repoUrl, ref])
+      git(workdir, ['fetch', '-q', '--depth', '1', '--', repoUrl, ref])
     } catch (err) {
       const short = isSha && ref.length < 40
       fail(`git fetch ${repoUrl} ${ref} a échoué${short ? ' (SHA abrégé : donnez le SHA complet de 40 caractères, ou utilisez --clone avec un clone qui contient ce commit)' : ''}\n${err.stderr?.toString() ?? err.message}`)
