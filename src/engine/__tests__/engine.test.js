@@ -624,12 +624,12 @@ describe('σ des leviers fiscaux : calculé depuis les paramètres (docs/sigma-f
     expect(sigmaFiscal('cotis_patronales', P).value).toBeCloseTo(-0.29, 2)
     expect(sigmaFiscal('cotis_patronales', P).low).toBeCloseTo(-0.15, 2)
     expect(sigmaFiscal('cotis_patronales', P).high).toBeCloseTo(-0.40, 2)
-    // CSG : assiette 0,9825 ; part déductible 6,8 / 9,2 imposée à 30 % ; pondéré par la part active 74 % (D-P3) ; divisé par la part nette 0,57
-    const dlnCsg = (P['offre.ir_csg.part_actifs'] * 0.01 * 0.9825 * ((6.8 / 9.2) * 0.7 + (1 - 6.8 / 9.2))) / 0.57
+    // CSG : assiette 0,9825 ; part déductible 6,8 / 9,2 imposée à 30 % ; pondéré par offre.csg.part_actifs (70,4 %, CCSS oct. 2026) ; divisé par la part nette 0,57
+    const dlnCsg = (P['offre.csg.part_actifs'] * 0.01 * 0.9825 * ((6.8 / 9.2) * 0.7 + (1 - 6.8 / 9.2))) / 0.57
     expect(sigmaFiscalCase('csg', P)).toBeCloseTo(-100 * 0.4 * dlnCsg, 10)
-    expect(sigmaFiscal('csg', P).value).toBeCloseTo(-0.40, 2)
-    expect(sigmaFiscal('csg', P).low).toBeCloseTo(-0.20, 2)
-    expect(sigmaFiscal('csg', P).high).toBeCloseTo(-0.55, 2)
+    expect(sigmaFiscal('csg', P).value).toBeCloseTo(-0.38, 2)
+    expect(sigmaFiscal('csg', P).low).toBeCloseTo(-0.19, 2)
+    expect(sigmaFiscal('csg', P).high).toBeCloseTo(-0.52, 2)
     // TVA : e_L × rendement du point / consommation des ménages
     expect(sigmaFiscalCase('tva_normal', P)).toBeCloseTo(-100 * 0.4 * (7.5 / 1545.9), 10)
     expect(sigmaFiscalCase('tva_tous_taux', P)).toBeCloseTo(-100 * 0.4 * (11.4 / 1545.9), 10)
@@ -646,11 +646,11 @@ describe('σ des leviers fiscaux : calculé depuis les paramètres (docs/sigma-f
     expect(sigmaFiscal('is', P).low).toBeCloseTo(-100 * 0.16 * 0.25 * dc, 10)
     expect(sigmaFiscal('is', P).high).toBeCloseTo(-100 * 0.21 * 1.0 * dc, 10)
     expect(sigmaFiscal('is', P).high).toBeCloseTo(-0.09, 2)
-    // IR : e_L × Σ_i (Z_i / Z) × 0,01 × τ_i × (1 − 6,8 %) / (1 − w_i), par 1 % du produit (barème par tranche, ir-tranches.js)
+    // IR : e_L × part_actifs × Σ_i (Z_i / Z) × 0,01 × τ_i × (1 − 6,8 %) / (1 − w_i), par 1 % du produit (barème par tranche, ir-tranches.js)
     expect(sigmaFiscalCase('ir', P)).toBeCloseTo(-100 * 0.4 * irDeltaLnNet(P), 10)
-    expect(sigmaFiscal('ir', P).value).toBeCloseTo(-0.090, 3)
-    expect(sigmaFiscal('ir', P).low).toBeCloseTo(-0.045, 3)
-    expect(sigmaFiscal('ir', P).high).toBeCloseTo(-0.124, 3)
+    expect(sigmaFiscal('ir', P).value).toBeCloseTo(-0.084, 3)
+    expect(sigmaFiscal('ir', P).low).toBeCloseTo(-0.042, 3)
+    expect(sigmaFiscal('ir', P).high).toBeCloseTo(-0.116, 3)
   })
   it('plafond de l\'IS (Gemini n° 4) : 0,15 par point en valeur absolue, sans effet au centre ; pas de plafond pour le travail', () => {
     expect(Math.abs(sigmaFiscal('is', P).high)).toBeLessThan(P['offre.is.plafond'])
@@ -829,16 +829,16 @@ describe('suivi de l\'audit Day 0 (PR #30/#32) : corrections de sources et fourc
     expect(PARAM_BY_ID['comp.theta.cotis'].source).toMatch(/Source indirecte.*11 estimations/)
     expect(PARAM_BY_ID['comp.theta.ir'].source).toMatch(/Cabannes, Houdré et Landais.*0,31/)
   })
-  it('CSG : avec σ actif et part active 74 % (D-P3), θ_réel (0,037 au cas central) dépasse θ (0,034) et la part non réelle est bloquée à 0', () => {
+  it('CSG : avec σ actif et offre.csg.part_actifs = 70,4 % (CCSS oct. 2026), θ_réel (0,035 au cas central) dépasse θ (0,034) et la part non réelle est bloquée à 0', () => {
     const l = LEVER_BY_ID.csg
     const th = leverTheta(l, 1, P)
     expect(th).toBeCloseTo(0.0336, 4)
     const s = supplyForCase('csg', 1, P, undefined, 'central')
     const reel = partReelle('csg', s.sigma, l.rendement(P, 1), P)
-    expect(reel).toBeCloseTo(0.0367, 3)
+    expect(reel).toBeCloseTo(0.0349, 3)
     expect(Math.max(0, th - reel)).toBe(0)
     const haut = supplyForCase('csg', 1, P, undefined, 'haut')
-    expect(Math.max(0, th - partReelle('csg', haut.sigma, l.rendement(P, 1), P))).toBeCloseTo(0.0153, 3)
+    expect(Math.max(0, th - partReelle('csg', haut.sigma, l.rendement(P, 1), P))).toBeCloseTo(0.0162, 3)
   })
   it('COFOG : parts nettes des transferts entre sous-secteurs affichées (GF04 66,9 % contre 68,7 % retenu), valeurs moteur inchangées', () => {
     expect(P['bloc.cofog.affaires_economiques.centrales']).toBeCloseTo(123826.5 / (123826.5 + 56428.3), 10)
@@ -1082,11 +1082,12 @@ describe('barème de l\'IR par tranche : données communes au θ (documenté) et
     expect(LEVER_BY_ID.cotis_patronales.aide).toContain(`fourchette ${String(PARAM_BY_ID['rend.cotis'].low)}–${String(PARAM_BY_ID['rend.cotis'].high)} Md€`)
     expect(LEVER_BY_ID.is.aide).not.toMatch(/2,6–2,8/)
   })
-  it('θ_réel de l\'IR cohérent avec θ et pondéré par la part active 74 % (D-P3)', () => {
+  it('θ_réel de l\'IR cohérent avec θ et pondéré par offre.ir.part_actifs = 1 017 / 1 475 (DGFiP Stat n° 53)', () => {
     const l = LEVER_BY_ID.ir
     const sigma = sigmaFiscalCase('ir', P)
     const eL = P['offre.e_L']
-    const partActifs = P['offre.ir_csg.part_actifs']
+    const partActifs = P['offre.ir.part_actifs']
+    expect(partActifs).toBeCloseTo(1017 / 1475, 10)
     const uniforme = resolveParams(Object.fromEntries([11, 30, 41, 45].map((t) => [`offre.ir.tranche.${t}.eti`, eL * partActifs])))
     expect(partReelle('ir', sigma, l.rendement(P, 1), P)).toBeCloseTo(thetaIrTranches(uniforme, 'proportionnel'), 10)
     expect(thetaReelIr(P, sigma)).toBeCloseTo(1.4956 * eL * partActifs, 4)
@@ -1098,18 +1099,18 @@ describe('barème de l\'IR par tranche : données communes au θ (documenté) et
     // ne dépend plus de la recette propre base.ir.2025
     expect(partReelle('ir', sigma, l.rendement(P, 1), resolveParams({ 'base.ir.2025': 1 }))).toBeCloseTo(partReelle('ir', sigma, l.rendement(P, 1), P), 12)
   })
-  it('σ de l\'IR et θ_non_réel (avec part active 74 %, D-P3) : part réelle 0,443 au centre, 0,609 au bas, 0,221 au haut', () => {
+  it('σ de l\'IR et θ_non_réel (avec offre.ir.part_actifs = 68,9 %, DGFiP Stat n° 53) : part réelle 0,412 au centre, 0,567 au bas, 0,206 au haut', () => {
     const l = LEVER_BY_ID.ir
     const th = leverTheta(l, 1, P)
     const reel = (c) => partReelle('ir', supplyForCase('ir', 1, P, undefined, c).sigma, l.rendement(P, 1), P)
     const nonReel = (c) => Math.max(0, th - reel(c))
     expect(th).toBeCloseTo(0.3544, 4)
-    expect(reel('central')).toBeCloseTo(0.4427, 4)
-    expect(reel('bas')).toBeCloseTo(0.6087, 4)
-    expect(reel('haut')).toBeCloseTo(0.2214, 4)
+    expect(reel('central')).toBeCloseTo(0.4125, 4)
+    expect(reel('bas')).toBeCloseTo(0.5672, 4)
+    expect(reel('haut')).toBeCloseTo(0.2062, 4)
     expect(nonReel('central')).toBe(0)
     expect(nonReel('bas')).toBe(0)
-    expect(nonReel('haut')).toBeCloseTo(0.1331, 4)
+    expect(nonReel('haut')).toBeCloseTo(0.1482, 4)
   })
   it('sous_indexation_ciblee (D-P6) : +1,65 Md€ brut/pt, retour fiscal 38 % hautes pensions, bloc ASSO seul', () => {
     const l = LEVER_BY_ID.sous_indexation_ciblee

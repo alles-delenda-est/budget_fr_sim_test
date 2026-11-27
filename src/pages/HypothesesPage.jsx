@@ -639,10 +639,12 @@ export default function HypothesesPage() {
                 <strong>θ proportionnel = {fmt(derivations.irTranches.thetaProp, 3)}</strong> (arrondi à{' '}
                 <strong>{fmt(derivations.irTranches.paramTheta.value, 2)}</strong> ; +1 pt sur chaque taux :{' '}
                 {fmt(derivations.irTranches.thetaPoint, 3)}) ainsi que l'effet d'offre σ de l'IR, pondéré par la part des
-                revenus d'activité{' '}
-                <code>offre.ir_csg.part_actifs = {fmt(derivations.irTranches.paramPartActifs.value * 100, 0)} %</code>{' '}
-                (décision D-P3 : les pensions de retraite n'ont pas d'élasticité d'offre de travail ; voir{' '}
-                <code>docs/review-day0-parameters.md</code> §9).
+                revenus d'activité au barème{' '}
+                <code>offre.ir.part_actifs = {fmt(derivations.irTranches.paramPartActifs.value * 100, 1)} %</code>{' '}
+                (1 017 / 1 475 Md€, DGFiP Stat n° 53 Tab. 1 ; la CSG utilise sa propre part active{' '}
+                <code>offre.csg.part_actifs = {fmt(derivations.irTranches.paramPartActifsCsg.value * 100, 1)} %</code>,
+                110 670 / 157 207 M€ CCSS oct. 2026 ; ratios agrégés provisoires en attendant la microsimulation par
+                tranche via <code>policyengine-fr</code>, voir <code>docs/policyengine-fr-linkage.md</code>).
               </p>
               <div className="hyp-table-wrap">
                 <table className="hyp-table">
