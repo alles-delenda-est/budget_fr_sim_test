@@ -236,7 +236,7 @@ export function buildBriefData({
     dynParts.push(`Régime E4 : ${DEMAND_REGIME_OPTIONS.find((o) => o.id === demandRegime)?.label ?? demandRegime}`)
   }
   if (endogenousInflation) dynParts.push('Inflation endogène et répercussion TVA actives')
-  const dynamicsLabel = dynParts.length ? dynParts.join(' · ') : 'Standard (Day 0)'
+  const dynamicsLabel = dynParts.length ? dynParts.join(' · ') : 'Standards'
 
   const frameworkLabel = stressTest
     ? `Stress-test actif : ${stressTest.titre} (référence soumise au même choc)`
@@ -312,7 +312,7 @@ export function buildBriefData({
       setting: `${lvtScenario.libelle}${lvtSetting?.ocde ? ' + OCDE' : ''}`,
       exAnteMd: lvtEndMd,
       calendar: 'Dès 2027',
-      status: 'LVTShift (capitalisation D12 & transfert ASSO→État D11 inclus)',
+      status: 'LVTShift (capitalisation foncière et transfert Sécurité sociale → État inclus)',
     })
   }
 

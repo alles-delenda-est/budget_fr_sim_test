@@ -16,11 +16,13 @@ import {
   paramStatusCounts,
   buildReviewerQuestions,
   buildInternalDerivations,
+  buildPlainAssumptionsGuide,
 } from './hypotheses/helpers'
 import './SimulateurBudgetPage.css'
 import './HypothesesPage.css'
 
 const SECTIONS = [
+  { id: 'hyp-essentiel', label: 'L\'essentiel' },
   { id: 'hyp-comptes', label: 'Comptes 2025' },
   { id: 'hyp-equations', label: 'Équations E1–E12' },
   { id: 'hyp-leviers', label: 'Leviers & σ' },
@@ -37,6 +39,7 @@ export default function HypothesesPage() {
     const P = resolveParams()
     return {
       P,
+      plainGuide: buildPlainAssumptionsGuide(P),
       apu: buildApu2025Accounts(P),
       cofog: buildCofogRows(P),
       equations: buildEquations(P),
@@ -49,7 +52,7 @@ export default function HypothesesPage() {
   }, [])
 
   const paramGroups = useMemo(() => groupParams(PARAMS, { flaggedOnly }), [flaggedOnly])
-  const { P, apu, cofog, equations, levers, lvt, iStarPct, counts, questions } = model
+  const { P, plainGuide, apu, cofog, equations, levers, lvt, iStarPct, counts, questions } = model
   const derivations = useMemo(() => (showAdvanced ? buildInternalDerivations(P) : null), [showAdvanced, P])
 
   const jumpTo = (id) => {
@@ -66,10 +69,10 @@ export default function HypothesesPage() {
   return (
     <div className="hyp-page">
       <header className="hyp-header">
-        <h1>Hypothèses et paramètres du moteur v2</h1>
+        <h1>Hypothèses et paramètres du modèle</h1>
         <p className="sb-help">
           Source unique de vérité : tous les chiffres, statuts et fourchettes de cette page sont lus directement dans le
-          catalogue du moteur (<code>src/engine/params.js</code>, <code>levers.js</code>, <code>supply.js</code>,{' '}
+          catalogue du modèle (<code>src/engine/params.js</code>, <code>levers.js</code>, <code>supply.js</code>,{' '}
           <code>config.js</code>). Les statuts à vérifier ({FLAGGED_STATUSES.join(', ')}) sont mis en évidence pour les
           relecteurs.
         </p>
@@ -81,6 +84,53 @@ export default function HypothesesPage() {
           ))}
         </nav>
       </header>
+
+      {/* 0. L'ESSENTIEL EN LANGAGE CLAIR (PRIORISÉ PAR IMPACT) */}
+      <section id="hyp-essentiel" className="hyp-section">
+        <h2>L&apos;essentiel : les hypothèses qui pèsent le plus</h2>
+        <p className="sb-help">
+          Parmi les {counts.total} paramètres du modèle, <strong>{counts.sourced}</strong> sont sourcés dans des données
+          publiques (Insee, DGFiP, AFT, COR, Commission européenne, Banque de France). Cinq hypothèses expliquent
+          l&apos;essentiel de la marge d&apos;incertitude sur la trajectoire de dette à 10 ans :
+        </p>
+
+        <h3>Priorité 1 — Les 5 variables qui déplacent le plus la dette (classées par impact en 2036)</h3>
+        <div className="hyp-plain-grid">
+          {plainGuide.priorite1.map((item, idx) => (
+            <article key={item.id} className="hyp-plain-card">
+              <div className="hyp-plain-head">
+                <span className="hyp-plain-rank">#{idx + 1}</span>
+                <strong>{item.titreClair}</strong>
+                <StatusBadge status={item.statut} />
+              </div>
+              <p className="hyp-plain-desc">{item.ceQueCest}</p>
+              <p className="hyp-plain-val">
+                <span>Valeur retenue :</span> <strong>{item.valeurRetenue}</strong> <code>({item.id})</code>
+              </p>
+              <p className="hyp-plain-impact">
+                Amplitude sur la dette en 2036 : <strong>{fmt(item.impact2036Pp, 1)} pt de PIB</strong> ({fmt(item.lo10Pct, 1)} % à {fmt(item.hi10Pct, 1)} %)
+              </p>
+            </article>
+          ))}
+        </div>
+
+        <h3>Priorité 2 — Les 3 choix de jugement qui appellent une validation politique ou académique</h3>
+        <div className="hyp-plain-grid">
+          {plainGuide.priorite2.map((item) => (
+            <article key={item.id} className="hyp-plain-card hyp-plain-card-judgment">
+              <div className="hyp-plain-head">
+                <strong>{item.titreClair}</strong>
+                <StatusBadge status={item.statut} />
+              </div>
+              <p className="hyp-plain-desc">{item.ceQueCest}</p>
+              <p className="hyp-plain-val">
+                <span>Choix actuel :</span> {item.valeurRetenue}
+              </p>
+              <p className="hyp-plain-impact">{item.impactLabel}</p>
+            </article>
+          ))}
+        </div>
+      </section>
 
       {/* 1. COMPTES 2025 DES APU */}
       <section id="hyp-comptes" className="hyp-section">

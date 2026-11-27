@@ -125,7 +125,7 @@ describe('buildCsv : module actif', () => {
       dynamicsLabel: 'Régime E4 : Récession · Inflation endogène active',
       values: { tva_tous_taux: 3 }, rows,
     })
-    expect(csv).toContain('Dynamiques avancées (Day 1);Régime E4 : Récession · Inflation endogène active')
+    expect(csv).toContain('Dynamiques avancées;Régime E4 : Récession · Inflation endogène active')
     expect(csv).toContain('Cause : inflation endogène (Md€)')
   })
   it('documente l\'étalement pluriannuel dans l\'en-tête seulement quand phasingYears > 1', () => {

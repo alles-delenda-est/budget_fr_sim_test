@@ -16,6 +16,7 @@ import {
   paramStatusCounts,
   buildReviewerQuestions,
   buildInternalDerivations,
+  buildPlainAssumptionsGuide,
   irPrimaryGap30,
   irBreakEvenEL,
   macroGrowthSourceLabel,
@@ -201,6 +202,21 @@ describe('Hypothèses : vue avancée — méthodologie des dérivations internes
 
     expect(d.irTranches.tranches.length).toBe(4)
     expect(d.irTranches.thetaProp).toBeCloseTo(0.3465, 3)
+  })
+
+  it('construit le guide en langage clair (priorité 1 triée par impact 2036 et priorité 2) sans NaN', () => {
+    const g = buildPlainAssumptionsGuide(P)
+    expect(g.priorite1).toHaveLength(5)
+    expect(g.priorite2).toHaveLength(3)
+    for (let i = 1; i < g.priorite1.length; i++) {
+      expect(g.priorite1[i - 1].impact2036Pp).toBeGreaterThanOrEqual(g.priorite1[i].impact2036Pp)
+    }
+    for (const item of [...g.priorite1, ...g.priorite2]) {
+      expect(item.titreClair).toBeTruthy()
+      expect(item.ceQueCest).toBeTruthy()
+      expect(item.valeurRetenue).toBeTruthy()
+      expect(`${item.titreClair} ${item.ceQueCest} ${item.valeurRetenue}`).not.toMatch(/NaN|Infinity|undefined/)
+    }
   })
 })
 
