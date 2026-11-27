@@ -126,12 +126,12 @@ export const IncidencePanel = memo(function IncidencePanel({ incidence, year }) 
               assiette foncière répartie à {fmt(lvtShift.householdsSharePct, 1)} % ménages /{' '}
               <strong>{fmt(lvtShift.companiesSharePct, 1)} % sociétés</strong> (Insee 2025).
               {Math.abs(lvtShift.companyShiftMd) > 0.05
-                ? ` Déplacement brut de prélèvement des ménages (G3) vers le foncier des sociétés (G4) : +${fmt(lvtShift.companyShiftMd, 2)} Md€/an (en plus de la perte nette de capitalisation D12 de ${fmt(lvtShift.netCapiLossMd, 1, { signed: true })} Md€).`
+                ? ` Déplacement brut de prélèvement des ménages (G3) vers le foncier des sociétés (G4) : +${fmt(lvtShift.companyShiftMd, 2)} Md€/an (en plus de la perte nette de capitalisation foncière de ${fmt(lvtShift.netCapiLossMd, 1, { signed: true })} Md€).`
                 : ' En S1, échange interne aux impôts fonciers et DMTO (bascule brute ménages ↔ sociétés nulle au total).'}
             </div>
           )}
 
-          {/* Vue A3 : Ordres de grandeur moyens & contrat Stage B */}
+          {/* Vue A3 : Ordres de grandeur moyens & microsimulation */}
           <details className="sb-module-details">
             <summary>Ordres de grandeur moyens (dénominateurs sourcés) et microsimulation ménages</summary>
             {benchmarks.length > 0 && (
@@ -148,7 +148,7 @@ export const IncidencePanel = memo(function IncidencePanel({ incidence, year }) 
             <p className="sb-help">
               {stageB?.available
                 ? 'Instantané de microsimulation ménages (policyengine-fr) chargé.'
-                : 'Ventilation par décile de niveau de vie (D1–D10), taux de pauvreté, indice de Gini et cas-types (policyengine-fr) : prévue à l\'étape suivante via instantané JSON pondéré (docs/policyengine-fr-linkage.md), évitant toute extrapolation avant calibrage ERFS/DGFiP/CCSS.'}
+                : 'Ventilation par décile de niveau de vie (D1–D10), taux de pauvreté, indice de Gini et cas-types (policyengine-fr) : prévue dans une étape ultérieure via microsimulation sur données ménages (ERFS/DGFiP/CCSS), évitant toute extrapolation avant calibrage.'}
             </p>
           </details>
         </>

@@ -71,7 +71,7 @@ export default function IntroPage({ navigateTo }) {
           des affirmations rapides : &laquo; il suffit de couper les dépenses &raquo; ou &laquo; il suffit d'augmenter les impôts &raquo;.
         </p>
         <p>
-          Le moteur v2 couvre les <strong>administrations publiques consolidées (APU)</strong> en comptabilité nationale,
+          Le modèle couvre les <strong>administrations publiques consolidées (APU)</strong> en comptabilité nationale,
           réparties en <strong>trois blocs</strong> : administrations centrales (État et ODAC), sécurité sociale (ASSO) et
           collectivités locales (APUL). Les transferts entre blocs sont consolidés pour éviter tout double compte.
         </p>
@@ -80,6 +80,14 @@ export default function IntroPage({ navigateTo }) {
           contribuables, effets de demande, effets d'offre et charge d'intérêts. Chaque paramètre est documenté avec sa
           source et son statut de validation dans l'onglet <em>Hypothèses &amp; Paramètres</em>.
         </p>
+        <div className="intro-cta-row">
+          <button type="button" className="intro-cta-primary" onClick={() => navigateTo?.('budget')}>
+            Ouvrir le simulateur budgétaire
+          </button>
+          <button type="button" className="sb-btn" onClick={() => navigateTo?.('hypotheses')}>
+            Comprendre les hypothèses clés
+          </button>
+        </div>
       </section>
 
       <section className="intro-section">
@@ -133,7 +141,7 @@ export default function IntroPage({ navigateTo }) {
       <section className="intro-section">
         <h2>Trajectoire de référence (hypothèses centrales)</h2>
         <p>
-          Sans levier activé et avec les hypothèses centrales du moteur v2, la trajectoire de référence projette à{' '}
+          Sans levier activé et avec les hypothèses centrales du simulateur, la trajectoire de référence projette à{' '}
           <strong>10 ans ({end10.year})</strong> :
         </p>
         <div className="baseline-summary">
@@ -192,9 +200,9 @@ export default function IntroPage({ navigateTo }) {
             <h3>Simulateur Budget</h3>
             <p>
               <strong>{LEVERS.length} leviers actifs</strong> répartis en trois groupes (recettes, dépenses par fonction
-              COFOG, prestations sociales) et <strong>{STRUCTURAL_LEVERS.length} leviers structurels</strong> affichés en
-              « non validé — avis demandé » (σ = 0). Décomposition exacte du solde par cause (statique, comportement,
-              demande, offre, intérêts), ventilation par bloc APU, liens partageables et export CSV.
+              COFOG, prestations sociales), montée en charge sur 1, 3 ou 5 ans, repères européens (solde primaire
+              stabilisant, seuil −3 % et règle UE de dépense nette 2026–2029), comparateur A vs B, faisceau d&apos;offre,
+              répartition « Qui paie ? », 4 stress-tests macroéconomiques, export CSV et note de synthèse Markdown / PDF.
             </p>
           </div>
           <div

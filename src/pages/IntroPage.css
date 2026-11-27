@@ -170,6 +170,28 @@
   color: var(--color-ink);
 }
 
+.intro-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.1rem;
+}
+
+.intro-cta-primary {
+  min-height: 44px;
+  padding: 0.55rem 1.15rem;
+  border: 1px solid var(--color-accent);
+  border-radius: 4px;
+  background: var(--color-accent);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.intro-cta-primary:hover {
+  filter: brightness(0.92);
+}
+
 @media (max-width: 640px) {
   .mechanism-cards,
   .simulator-cards,

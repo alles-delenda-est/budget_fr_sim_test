@@ -339,7 +339,7 @@ export default function SimulateurRetraitesPage() {
       <header>
         <h1 className="sb-title">Simulateur Retraites</h1>
         <p className="sb-help">
-          Moteur v2 (équations E1–E12) appliqué au système de retraites et au vieillissement : trajectoires du{' '}
+          Modèle de projection (comptes publics consolidés) appliqué au système de retraites et au vieillissement : trajectoires du{' '}
           <strong>COR (juin 2026)</strong>, dérive santé / dépendance (Commission européenne 2024), leviers retenus pour
           la version 0.9 (âge légal dès janvier {START_YEAR + AGE_LEVER.defaultRamp.start} avec effet d'offre
           emploi seniors, indexation des pensions) et préréglage{' '}

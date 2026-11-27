@@ -396,7 +396,7 @@ export default function SimulateurBudgetPage() {
     <div className="sb-page">
       <header className="sb-screen-only">
         <h1 className="sb-title">Simulateur budgétaire</h1>
-        <p className="sb-help">Moteur v2 : trois blocs (État et ODAC, sécurité sociale, collectivités), effets d'offre explicites, référence sans levier. Les paramètres portant un statut à vérifier ({FLAGGED_STATUSES.map((s) => `« ${s} »`).join(', ')}) sont signalés par une pastille dédiée.</p>
+        <p className="sb-help">Administrations publiques consolidées (État et ODAC, sécurité sociale, collectivités), effets d&apos;offre explicites et référence sans mesure nouvelle. Les paramètres portant un statut à vérifier ({FLAGGED_STATUSES.map((s) => `« ${s} »`).join(', ')}) sont signalés par une pastille dédiée.</p>
       </header>
 
       <section className="sb-section sb-screen-only" aria-labelledby="sb-options">
@@ -433,7 +433,7 @@ export default function SimulateurBudgetPage() {
           <p className="sb-help">Bas et haut désignent les résultats les moins et les plus favorables pour le PIB, et non l&apos;ordre statistique des valeurs (σ). Au-delà de dix ans, lisez les trois cas ensemble : le modèle reste déterministe. L&apos;étalement sur 3 ou 5 ans lisse le choc de demande initial (E4) et la trajectoire de dépense nette sans modifier les calendriers légaux par génération (âge légal).</p>
         <details className="sb-module-details" open={effectiveRegime !== DEFAULT_REGIME || endogenousInflation}>
           <summary>
-            Dynamiques avancées (Day 1, optionnelles){dynamicsLabel ? ` — actives : ${dynamicsLabel}` : ' — désactivées par défaut'}
+            Dynamiques avancées (optionnelles){dynamicsLabel ? ` — actives : ${dynamicsLabel}` : ' — désactivées par défaut'}
           </summary>
           <div className="sb-options">
             <div>
@@ -448,7 +448,7 @@ export default function SimulateurBudgetPage() {
               <label htmlFor="sb-infl">Inflation endogène et répercussion TVA (courbe de Phillips, indexation pensions t−1, OATi)</label>
             </div>
           </div>
-          <p className="sb-help">Désactivées par défaut (identique au Day 0). En régime de récession ou ELB, les multiplicateurs de dépense sont relevés (Gechert &amp; Rannenberg 2018 ; BdF WP 883) ; l'inflation endogène ajoute la répercussion TVA (~80 %), une courbe de Phillips bornée à ±3 pts, l'indexation OATi et le décalage d'un an des pensions (CSS L. 161-25).</p>
+          <p className="sb-help">Désactivées par défaut (hypothèses standards). En régime de récession ou ELB, les multiplicateurs de dépense sont relevés (Gechert &amp; Rannenberg 2018 ; BdF WP 883) ; l&apos;inflation endogène ajoute la répercussion TVA (~80 %), une courbe de Phillips bornée à ±3 pts, l&apos;indexation OATi et le décalage d&apos;un an des pensions (CSS L. 161-25).</p>
         </details>
       </section>
 

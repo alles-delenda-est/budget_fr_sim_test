@@ -79,7 +79,7 @@ export function buildCsv({ stamp, url, horizonLabel, ysCase, phasingYears = 1, m
   }
   if (macroLabel) headerRows.push(['Hypothèses macroéconomiques', macroLabel])
   if (stressLabel) headerRows.push(['Choc macroéconomique (stress-test)', stressLabel])
-  if (dynamicsLabel) headerRows.push(['Dynamiques avancées (Day 1)', dynamicsLabel])
+  if (dynamicsLabel) headerRows.push(['Dynamiques avancées', dynamicsLabel])
   if (pinnedMeta) {
     headerRows.push(['Scénario épinglé (A)', pinnedMeta.label])
     if (pinnedMeta.summary) headerRows.push(['Réglages scénario A', pinnedMeta.summary])

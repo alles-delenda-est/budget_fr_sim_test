@@ -183,7 +183,7 @@ export const PARAM_GROUP_DEFS = [
   { id: 'macro', titre: 'Macroéconomie et chômage (E1, E12)', match: (id) => id.startsWith('macro.') || id === 'base.chomage' || id === 'base.chomage_ref' || id === 'emploi.kappa' },
   { id: 'ref', titre: 'Dérive de référence et point de départ 2026 (E8, D7)', match: (id) => id.startsWith('ref.') },
   { id: 'dem', titre: 'Demande et multiplicateurs (E4)', match: (id) => id.startsWith('dem.') },
-  { id: 'infl', titre: 'Inflation endogène et répercussion TVA (E1b, Phase 3 opt-in)', match: (id) => id.startsWith('infl.') },
+  { id: 'infl', titre: 'Inflation endogène et répercussion TVA (options avancées)', match: (id) => id.startsWith('infl.') },
   { id: 'comp', titre: 'Réaction comportementale et fiscalité (E3)', match: (id) => id.startsWith('comp.') },
   { id: 'offre', titre: 'Effets d\'offre (E5)', match: (id) => id.startsWith('offre.') },
   { id: 'lvt', titre: 'Module taxe sur la valeur du sol (D11, D12)', match: (id) => id.startsWith('lvt.') },
@@ -300,7 +300,7 @@ export function buildReviewerQuestions() {
       numero: 4,
       titre: 'Élasticité réelle de l\'offre de travail (e_L) et élasticité totale de l\'IR (θ) : laquelle retenir ?',
       resume: `L'élasticité uniforme équivalente à θ_IR = ${fmt(thetaIr.value, 2)} est ≈ ${fmt(etiUniforme, 2)}. Or e_L = ${fmt(eL.value, 2)} (pondérée par ${fmt(partActifs * 100, 0)} % de revenus d'activité), retenue pour l'effet d'offre, ${thetaReel > thetaIr.value ? `la dépasse en effet réel : la part réelle de la réponse (θ_réel ≈ ${fmt(thetaReel, 2)}) excède la réponse totale dont elle devrait n'être qu'une partie, et la part non réelle de θ tombe à 0 à plein effet d'offre.` : `reste en deçà : la part réelle de la réponse (θ_réel ≈ ${fmt(thetaReel, 2)}) est une partie de la réponse totale θ.`} Les deux chiffres viennent de littératures différentes (offre de travail agrégée pour e_L, élasticité du revenu imposable pour θ). En outre, l'effet d'offre passe au solde par ε_offre = ${pctTxt(epsOffre.value)} sur toutes les recettes publiques : une hausse de 1 % de l'IR ${gapCentral < 0 ? `coûte ${md(-gapCentral)}` : `rapporte ${md(gapCentral)}`} au solde primaire en ${endYear}. Le seuil de rentabilité de la question 1 se lit donc sur e_L seule, non sur θ. Faut-il rapprocher e_L de l'élasticité totale de l'IR, relever θ, ou garder les deux sources en le signalant ?`,
-      statut: 'Paramètres offre.e_L (non validé) et comp.theta.ir — question 6 de la note de modèle, avis demandé.',
+      statut: 'Effet d\'offre de l\'IR (non validé), paramètres offre.e_L et comp.theta.ir — question 6 de la note de modèle, avis demandé.',
     },
   ]
 }
@@ -390,4 +390,100 @@ export function buildInternalDerivations(P) {
       sensitivity: irSensitivity,
     },
   }
+}
+
+const PLAIN_DRIVERS_SPEC = [
+  {
+    id: 'macro.pi.long',
+    titreClair: 'Inflation de long terme (taux d\'augmentation des prix)',
+    ceQueCest: 'Une inflation un peu plus forte fait monter le PIB en euros plus vite que la dette déjà émise à taux fixe ; une inflation trop basse alourdit mécaniquement le poids de la dette existante.',
+  },
+  {
+    id: 'ref.derive.b_autres',
+    titreClair: 'Tendance spontanée des dépenses hors retraites et santé',
+    ceQueCest: 'Estime de combien les autres dépenses publiques (administration, investissement, aides) augmentent chaque année par rapport à la croissance sans décision nouvelle.',
+  },
+  {
+    id: 'dette.beta',
+    titreClair: 'Réaction des taux d\'intérêt quand la dette augmente',
+    ceQueCest: 'Combien les investisseurs réclament d\'intérêts en plus lorsque le ratio dette/PIB grimpe (effet modéré à 10 ans, mais décisif à 30 ans).',
+  },
+  {
+    id: 'dette.y_long',
+    titreClair: 'Taux d\'emprunt de l\'État à long terme (10 ans et plus)',
+    ceQueCest: 'Le coût auquel l\'État se refinance sur ses principales obligations longues (la maturité moyenne de la dette étant d\'environ 8,5 ans).',
+  },
+  {
+    id: 'macro.g.potentielle',
+    titreClair: 'Croissance de fond de l\'économie (hors inflation)',
+    ceQueCest: 'La vitesse à laquelle la richesse produite en France progresse durablement ; plus elle est élevée, plus les recettes rentrent et plus la dette pèse moins lourd.',
+  },
+]
+
+/**
+ * Synthèse en langage clair des hypothèses par priorité d'impact (zéro constante codée en dur :
+ * sensibilités recalculées en direct depuis PARAM_BY_ID et projectScenario).
+ */
+export function buildPlainAssumptionsGuide(P = resolveParams()) {
+  const ref10 = projectScenario({ horizon: 'dixAns' })
+  const ref30 = projectScenario({ horizon: 'trenteAns' })
+  const base10 = lastRow(ref10).debtRatio * 100
+  const base30 = lastRow(ref30).debtRatio * 100
+
+  const priorite1 = PLAIN_DRIVERS_SPEC.map((spec) => {
+    const q = PARAM_BY_ID[spec.id]
+    const rLo10 = lastRow(projectScenario({ horizon: 'dixAns', overrides: { [spec.id]: q.low } })).debtRatio * 100
+    const rHi10 = lastRow(projectScenario({ horizon: 'dixAns', overrides: { [spec.id]: q.high } })).debtRatio * 100
+    const rLo30 = lastRow(projectScenario({ horizon: 'trenteAns', overrides: { [spec.id]: q.low } })).debtRatio * 100
+    const rHi30 = lastRow(projectScenario({ horizon: 'trenteAns', overrides: { [spec.id]: q.high } })).debtRatio * 100
+    return {
+      id: spec.id,
+      titreClair: spec.titreClair,
+      ceQueCest: spec.ceQueCest,
+      valeurRetenue: paramRange(q),
+      base10Pct: base10,
+      lo10Pct: Math.min(rLo10, rHi10),
+      hi10Pct: Math.max(rLo10, rHi10),
+      impact2036Pp: Math.abs(rHi10 - rLo10),
+      impact2056Pp: Math.abs(rHi30 - rLo30),
+      statut: q.status,
+    }
+  }).sort((a, b) => b.impact2036Pp - a.impact2036Pp)
+
+  const eL = PARAM_BY_ID['offre.e_L']
+  const irRef30 = lastRow(ref30)
+  const irGapLow = irPrimaryGap30(eL.low, irRef30)
+  const irGapCentral = irPrimaryGap30(eL.value, irRef30)
+  const irGapHigh = irPrimaryGap30(eL.high, irRef30)
+  const debtB3 = debt30AtBeta(PARAM_BY_ID['dette.beta'].value)
+  const debtB0 = debt30AtBeta(0)
+
+  const priorite2 = [
+    {
+      id: 'ir_offre',
+      titreClair: 'Effet économique d\'une hausse de l\'impôt sur le revenu',
+      ceQueCest: 'Selon la sensibilité retenue pour l\'offre de travail, une hausse de l\'impôt sur le revenu peut soit rapporter des recettes à long terme, soit freiner suffisamment l\'activité pour peser sur le solde.',
+      valeurRetenue: `Sensibilité travail ${fmt(eL.value, 2)} (fourchette ${fmt(eL.low, 2)} à ${fmt(eL.high, 2)})`,
+      impactLabel: `À 30 ans pour +1 % d'IR : ${fmt(irGapLow, 1, { signed: true })} Md€ (cas bas) à ${fmt(irGapHigh, 1, { signed: true })} Md€ (cas haut), centre ${fmt(irGapCentral, 1, { signed: true })} Md€`,
+      statut: 'non validé',
+    },
+    {
+      id: 'modules_optionnels',
+      titreClair: 'Modules expérimentaux (taxe sur la valeur du sol et comptes notionnels)',
+      ceQueCest: 'Désactivés par défaut ; reposent sur des études ou ordres de grandeur provisoires qui méritent relecture si vous les mettez en avant.',
+      valeurRetenue: 'Désactivés par défaut (opt-in)',
+      impactLabel: `Actualisation foncière ${fmt(P['lvt.capi.taux_actualisation'] * 100, 1)} % ; effet sol retraites NDC provisoire`,
+      statut: 'non validé',
+    },
+    {
+      id: 'extrapolation_dette',
+      titreClair: 'Comportement au-delà de 180 % et 260 % de dette',
+      ceQueCest: 'Au-delà des niveaux historiques observés en zone euro, prolonger une règle linéaire de taux est une convention de calcul, pas une prévision des marchés financiers.',
+      valeurRetenue: `Trajectoire centrale 2056 : ${fmt(base30, 0)} % (sans prime de risque : ${fmt(debtB0, 0)} %)`,
+      impactLabel: `Écart à 30 ans entre prime centrale et prime nulle : ${fmt(debtB3 - debtB0, 0)} pt de PIB`,
+      statut: 'sourcé (fourchette), centre choisi',
+    },
+  ]
+
+  return { priorite1, priorite2 }
 }
