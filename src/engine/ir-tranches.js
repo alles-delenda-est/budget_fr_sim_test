@@ -59,14 +59,14 @@ export const facteurCsgDeductible = (P) => 1 - (P['comp.tau0.csg'] / 100) * P['o
 
 /**
  * Δ ln(1 − T) moyen pour +1 % du produit de l'IR (levier proportionnel), pondéré par les revenus de toutes les tranches (0 % compris)
- * et par la part des revenus d'activité (offre.ir_csg.part_actifs, décision D-P3 : les pensions n'ont pas d'élasticité d'offre de travail) :
+ * et par la part des revenus d'activité au barème IR (offre.ir.part_actifs, DGFiP Stat n° 53 : pensions et capital hors offre de travail) :
  * part_actifs × Σ_i (Z_i / Z_total) × 0,01 × τ_i × (1 − CSG déductible) / (1 − w_i).
  */
 export function irDeltaLnNet(P) {
   const d = irTranches(P)
   if (!d) return 0
   const f = facteurCsgDeductible(P)
-  const partActifs = P['offre.ir_csg.part_actifs'] ?? 1
+  const partActifs = P['offre.ir.part_actifs'] ?? 1
   return partActifs * d.tranches.reduce((a, r) => a + (r.revenu / d.total) * (0.01 * (r.taux / 100) * f) / (1 - r.coin), 0)
 }
 
@@ -102,7 +102,7 @@ export function thetaIrTranches(P, mode = 'point', c = 'value') {
 export function thetaReelIr(P, sigma) {
   const dln = irDeltaLnNet(P)
   if (!finite(sigma) || !(dln > 0)) return 0
-  const partActifs = P['offre.ir_csg.part_actifs'] ?? 1
+  const partActifs = P['offre.ir.part_actifs'] ?? 1
   const r = (-sigma / (100 * dln)) * partActifs * sommeTheta(P, 'proportionnel', 'value', () => 1)
   return finite(r) ? Math.max(0, r) : 0
 }

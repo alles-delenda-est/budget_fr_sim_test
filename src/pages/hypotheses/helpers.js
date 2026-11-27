@@ -272,7 +272,7 @@ export function buildReviewerQuestions() {
   const debts = [beta.low, beta.value, beta.high, 0].map((b) => ({ b, d: b === beta.value ? ref30.debtRatio * 100 : debt30AtBeta(b) }))
   const thetaIr = PARAM_BY_ID['comp.theta.ir']
   const thetaReel = thetaReelIr(P, sigmaIr)
-  const partActifs = P['offre.ir_csg.part_actifs']
+  const partActifs = P['offre.ir.part_actifs']
   const etiUniforme = thetaReel > 0 ? thetaIr.value / (thetaReel / (eL.value * partActifs)) : Number.NaN
   const md = (v) => `${fmt(v, 2).replace('-', '−')} Md€`
 
@@ -340,7 +340,7 @@ export function buildInternalDerivations(P) {
   const pParts16 = resolveParams({ 'offre.ir.tranche.30.parts': 1.6 })
   const tr16 = irTranches(pParts16)
   const irSensitivity = [
-    { id: 'central', label: `Base actuelle (e_L = ${fmt(P['offre.e_L'], 2)}, part actifs = ${fmt(P['offre.ir_csg.part_actifs'] * 100, 0)} %, parts TMI 30 % = ${fmt(P['offre.ir.tranche.30.parts'], 1)})`, p: P },
+    { id: 'central', label: `Base actuelle (e_L = ${fmt(P['offre.e_L'], 2)}, part actifs IR = ${fmt(P['offre.ir.part_actifs'] * 100, 1)} %, parts TMI 30 % = ${fmt(P['offre.ir.tranche.30.parts'], 1)})`, p: P },
     { id: 'stat53_16', label: 'Audit DGFiP Stat 53 (parts TMI 30 % = 1,6)', p: pParts16 },
     { id: 'el_025', label: 'Sensibilité e_L = 0,25 (CBO / littérature française)', p: resolveParams({ 'offre.e_L': 0.25 }) },
   ].map(({ id, label, p: Pi }) => {
@@ -377,7 +377,8 @@ export function buildInternalDerivations(P) {
     },
     irTranches: {
       paramTheta: PARAM_BY_ID['comp.theta.ir'],
-      paramPartActifs: PARAM_BY_ID['offre.ir_csg.part_actifs'],
+      paramPartActifs: PARAM_BY_ID['offre.ir.part_actifs'],
+      paramPartActifsCsg: PARAM_BY_ID['offre.csg.part_actifs'],
       tranches: tr?.tranches ?? [],
       totalRevenu: tr?.total ?? Number.NaN,
       facteurCsg: facteurCsgDeductible(P),
