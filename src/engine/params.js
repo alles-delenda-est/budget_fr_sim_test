@@ -430,7 +430,38 @@ const irTranches = [
     'Contribution exceptionnelle sur les hauts revenus, ajoutée au coin marginal de la tranche à 45 % (3 % au centre, 4 % au haut).'),
 ]
 
-export const PARAMS = [...baseMacro, ...baseBlocs, ...partsBlocs, ...COFOG, ...unedic, ...table, ...offre, ...offreFiscal, ...irTranches, ...lvt, ...rend, ...comparators]
+// ---------- 4quinquies. Incidence statutaire de 1er tour & repères démographiques (Vue « Qui paie ? », Stage A) ----------
+const incidenceParams = [
+  obs('incid.ir.part_pensions', 414 / 1475, 'part',
+    'DGFiP Statistiques n° 53 (nov. 2026, « L\'impôt sur le revenu 2025 », PDF primaire lu directement, Tableau 1 p. 3) : pensions et rentes (414 Md€) rapportées au revenu imposable au barème hors RCM et PV/divers (1 553 − 61 − 17 = 1 475 Md€) = 28,07 %.',
+    'Part des pensions de retraite dans l\'assiette du barème progressif de l\'IR (complète offre.ir.part_actifs = 68,95 %).', 'sourcé (calcul)'),
+  obs('incid.ir.part_patrimoine', 44 / 1475, 'part',
+    'DGFiP Statistiques n° 53 (nov. 2026, Tableau 1 p. 3) : revenus fonciers (26 Md€) + BIC/BNC non professionnels (12 + 6 = 18 Md€) = 44 Md€ sur 1 475 Md€ au barème = 2,98 %.',
+    'Part des revenus fonciers et non professionnels du patrimoine dans l\'assiette du barème progressif de l\'IR (complète à 100 % avec activité et pensions).', 'sourcé (calcul)'),
+  obs('incid.csg.part_remplacement', 28259 / 157207, 'part',
+    'CCSS, « Les Comptes de la Sécurité Sociale — octobre 2026 » (PDF primaire lu directement, §1.3 Tableau 1 p. 55) : CSG sur revenus de remplacement constatée 2025 (28 259 M€, dont retraites 25 439 M€) / CSG brute totale (157 207 M€) = 17,98 %.',
+    'Part des revenus de remplacement (pensions, chômage, IJ) dans le rendement constaté de la CSG toutes assiettes.', 'sourcé (calcul)'),
+  obs('incid.csg.part_capital_jeux', (157207 - 110670 - 28259) / 157207, 'part',
+    'CCSS oct. 2026 (§1.3 Tableau 1 p. 55, constaté 2025) : CSG revenus du patrimoine/placement (17 590 M€) + jeux (687 M€) (+ 1 M€ d\'écart d\'arrondi sur la somme des assiettes = 18 278 M€) / 157 207 M€ = 11,63 % (somme exacte à 100 % avec activité et remplacement).',
+    'Part des revenus du capital et des jeux dans le rendement constaté de la CSG toutes assiettes.', 'sourcé (calcul)'),
+  obs('demog.menages.2025', 31.7, 'millions de ménages',
+    'Insee / SDES, « Le parc de logements en France au 1er janvier 2025 » (résidences principales, France hors Mayotte : 31,7 millions de ménages).',
+    'Dénominateur macroéconomique des ordres de grandeur moyens par ménage (Vue A3).'),
+  obs('demog.foyers_fiscaux.2025', 42.1, 'millions de foyers fiscaux',
+    'DGFiP Statistiques n° 53 (nov. 2026, pp. 1–2, revenus 2025) : 42,1 millions de foyers fiscaux déclarés.',
+    'Nombre total de foyers fiscaux (tous régimes, dont 52,3 % non imposés au barème).'),
+  obs('demog.foyers_imposes_ir.2025', 20.1, 'millions de foyers imposés',
+    'DGFiP Statistiques n° 53 (nov. 2026, pp. 1–2, revenus 2025) : 20,1 millions de foyers imposés à l\'impôt sur le revenu (47,7 % des foyers).',
+    'Nombre de foyers fiscaux acquittant effectivement l\'impôt sur le revenu (base de calcul des ordres de grandeur IR).'),
+  obs('demog.emploi.2025', 30.5, 'millions d\'emplois',
+    'Insee, Estimations trimestrielles d\'emploi fin 2025 (France entière hors Mayotte : 30,5 millions de personnes en emploi total, dont 27,0 millions de salariés).',
+    'Dénominateur macroéconomique des montants moyens d\'activité et de cotisations patronales par emploi.'),
+  obs('demog.retraites_droit_direct.2023', 17.2, 'millions de retraités',
+    'DREES, « Les retraités et les retraites », édition 2025 (données arrêtées fin 2023) : 17,2 millions de retraités de droit direct tous régimes.',
+    'Effectif de référence des retraités de droit direct pour les repères d\'échelle des mesures retraites.'),
+]
+
+export const PARAMS = [...baseMacro, ...baseBlocs, ...partsBlocs, ...COFOG, ...unedic, ...table, ...offre, ...offreFiscal, ...irTranches, ...lvt, ...incidenceParams, ...rend, ...comparators]
 
 export const PARAM_BY_ID = Object.fromEntries(PARAMS.map((q) => [q.id, q]))
 if (Object.keys(PARAM_BY_ID).length !== PARAMS.length) throw new Error('params: identifiants dupliqués')

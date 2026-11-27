@@ -4,7 +4,7 @@ import { projectScenario } from '../../engine/project.js'
 import { LEVERS } from '../../engine/levers.js'
 import { fmt } from './helpers.js'
 import { PARAM_BY_ID } from '../../engine/params.js'
-import { evaluateWarnings, interestShareOfRevenue, betaRegimeText, tier1Text, tier2Text, tier2Explanation, splitSeriesAtYear, visibleDomain } from './warnings.js'
+import { evaluateWarnings, interestShareOfRevenue, betaRegimeText, tier1Text, tier2Text, tier2Explanation, splitSeriesAtYear, visibleDomain, chartYDomain } from './warnings.js'
 
 /** Trajectoire synthétique : une ligne par année avec dette (en fraction du PIB), intérêts et recettes en Md€. */
 const row = (year, debtPct, { interest = 100, revenue = 1000, interestPct = 5, balancePct = -5 } = {}) =>
@@ -121,6 +121,30 @@ describe('séries de graphique', () => {
     expect(lo).toBeLessThanOrEqual(1)
     expect(hi).toBeLessThan(10)
     expect(visibleDomain(data, 'debt', 'debtRef', undefined)).toBeNull()
+  })
+  it('coupe indépendamment Scénario B, bande bas–haut et Scénario A, et borne l\'axe sur cas bas explosif', () => {
+    const ab = [
+      { year: 2026, debt: 118, debtRef: 118, debtPin: 118, debtBand: [118, 118] },
+      { year: 2042, debt: 200, debtRef: 140, debtPin: 510, debtBand: [190, 240] },
+      { year: 2044, debt: 505, debtRef: 145, debtPin: 700, debtBand: [400, 950] },
+      { year: 2046, debt: 900, debtRef: 150, debtPin: 990, debtBand: [600, 1400] },
+    ]
+    const clippedB = splitSeriesAtYear(ab, 2044, null)
+    expect(clippedB.map((r) => r.debt)).toEqual([118, 200, 505, null])
+    expect(clippedB.map((r) => r.debtBand)).toEqual([[118, 118], [190, 240], [400, 950], null])
+    expect(clippedB.map((r) => r.debtPin)).toEqual([118, 510, 700, 990]) // A intact sans tier2A
+
+    const clippedBoth = splitSeriesAtYear(ab, 2044, 2042)
+    expect(clippedBoth.map((r) => r.debtPin)).toEqual([118, 510, null, null])
+    expect(clippedBoth.map((r) => r.debtPinBeyond)).toEqual([undefined, 510, 700, 990])
+
+    const asym = [
+      { year: 2026, debt: 118, debtRef: 118, debtBand: [118, 118] },
+      { year: 2046, debt: 380, debtRef: 150, debtBand: [330, 505] },
+      { year: 2056, debt: 460, debtRef: 170, debtBand: [370, 950] },
+    ]
+    const [, hi] = chartYDomain(asym, { key: 'debt', ref: 'debtRef' }, { tier2Year: null, bandTier2Year: 2046, tier2YearA: null })
+    expect(hi).toBeLessThan(600)
   })
 })
 

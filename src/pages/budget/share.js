@@ -13,30 +13,75 @@ export const DEFAULT_CASE = 'central'
 export const DEFAULT_REGIME = 'normal'
 export const DEFAULT_PHASING = DEFAULT_PHASING_YEARS
 const CASES = ['bas', 'central', 'haut']
-const RESERVED = new Set(['h', 'cas', 'm', 'lvt', 'lvt_ocde', 'reg', 'inf', 'rampe'])
+const RESERVED = new Set(['h', 'cas', 'm', 'lvt', 'lvt_ocde', 'reg', 'inf', 'rampe', 'a'])
 /** Module « taxe sur la valeur du sol » inactif (défaut) : scénario 0, borne OCDE non incluse. */
 export const DEFAULT_LVT = Object.freeze({ scenario: 0, ocde: 0 })
 const lvtActive = (lvt) => Number.isInteger(lvt?.scenario) && lvt.scenario > 0 && LVT_SCENARIO_CODES.includes(lvt.scenario)
 
+const MAX_PIN_LABEL_LEN = 40
+// eslint-disable-next-line no-control-regex
+const sanitizePinLabel = (raw) => String(raw ?? '').replace(/[\u0000-\u001F\u007F]/g, '').trim().slice(0, MAX_PIN_LABEL_LEN)
+
+function encodeCoreFields(q, { values = {}, macroId = null, lvt = null, demandRegime = DEFAULT_REGIME, endogenousInflation = false, phasingYears = DEFAULT_PHASING }, prefix = '') {
+  if (macroId && Object.hasOwn(MACRO_VARIANT_BY_ID, macroId)) q.set(`${prefix}m`, macroId)
+  if (PHASING_YEARS.includes(phasingYears) && phasingYears !== DEFAULT_PHASING) q.set(`${prefix}rampe`, String(phasingYears))
+  if (demandRegime && demandRegime !== DEFAULT_REGIME && DEMAND_REGIMES.includes(demandRegime)) q.set(`${prefix}reg`, demandRegime)
+  if (endogenousInflation === true) q.set(`${prefix}inf`, '1')
+  for (const l of LEVERS) {
+    const v = values[l.id]
+    if (typeof v === 'number' && Number.isFinite(v) && v !== 0) q.set(`${prefix}${l.id}`, String(v))
+  }
+  if (lvtActive(lvt)) {
+    q.set(`${prefix}lvt`, String(lvt.scenario))
+    if (lvt.ocde === 1) q.set(`${prefix}lvt_ocde`, '1')
+  }
+}
+
+function decodeCoreFields(q, prefix = '') {
+  const out = { values: {}, macroId: null }
+  const m = q.get(`${prefix}m`)
+  if (m && Object.hasOwn(MACRO_VARIANT_BY_ID, m)) out.macroId = m
+  const reg = q.get(`${prefix}reg`)
+  if (reg && reg !== DEFAULT_REGIME && DEMAND_REGIMES.includes(reg)) out.demandRegime = reg
+  if (q.get(`${prefix}inf`) === '1') out.endogenousInflation = true
+  const rampeRaw = q.get(`${prefix}rampe`)
+  if (rampeRaw && /^\d+$/.test(rampeRaw.trim())) {
+    const ry = Number(rampeRaw.trim())
+    if (PHASING_YEARS.includes(ry) && ry !== DEFAULT_PHASING) out.phasingYears = ry
+  }
+  for (const [key, raw] of q.entries()) {
+    if (prefix) {
+      if (!key.startsWith(prefix)) continue
+    } else if (RESERVED.has(key) || key.startsWith('a.')) continue
+    const id = prefix ? key.slice(prefix.length) : key
+    if (!Object.hasOwn(LEVER_BY_ID, id) || raw.trim() === '') continue
+    const x = Number(raw)
+    if (!Number.isFinite(x)) continue
+    const lever = LEVER_BY_ID[id]
+    const clamped = Math.min(lever.max, Math.max(lever.min, x))
+    if (clamped !== 0) out.values[id] = clamped
+  }
+  const lvt = { scenario: Number(q.get(`${prefix}lvt`)), ocde: q.get(`${prefix}lvt_ocde`) === '1' ? 1 : 0 }
+  if (lvtActive(lvt)) out.lvt = lvt
+  return out
+}
+
 /**
  * Chaîne de requête (sans « ? ») d'un scénario. Seuls les leviers non nuls, une éventuelle variante macroéconomique valide,
- * l'étalement pluriannuel non immédiat (`rampe=3|5`), les dynamiques avancées opt-in (`reg`, `inf=1`) et le module LVT actif sont écrits.
+ * l'étalement pluriannuel non immédiat (`rampe=3|5`), les dynamiques avancées opt-in (`reg`, `inf=1`), le module LVT actif
+ * et l'éventuel scénario épinglé A (`a=1&a.*`) sont écrits.
  */
-export function encodeScenario({ values = {}, horizon = DEFAULT_HORIZON, ysCase = DEFAULT_CASE, macroId = null, lvt = null, demandRegime = DEFAULT_REGIME, endogenousInflation = false, phasingYears = DEFAULT_PHASING } = {}) {
+export function encodeScenario({ values = {}, horizon = DEFAULT_HORIZON, ysCase = DEFAULT_CASE, macroId = null, lvt = null, demandRegime = DEFAULT_REGIME, endogenousInflation = false, phasingYears = DEFAULT_PHASING, pinned = null } = {}) {
   const q = new URLSearchParams()
   q.set('h', horizon)
   q.set('cas', ysCase)
-  if (macroId && Object.hasOwn(MACRO_VARIANT_BY_ID, macroId)) q.set('m', macroId)
-  if (PHASING_YEARS.includes(phasingYears) && phasingYears !== DEFAULT_PHASING) q.set('rampe', String(phasingYears))
-  if (demandRegime && demandRegime !== DEFAULT_REGIME && DEMAND_REGIMES.includes(demandRegime)) q.set('reg', demandRegime)
-  if (endogenousInflation === true) q.set('inf', '1')
-  for (const l of LEVERS) {
-    const v = values[l.id]
-    if (typeof v === 'number' && Number.isFinite(v) && v !== 0) q.set(l.id, String(v))
-  }
-  if (lvtActive(lvt)) {
-    q.set('lvt', String(lvt.scenario))
-    if (lvt.ocde === 1) q.set('lvt_ocde', '1')
+  encodeCoreFields(q, { values, macroId, lvt, demandRegime, endogenousInflation, phasingYears }, '')
+  if (pinned && typeof pinned === 'object') {
+    q.set('a', '1')
+    const lbl = sanitizePinLabel(pinned.label)
+    if (lbl) q.set('a.lbl', lbl)
+    if (pinned.ysCase && CASES.includes(pinned.ysCase) && pinned.ysCase !== DEFAULT_CASE) q.set('a.cas', pinned.ysCase)
+    encodeCoreFields(q, pinned, 'a.')
   }
   return q.toString()
 }
@@ -44,7 +89,7 @@ export function encodeScenario({ values = {}, horizon = DEFAULT_HORIZON, ysCase 
 /**
  * Lit une chaîne de requête et renvoie un scénario valide. Clés inconnues ignorées ; horizon, cas et variante macroéconomique
  * inconnus remplacés par les valeurs par défaut ; valeurs non numériques ou non finies ignorées ; valeurs bornées au min / max du levier.
- * Les clés `lvt`, `demandRegime` et `endogenousInflation` ne sont présentes que si elles sont actives (rétrocompatibilité des liens).
+ * Les clés `lvt`, `demandRegime`, `endogenousInflation`, `phasingYears` et `pinned` ne sont présentes que si elles sont actives (rétrocompatibilité des liens).
  */
 export function decodeScenario(query) {
   const out = { values: {}, horizon: DEFAULT_HORIZON, ysCase: DEFAULT_CASE, macroId: null }
@@ -58,26 +103,18 @@ export function decodeScenario(query) {
   if (h && Object.hasOwn(HORIZONS, h)) out.horizon = h
   const cas = q.get('cas')
   if (cas && CASES.includes(cas)) out.ysCase = cas
-  const m = q.get('m')
-  if (m && Object.hasOwn(MACRO_VARIANT_BY_ID, m)) out.macroId = m
-  const reg = q.get('reg')
-  if (reg && reg !== DEFAULT_REGIME && DEMAND_REGIMES.includes(reg)) out.demandRegime = reg
-  if (q.get('inf') === '1') out.endogenousInflation = true
-  const rampeRaw = q.get('rampe')
-  if (rampeRaw && /^\d+$/.test(rampeRaw.trim())) {
-    const ry = Number(rampeRaw.trim())
-    if (PHASING_YEARS.includes(ry) && ry !== DEFAULT_PHASING) out.phasingYears = ry
+  const coreB = decodeCoreFields(q, '')
+  Object.assign(out, coreB)
+  if (q.get('a') === '1') {
+    const coreA = decodeCoreFields(q, 'a.')
+    const aCas = q.get('a.cas')
+    const lbl = sanitizePinLabel(q.get('a.lbl'))
+    out.pinned = {
+      label: lbl || 'Scénario A',
+      ysCase: aCas && CASES.includes(aCas) ? aCas : DEFAULT_CASE,
+      ...coreA,
+    }
   }
-  for (const [key, raw] of q.entries()) {
-    if (RESERVED.has(key) || !Object.hasOwn(LEVER_BY_ID, key) || raw.trim() === '') continue
-    const x = Number(raw)
-    if (!Number.isFinite(x)) continue
-    const lever = LEVER_BY_ID[key]
-    const clamped = Math.min(lever.max, Math.max(lever.min, x))
-    if (clamped !== 0) out.values[key] = clamped
-  }
-  const lvt = { scenario: Number(q.get('lvt')), ocde: q.get('lvt_ocde') === '1' ? 1 : 0 }
-  if (lvtActive(lvt)) out.lvt = lvt
   return out
 }
 

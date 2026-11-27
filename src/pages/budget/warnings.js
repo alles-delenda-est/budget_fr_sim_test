@@ -83,18 +83,33 @@ export function tier2Text(w) {
 }
 
 /**
- * Découpe les séries au palier 2 : pour chaque série `k` du scénario, `kBeyond` porte la partie à partir de l'année du palier (comprise,
- * pour que le trait se raccorde), et `k` n'est conservée que jusqu'à cette année. Les séries de référence (suffixe « Ref ») et `year`
- * ne changent pas. Sans palier 2, les données sont rendues telles quelles. Les valeurs ne sont jamais modifiées : l'export CSV reste complet.
+ * Découpe indépendamment les séries du scénario actif (B), de sa bande d'incertitude, et d'un éventuel scénario épinglé (A)
+ * à leurs années respectives de palier 2 : `kBeyond` porte la partie à partir de l'année du palier (comprise), `k` n'est
+ * conservée que jusqu'à cette année. Les séries de référence (`*Ref`) et les bornes d'infobulle (`*Bas`, `*Haut`) ne changent pas.
  */
-export function splitSeriesAtYear(data, year) {
-  if (!Number.isFinite(year)) return data
+export function splitSeriesAtYear(data, tier2Year, tier2YearA = null) {
+  const hasB = Number.isFinite(tier2Year)
+  const hasA = Number.isFinite(tier2YearA)
+  if (!hasB && !hasA) return data
   return data.map((row) => {
     const out = { ...row }
     for (const k of Object.keys(row)) {
-      if (k === 'year' || k.endsWith('Ref')) continue
-      if (row.year >= year) out[`${k}Beyond`] = row[k]
-      if (row.year > year) out[k] = null
+      if (k === 'year' || k.endsWith('Ref') || k.endsWith('Bas') || k.endsWith('Haut')) continue
+      if (k.endsWith('Pin')) {
+        if (hasA) {
+          if (row.year >= tier2YearA) out[`${k}Beyond`] = row[k]
+          if (row.year > tier2YearA) out[k] = null
+        }
+        continue
+      }
+      if (k.endsWith('Band')) {
+        if (hasB && row.year > tier2Year) out[k] = null
+        continue
+      }
+      if (hasB) {
+        if (row.year >= tier2Year) out[`${k}Beyond`] = row[k]
+        if (row.year > tier2Year) out[k] = null
+      }
     }
     return out
   })
@@ -110,6 +125,36 @@ export function visibleDomain(data, key, refKey, tier2Year) {
   for (const r of data) {
     if (r.year <= tier2Year && Number.isFinite(r[key])) vals.push(r[key])
     if (Number.isFinite(r[refKey])) vals.push(r[refKey])
+  }
+  if (vals.length === 0) return null
+  const lo = Math.min(...vals)
+  const hi = Math.max(...vals)
+  const pad = Math.max((hi - lo) * 0.1, 0.5)
+  return [Math.floor(lo - pad), Math.ceil(hi + pad)]
+}
+
+/**
+ * Domaine vertical borné lorsque le scénario actif B, sa borne basse `bas`, ou le scénario épinglé A franchit le palier 2.
+ * Protège l'échelle contre l'explosion asymptotique du cas `bas` même quand `central` reste sous 500 %.
+ */
+export function chartYDomain(data, spec, { tier2Year = null, bandTier2Year = null, tier2YearA = null } = {}) {
+  const hasB = Number.isFinite(tier2Year)
+  const hasBandClip = Number.isFinite(bandTier2Year)
+  const hasA = Number.isFinite(tier2YearA)
+  if (!hasB && !hasBandClip && !hasA) return null
+  const finiteClipYears = [tier2Year, bandTier2Year].filter(Number.isFinite)
+  const bandClipYear = finiteClipYears.length ? Math.min(...finiteClipYears) : Infinity
+  const vals = []
+  for (const r of data) {
+    if (Number.isFinite(r[spec.ref])) vals.push(r[spec.ref])
+    if (spec.centralRef && Number.isFinite(r[spec.centralRef])) vals.push(r[spec.centralRef])
+    if ((!hasB || r.year <= tier2Year) && Number.isFinite(r[spec.key])) vals.push(r[spec.key])
+    if (spec.pin && (!hasA || r.year <= tier2YearA) && Number.isFinite(r[spec.pin])) vals.push(r[spec.pin])
+    const band = r[`${spec.key}Band`]
+    if (Array.isArray(band) && r.year <= bandClipYear) {
+      if (Number.isFinite(band[0])) vals.push(band[0])
+      if (Number.isFinite(band[1])) vals.push(band[1])
+    }
   }
   if (vals.length === 0) return null
   const lo = Math.min(...vals)

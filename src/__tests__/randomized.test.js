@@ -493,6 +493,36 @@ describe(`tests aléatoires (graine de base ${BASE_SEED})`, () => {
     })
   })
 
+  it('21 [seed +21] comparaison aléatoire B vs A et bande bas–haut : somme exacte des causes et absence d\'inversion du ruban', () => {
+    const eps = P0['fisc.eps']
+    const epsO = P0['fisc.eps_offre']
+    forCases('21', BASE_SEED + 21, 100, (rng, c) => {
+      const leversB = randomLevers(rng, { density: 0.45 })
+      const leversA = randomLevers(rng, { density: 0.45 })
+      const horizon = pick(rng, HORIZON_IDS)
+      const caseB = pick(rng, CASES)
+      const caseA = pick(rng, CASES)
+      c.info = { leversB, leversA, horizon, caseB, caseA }
+      const bas = projectScenario({ levers: leversB, horizon, ysCase: 'bas' })
+      const central = projectScenario({ levers: leversB, horizon, ysCase: 'central' })
+      const haut = projectScenario({ levers: leversB, horizon, ysCase: 'haut' })
+      const resB = { bas, central, haut }[caseB]
+      const resA = projectScenario({ levers: leversA, horizon, ysCase: caseA })
+      const ref = REFERENCE_FOR(horizon)
+      const t = Math.floor(rng() * resB.years.length)
+      const dec = decomposeAtYear(resB, resA, t, eps, epsO)
+      expect(dec.ecart).toBeCloseTo(resB.total[t].balance - resA.total[t].balance, 8)
+      expect(dec.lines.reduce((s, l) => s + l.montant, 0)).toBeCloseTo(dec.ecart, 8)
+      const series = buildSeries(resB, ref, { envelope: { bas, central, haut }, resultA: resA })
+      for (const row of series) {
+        for (const [k, bk] of [['debt', 'debtBand'], ['balance', 'balanceBand'], ['interest', 'interestBand'], ['gdpGap', 'gdpGapBand'], ['unemployment', 'unemploymentBand']]) {
+          expect(row[bk][0]).toBeLessThanOrEqual(row[k] + 1e-12)
+          expect(row[k]).toBeLessThanOrEqual(row[bk][1] + 1e-12)
+        }
+      }
+    })
+  })
+
   it('20 [seed +20] cohérence des horizons : les N premières années de 10 ans égalent celles de jusqu\'en 2040 et de 30 ans', () => {
     forCases('20', BASE_SEED + 20, 60, (rng, c) => {
       const levers = rng() < 0.3 ? extremeMixLevers(rng) : randomLevers(rng)

@@ -1,13 +1,82 @@
 import { memo } from 'react'
 import { PARAM_BY_ID } from '../../engine/params.js'
+import { LEVERS } from '../../engine/levers.js'
+import { LVT_SCENARIO_BY_CODE } from '../../engine/lvt-snapshot.js'
+import { MACRO_VARIANT_BY_ID } from './presets'
 import { fmt, deltaTone, visibleLines, HIDE_BELOW, debtMovesAgainstBalance, YEAR1_PARADOX_TEXT } from './helpers'
 import { betaRegimeText, tier1Text, tier2Text, tier2Explanation } from './warnings'
 import { InfoPopover, StatusBadge, ParamInfo } from './InfoPopover'
 
-function Delta({ value, unit, lowerIsBetter }) {
+function Delta({ value, unit, lowerIsBetter, vsLabel = 'réf.', className = '' }) {
   const tone = deltaTone(value, lowerIsBetter)
-  return <span className={`sb-delta sb-delta-${tone}`}>{fmt(value, 1, { signed: true })} {unit} vs réf.</span>
+  return <span className={`sb-delta sb-delta-${tone}${className ? ` ${className}` : ''}`}>{fmt(value, 1, { signed: true })} {unit} vs {vsLabel}</span>
 }
+
+function summarizePinnedScenario(pinned) {
+  if (!pinned) return ''
+  const parts = []
+  if (pinned.macroId && MACRO_VARIANT_BY_ID[pinned.macroId]) parts.push(MACRO_VARIANT_BY_ID[pinned.macroId].label)
+  for (const l of LEVERS) {
+    const v = pinned.values?.[l.id]
+    if (typeof v === 'number' && Number.isFinite(v) && v !== 0) parts.push(`${l.titre} ${fmt(v, 1, { signed: true })}`)
+  }
+  if (pinned.lvt?.scenario > 0 && LVT_SCENARIO_BY_CODE[pinned.lvt.scenario]) {
+    parts.push(`Foncier ${LVT_SCENARIO_BY_CODE[pinned.lvt.scenario].id}${pinned.lvt.ocde ? ' (OCDE)' : ''}`)
+  }
+  if (pinned.ysCase && pinned.ysCase !== 'central') parts.push(`cas ${pinned.ysCase}`)
+  if (pinned.phasingYears > 1) parts.push(`rampe ${pinned.phasingYears} ans`)
+  if (pinned.demandRegime && pinned.demandRegime !== 'normal') parts.push(`régime ${pinned.demandRegime}`)
+  if (pinned.endogenousInflation) parts.push('inflation endogène')
+  return parts.length ? parts.join(' · ') : 'Aucun levier (référence)'
+}
+
+export const ComparisonBanner = memo(function ComparisonBanner({
+  pinned,
+  isIdentical,
+  onLabelChange,
+  onSwap,
+  onReplace,
+  onClear,
+  liveMessage = '',
+}) {
+  if (!pinned) return null
+  return (
+    <div className="sb-compare-banner" role="region" aria-label="Comparaison Scénario A et Scénario B">
+      <div className="sb-compare-rows">
+        <div className="sb-compare-row">
+          <span className="sb-compare-swatch sb-compare-swatch-a" aria-hidden="true" />
+          <label htmlFor="sb-compare-label" className="visually-hidden">Nom du scénario épinglé A</label>
+          <input
+            id="sb-compare-label"
+            type="text"
+            className="sb-compare-label-input"
+            maxLength={40}
+            value={pinned.label}
+            onChange={(e) => onLabelChange(e.target.value)}
+            aria-label="Nom du scénario épinglé A"
+          />
+          {pinned.ysCase && pinned.ysCase !== 'central' && (
+            <span className="sb-badge">cas : {pinned.ysCase}</span>
+          )}
+          <span className="sb-compare-summary">{summarizePinnedScenario(pinned)}</span>
+        </div>
+        <div className="sb-compare-row">
+          <span className="sb-compare-swatch sb-compare-swatch-b" aria-hidden="true" />
+          <span>
+            <strong>Scénario actif (B)</strong> — piloté par les curseurs
+            {isIdentical && <span className="sb-muted"> · Identique à A — modifiez un levier pour comparer</span>}
+          </span>
+        </div>
+      </div>
+      <div className="sb-compare-actions">
+        <button type="button" className="sb-btn" onClick={onSwap}>Échanger A ↔ B</button>
+        <button type="button" className="sb-btn" onClick={onReplace}>Remplacer A par B</button>
+        <button type="button" className="sb-btn" onClick={onClear}>Effacer A</button>
+      </div>
+      <span role="status" aria-live="polite" className="visually-hidden">{liveMessage}</span>
+    </div>
+  )
+})
 
 /** Bandeau au-dessus des résultats : indicateur β hors échantillon (> 180 % PIB), palier 1 (> 260 %) et/ou palier 2 (hors de toute expérience). */
 export function WarningBanner({ warnings }) {
@@ -22,13 +91,35 @@ export function WarningBanner({ warnings }) {
 }
 
 function SnapshotCard({ titre, snap, explainParadox = false }) {
+  const hasA = snap.debtDeltaVsA !== undefined
   return (
     <div className="sb-snap">
       <h3>{titre} <span className="sb-muted">({snap.year})</span></h3>
       <dl>
-        <div><dt>Dette</dt><dd><strong>{fmt(snap.debtRatio, 1)} % du PIB</strong><Delta value={snap.debtDelta} unit="pt" lowerIsBetter /></dd></div>
-        <div><dt>Solde</dt><dd><strong>{fmt(snap.balanceRatio, 2)} % du PIB</strong><Delta value={snap.balanceDelta} unit="pt" lowerIsBetter={false} /></dd></div>
-        <div><dt>Intérêts</dt><dd><strong>{fmt(snap.interest, 1)} Md€</strong> <span className="sb-muted">({fmt(snap.interestRatio, 2)} % du PIB)</span><Delta value={snap.interestDelta} unit="Md€" lowerIsBetter /></dd></div>
+        <div>
+          <dt>Dette</dt>
+          <dd>
+            <strong>{fmt(snap.debtRatio, 1)} % du PIB</strong>
+            <Delta value={snap.debtDelta} unit="pt" lowerIsBetter />
+            {hasA && <Delta value={snap.debtDeltaVsA} unit="pt" lowerIsBetter vsLabel="A" className="sb-delta-vs-a" />}
+          </dd>
+        </div>
+        <div>
+          <dt>Solde</dt>
+          <dd>
+            <strong>{fmt(snap.balanceRatio, 2)} % du PIB</strong>
+            <Delta value={snap.balanceDelta} unit="pt" lowerIsBetter={false} />
+            {hasA && <Delta value={snap.balanceDeltaVsA} unit="pt" lowerIsBetter={false} vsLabel="A" className="sb-delta-vs-a" />}
+          </dd>
+        </div>
+        <div>
+          <dt>Intérêts</dt>
+          <dd>
+            <strong>{fmt(snap.interest, 1)} Md€</strong> <span className="sb-muted">({fmt(snap.interestRatio, 2)} % du PIB)</span>
+            <Delta value={snap.interestDelta} unit="Md€" lowerIsBetter />
+            {hasA && <Delta value={snap.interestDeltaVsA} unit="Md€" lowerIsBetter vsLabel="A" className="sb-delta-vs-a" />}
+          </dd>
+        </div>
       </dl>
       {explainParadox && debtMovesAgainstBalance(snap) && <p className="sb-snap-note">{YEAR1_PARADOX_TEXT}</p>}
     </div>
@@ -183,20 +274,58 @@ const KIND_TITLES = {
   offre: 'Effets d\'offre', inflation: 'Inflation endogène (Phase 3)', interets: 'Intérêts',
 }
 
-export const DecompositionTable = memo(function DecompositionTable({ decomposition, years, yearIdx, onYear }) {
+export const DecompositionTable = memo(function DecompositionTable({
+  decomposition,
+  years,
+  yearIdx,
+  onYear,
+  hasComparison = false,
+  decompBase = 'ref',
+  onDecompBase,
+  pinnedLabel = null,
+}) {
   const lines = visibleLines(decomposition.lines)
   const hidden = decomposition.lines.length - lines.length
+  const vsPinned = hasComparison && decompBase === 'pinned'
   return (
     <section className="sb-section" aria-labelledby="sb-decomposition">
       <h2 id="sb-decomposition">Décomposition par cause</h2>
-      <p className="sb-help">Écart de solde public entre votre scénario et la référence, en Md€, pour l'année choisie. Les lignes nulles dans le cas retenu sont masquées.</p>
+      <p className="sb-help">
+        Écart de solde public entre {vsPinned ? `votre scénario actif (B) et le scénario épinglé A (${pinnedLabel ?? 'A'})` : 'votre scénario et la référence'}, en Md€, pour l&apos;année choisie. Les lignes nulles dans le cas retenu sont masquées.
+      </p>
+      {hasComparison && onDecompBase && (
+        <div className="sb-seg-toggle" role="group" aria-label="Base de comparaison de la décomposition">
+          <button
+            type="button"
+            className={`sb-seg-btn${!vsPinned ? ' sb-seg-btn-active' : ''}`}
+            aria-pressed={!vsPinned}
+            onClick={() => onDecompBase('ref')}
+          >
+            vs Référence
+          </button>
+          <button
+            type="button"
+            className={`sb-seg-btn${vsPinned ? ' sb-seg-btn-active' : ''}`}
+            aria-pressed={vsPinned}
+            onClick={() => onDecompBase('pinned')}
+          >
+            vs Scénario A ({pinnedLabel || 'A'})
+          </button>
+        </div>
+      )}
       <div className="sb-yearpick">
         <label htmlFor="sb-year">Année : <strong>{decomposition.year}</strong></label>
         <input id="sb-year" type="range" className="sb-slider" min={1} max={years.length - 1} step={1} value={yearIdx} aria-valuetext={`Année ${decomposition.year}`} onChange={(e) => onYear(parseInt(e.target.value, 10))} />
       </div>
-      {lines.length === 0 ? <p className="sb-empty">Aucun effet sur le solde cette année (aucun levier actif, ou mesure pas encore entrée en vigueur).</p> : (
+      {lines.length === 0 ? (
+        <p className="sb-empty">
+          {vsPinned
+            ? 'Aucune différence cette année entre B et A (scénarios identiques ou mesures pas encore entrées en vigueur).'
+            : 'Aucun effet sur le solde cette année (aucun levier actif, ou mesure pas encore entrée en vigueur).'}
+        </p>
+      ) : (
         <table className="sb-table">
-          <caption className="visually-hidden">Décomposition de l'écart de solde en {decomposition.year}</caption>
+          <caption className="visually-hidden">Décomposition de l&apos;écart de solde en {decomposition.year}</caption>
           <thead><tr><th scope="col">Cause</th><th scope="col" className="sb-num">Md€</th></tr></thead>
           <tbody>
             {KIND_ORDER.map((kind) => lines.filter((l) => l.kind === kind).map((l, i) => (
@@ -211,7 +340,12 @@ export const DecompositionTable = memo(function DecompositionTable({ decompositi
               </tr>
             )))}
           </tbody>
-          <tfoot><tr><th scope="row">Écart de solde total</th><td className="sb-num">{fmt(decomposition.ecart, 1, { signed: true })}</td></tr></tfoot>
+          <tfoot>
+            <tr>
+              <th scope="row">{vsPinned ? 'Écart de solde total (B − A)' : 'Écart de solde total'}</th>
+              <td className="sb-num">{fmt(decomposition.ecart, 1, { signed: true })}</td>
+            </tr>
+          </tfoot>
         </table>
       )}
       {hidden > 0 && <p className="sb-help">{hidden} ligne(s) inférieure(s) à {fmt(HIDE_BELOW, 2)} Md€ masquée(s) ; le total les inclut.</p>}
@@ -220,12 +354,21 @@ export const DecompositionTable = memo(function DecompositionTable({ decompositi
 })
 
 export const BlocksTable = memo(function BlocksTable({ blocks, year }) {
+  const hasA = blocks?.[0]?.deltaVsA !== undefined
   return (
     <section className="sb-section" aria-labelledby="sb-blocs">
       <h2 id="sb-blocs">Trois blocs en {year}</h2>
-      <p className="sb-help">Solde de chaque bloc après charge d'intérêts. Le bloc local n'a pas de levier propre : il reçoit sa part des fonctions de dépense partagées avec l'État (clé de répartition provisoire) et les sorties des modules actifs, détaillées sur une ligne distincte.</p>
-      <table className="sb-table">
-        <thead><tr><th scope="col">Bloc</th><th scope="col" className="sb-num">Solde (Md€)</th><th scope="col" className="sb-num">% PIB</th><th scope="col" className="sb-num">vs réf. (Md€)</th></tr></thead>
+      <p className="sb-help">Solde de chaque bloc après charge d&apos;intérêts. Le bloc local n&apos;a pas de levier propre : il reçoit sa part des fonctions de dépense partagées avec l&apos;État (clé de répartition provisoire) et les sorties des modules actifs, détaillées sur une ligne distincte.</p>
+      <table className={`sb-table${hasA ? ' sb-table-compare' : ''}`}>
+        <thead>
+          <tr>
+            <th scope="col">Bloc</th>
+            <th scope="col" className="sb-num">Solde (Md€)</th>
+            <th scope="col" className="sb-num">% PIB</th>
+            <th scope="col" className="sb-num">vs réf. (Md€)</th>
+            {hasA && <th scope="col" className="sb-num">vs A (Md€)</th>}
+          </tr>
+        </thead>
         <tbody>
           {blocks.map((b) => (
             <tr key={b.id}>
@@ -233,6 +376,7 @@ export const BlocksTable = memo(function BlocksTable({ blocks, year }) {
               <td className="sb-num">{fmt(b.balance, 1)}</td>
               <td className="sb-num">{fmt(b.balanceRatio, 2)}</td>
               <td className="sb-num">{fmt(b.delta, 1, { signed: true })}</td>
+              {hasA && <td className="sb-num">{fmt(b.deltaVsA, 1, { signed: true })}</td>}
             </tr>
           ))}
         </tbody>

@@ -72,6 +72,7 @@ export const LVT_BASE_FONCIERE = Object.freeze({
   montant: round(md(LVT_YIELDS.land_base.taxable_meur), LVT_ARRONDIS.baseFonciereMd),
   meur: LVT_YIELDS.land_base.taxable_meur,
   annee: LVT_YIELDS.land_base.year,
+  companiesSharePct: LVT_YIELDS.land_base.companies_share_pct,
   source: LVT_YIELDS.land_base.source,
   url: LVT_YIELDS.land_base.url,
 })
@@ -102,6 +103,7 @@ export const LVT_SCENARIOS = Object.freeze(LVT_YIELDS_VARIANTS.map(([sc, ifi], i
     local: round(md(v.tiers_meur.local), d),
     departemental: round(md(v.tiers_meur.departmental), d),
     national: round(md(v.tiers_meur.national), d),
+    companyLandMd: md(v.company_land_meur ?? 0),
     tauxIndicatif: v.rate_pct,
     ifi: v.include_ifi,
     plusValues: hasTaxOf(v.lines, 'S2'),

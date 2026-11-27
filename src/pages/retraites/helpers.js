@@ -169,14 +169,29 @@ export const legalAgeFromDelta = (delta) => (Number.isFinite(delta) ? LEGAL_AGE_
 
 const pct = (v) => (num(v) === null ? null : v * 100)
 
-/** Séries annuelles pour les graphiques de la page Retraites (scénario et référence, aucun NaN). */
-export function buildPensionSeries(result, reference, P) {
+/** Séries annuelles pour les graphiques de la page Retraites (scénario, fourchette d'offre optionnelle et référence, aucun NaN). */
+export function buildPensionSeries(result, reference, P, envelope = null) {
   const corSeries = P['ref.derive.a_retraites']
+  const bandTuple = (getVal) => {
+    if (!envelope) return null
+    const vb = getVal(envelope.bas)
+    const vc = getVal(envelope.central)
+    const vh = getVal(envelope.haut)
+    if (!Number.isFinite(vb) || !Number.isFinite(vc) || !Number.isFinite(vh)) return null
+    return {
+      band: [Math.min(vb, vc, vh), Math.max(vb, vc, vh)],
+      bas: vb,
+      haut: vh,
+    }
+  }
   return result.total.map((r, t) => {
     const b = reference.total[t]
     const asso = result.blocks.securiteSociale[t]
     const assoRef = reference.blocks.securiteSociale[t]
     const leversExAntePct = r.gdpBase > 0 ? (asso.leversExAnte / r.gdpBase) * 100 : null
+    const assoB = bandTuple((e) => pct(e.blocks.securiteSociale[t].balanceRatio))
+    const debtB = bandTuple((e) => pct(e.total[t].debtRatio))
+    const balB = bandTuple((e) => pct(e.total[t].balanceRatio))
     return {
       year: r.year,
       corSpendingPct: num(interpolateSeries(corSeries, r.year)),
@@ -188,12 +203,15 @@ export function buildPensionSeries(result, reference, P) {
       gdpGap: pct(r.gdpEffect),
       assoBalance: pct(asso.balanceRatio),
       assoBalanceRef: pct(assoRef.balanceRatio),
+      ...(assoB ? { assoBalanceBand: assoB.band, assoBalanceBas: assoB.bas, assoBalanceHaut: assoB.haut } : {}),
       assoBalanceMd: num(asso.balance),
       assoBalanceMdRef: num(assoRef.balance),
       debt: pct(r.debtRatio),
       debtRef: pct(b.debtRatio),
+      ...(debtB ? { debtBand: debtB.band, debtBas: debtB.bas, debtHaut: debtB.haut } : {}),
       balance: pct(r.balanceRatio),
       balanceRef: pct(b.balanceRatio),
+      ...(balB ? { balanceBand: balB.band, balanceBas: balB.bas, balanceHaut: balB.haut } : {}),
       interest: pct(r.interestRatio),
       interestRef: pct(b.interestRatio),
     }

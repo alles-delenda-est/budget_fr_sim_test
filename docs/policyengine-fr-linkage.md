@@ -43,3 +43,14 @@ Même contrat découplé et reproductible que `LVTShift` (`src/engine/data/lvt-y
 - [ ] **Microdataset calibré dans `policyengine-fr` :** construire la population synthétique pondérée (calage sur marges DGFiP Stat n° 53 + INSEE ERFS/Revenus fiscaux + CCSS + DREES) avec tolérance `< 1 %` sur IR net, CSG par assiette et masses de revenus.
 - [ ] **Compléter les prestations manquantes pour `comp.offset.prestations` :** ajouter ASPA et APL (ou documenter la borne partielle RSA/PPA/AF/IR/CSG).
 - [ ] **Exporter `microsim-snapshot.json` + tests croisés** dans `budget_fr_sim_test`, puis basculer `ir-tranches.js` / `supply.js` sur le snapshot épinglé avec repli documenté.
+
+---
+
+## 4. Contrat Stage B du panneau « Qui paie ? » (`microsim-snapshot.json` + audits en direct sur `05d6be1`)
+
+Une exécution directe sur `policyengine-fr` (`05d6be1`, PR #32) sur 6 cas-types 2025 (SMIC, salarié médian, couple 2 enfants moyen/cadre, retraité 1 500 €/mois et 3 200 €/mois) a confirmé la capture exacte des non-linéarités françaises (**amplification par la décote** de `+17,9 %` à `+30,0 %` sur l'IR net pour `+10 %` au barème, plafonnement QF, **amortisseur PPA `39 %`** sur la CSG au SMIC, et **retour fiscal de 34,5 %** sur la sous-indexation D-P6 à `3 200 €/mois`), tout en identifiant **4 prérequis avant publication des déciles `D1–D10` et cas-types** (Stage B, le Stage A couvrant déjà 100 % du budget via `incid.js`) :
+
+1. **Corriger le périmètre CSG dans `policyengine_fr/reforms/budget_levers.py` :** `make_csg_delta_reform()` ne décale aujourd'hui que `gov.urssaf.csg.activite` (`0 €` d'effet sur les retraités) ; ajouter `make_csg_all_bases_delta_reform()` couvrant `activite`, `remplacement` (`reduit`, `median`, `normal`, hors `exonere = 0 %`) et `patrimoine`.
+2. **Ajouter `make_pension_indexation_reform` et relier `revenu_fiscal_de_reference`** aux variations de `pension_retraite_effective` (franchissements des seuils CSG retraite `12 817 / 16 755 / 26 004 €`).
+3. **Compléter `ASPA` / `APL`** ou documenter la part hors minima vieillesse/logement pour l'amortisseur `comp.offset.prestations` (`~21,2 %`, Note IPP n° 129).
+4. **Calibrer les poids ménages + couche TVA séparée :** exporter une grille de nœuds linéaire par morceaux par levier (`ir`, `csg`, `indexation_pensions`, `sous_indexation_ciblee`, `lvt`, plus couche séparée `indirect_vat_bdf` depuis Insee *Budget de famille*), une matrice d'interactions bilinéaires `(ir, csg)`, `(ir, indexation_pensions)`, `(indexation_pensions, sous_indexation_ciblee)`, et une règle de non-additivité pour `poverty_rate_60_delta_pp` / `gini_delta` (exacts levier par levier et sur les 6 préréglages neutres).
