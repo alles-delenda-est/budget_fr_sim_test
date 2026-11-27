@@ -87,6 +87,7 @@ export function issuanceRate(P) {
  * @param {Array}  [options.modules]    [{ module, levers }]
  * @param {'bas'|'central'|'haut'} [options.ysCase] cas retenu pour yS des modules (défaut : central)
  * @param {number[]} [options.yS]       chemin yS externe supplémentaire (fraction du PIB), t = 0..N
+ * @param {number[]} [options.yDExog]   choc conjoncturel de demande exogène (fraction du PIB), t = 0..N (défaut : 0)
  * @param {object} [options.sigma]      { idLevier: { sigma | sigmaHausse, sigmaBaisse, L, t0 } } remplace les paramètres offre.* d'un levier (E5) ;
  *                                      σ en % du PIB par unité du levier, t0 = 0 par défaut (voir supply.js)
  * @param {object} [options.ramp]       { start, years } rampe commune forcée sur tous les leviers natifs (usage bas niveau)
@@ -201,8 +202,9 @@ export function projectScenario(options = {}) {
       slackProb = 1 / (1 + Math.exp(-P['dem.slack.gamma'] * z))
     }
 
-    // E4 : demande en niveau, qui s'estompe. S_j(t) = λ S_j(t−1) + m_j(t) Δa_j(t) ; yD = −Σ S_j
-    let yD = 0
+    // E4 : demande en niveau, qui s'estompe (augmentée d'un éventuel choc conjoncturel exogène yDExog).
+    const yDEx = Number.isFinite(options.yDExog?.[t]) ? options.yDExog[t] : 0
+    let yD = yDEx
     instruments.forEach((inst, j) => {
       const da = aTot(inst, t) - (t > 0 ? aTot(inst, t - 1) : 0)
       S[j] = lambda * S[j] + mOf(inst, t, slackProb) * da

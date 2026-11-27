@@ -7,13 +7,14 @@ import { LEVERS, LEVER_BY_ID } from '../../engine/levers.js'
 import { HORIZONS, DEMAND_REGIMES, PHASING_YEARS, DEFAULT_PHASING_YEARS } from '../../engine/project.js'
 import { LVT_SCENARIO_CODES } from '../../engine/lvt-module.js'
 import { MACRO_VARIANT_BY_ID } from './presets.js'
+import { STRESS_TEST_BY_ID } from './stressTests.js'
 
 export const DEFAULT_HORIZON = 'dixAns'
 export const DEFAULT_CASE = 'central'
 export const DEFAULT_REGIME = 'normal'
 export const DEFAULT_PHASING = DEFAULT_PHASING_YEARS
 const CASES = ['bas', 'central', 'haut']
-const RESERVED = new Set(['h', 'cas', 'm', 'lvt', 'lvt_ocde', 'reg', 'inf', 'rampe', 'a'])
+const RESERVED = new Set(['h', 'cas', 'm', 'choc', 'lvt', 'lvt_ocde', 'reg', 'inf', 'rampe', 'a'])
 /** Module « taxe sur la valeur du sol » inactif (défaut) : scénario 0, borne OCDE non incluse. */
 export const DEFAULT_LVT = Object.freeze({ scenario: 0, ocde: 0 })
 const lvtActive = (lvt) => Number.isInteger(lvt?.scenario) && lvt.scenario > 0 && LVT_SCENARIO_CODES.includes(lvt.scenario)
@@ -22,8 +23,10 @@ const MAX_PIN_LABEL_LEN = 40
 // eslint-disable-next-line no-control-regex
 const sanitizePinLabel = (raw) => String(raw ?? '').replace(/[\u0000-\u001F\u007F]/g, '').trim().slice(0, MAX_PIN_LABEL_LEN)
 
-function encodeCoreFields(q, { values = {}, macroId = null, lvt = null, demandRegime = DEFAULT_REGIME, endogenousInflation = false, phasingYears = DEFAULT_PHASING }, prefix = '') {
-  if (macroId && Object.hasOwn(MACRO_VARIANT_BY_ID, macroId)) q.set(`${prefix}m`, macroId)
+function encodeCoreFields(q, { values = {}, macroId = null, stressId = null, lvt = null, demandRegime = DEFAULT_REGIME, endogenousInflation = false, phasingYears = DEFAULT_PHASING }, prefix = '') {
+  const validStress = stressId && Object.hasOwn(STRESS_TEST_BY_ID, stressId)
+  if (validStress) q.set(`${prefix}choc`, stressId)
+  else if (macroId && Object.hasOwn(MACRO_VARIANT_BY_ID, macroId)) q.set(`${prefix}m`, macroId)
   if (PHASING_YEARS.includes(phasingYears) && phasingYears !== DEFAULT_PHASING) q.set(`${prefix}rampe`, String(phasingYears))
   if (demandRegime && demandRegime !== DEFAULT_REGIME && DEMAND_REGIMES.includes(demandRegime)) q.set(`${prefix}reg`, demandRegime)
   if (endogenousInflation === true) q.set(`${prefix}inf`, '1')
@@ -39,8 +42,14 @@ function encodeCoreFields(q, { values = {}, macroId = null, lvt = null, demandRe
 
 function decodeCoreFields(q, prefix = '') {
   const out = { values: {}, macroId: null }
+  const choc = q.get(`${prefix}choc`)
   const m = q.get(`${prefix}m`)
-  if (m && Object.hasOwn(MACRO_VARIANT_BY_ID, m)) out.macroId = m
+  if (choc && Object.hasOwn(STRESS_TEST_BY_ID, choc)) {
+    out.stressId = choc
+    out.macroId = null
+  } else if (m && Object.hasOwn(MACRO_VARIANT_BY_ID, m)) {
+    out.macroId = m
+  }
   const reg = q.get(`${prefix}reg`)
   if (reg && reg !== DEFAULT_REGIME && DEMAND_REGIMES.includes(reg)) out.demandRegime = reg
   if (q.get(`${prefix}inf`) === '1') out.endogenousInflation = true
@@ -71,11 +80,11 @@ function decodeCoreFields(q, prefix = '') {
  * l'étalement pluriannuel non immédiat (`rampe=3|5`), les dynamiques avancées opt-in (`reg`, `inf=1`), le module LVT actif
  * et l'éventuel scénario épinglé A (`a=1&a.*`) sont écrits.
  */
-export function encodeScenario({ values = {}, horizon = DEFAULT_HORIZON, ysCase = DEFAULT_CASE, macroId = null, lvt = null, demandRegime = DEFAULT_REGIME, endogenousInflation = false, phasingYears = DEFAULT_PHASING, pinned = null } = {}) {
+export function encodeScenario({ values = {}, horizon = DEFAULT_HORIZON, ysCase = DEFAULT_CASE, macroId = null, stressId = null, lvt = null, demandRegime = DEFAULT_REGIME, endogenousInflation = false, phasingYears = DEFAULT_PHASING, pinned = null } = {}) {
   const q = new URLSearchParams()
   q.set('h', horizon)
   q.set('cas', ysCase)
-  encodeCoreFields(q, { values, macroId, lvt, demandRegime, endogenousInflation, phasingYears }, '')
+  encodeCoreFields(q, { values, macroId, stressId, lvt, demandRegime, endogenousInflation, phasingYears }, '')
   if (pinned && typeof pinned === 'object') {
     q.set('a', '1')
     const lbl = sanitizePinLabel(pinned.label)

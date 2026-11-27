@@ -1648,3 +1648,18 @@ body {
   vertical-align: middle;
   margin-left: 0.4em;
 }
+
+@media print {
+  .review-banner,
+  .header,
+  .nav-tabs,
+  .footer {
+    display: none !important;
+  }
+  .app,
+  .main-content {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+}

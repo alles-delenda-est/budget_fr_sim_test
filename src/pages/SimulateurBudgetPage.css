@@ -191,3 +191,62 @@
 .sb-module-details ul { padding-left: 1.1rem; line-height: 1.45; }
 /* Les pastilles longues (p. ex. « Effet d'offre de l'IR : non validé — avis demandé ») passent à la ligne : pas de débordement à 320 px. */
 .sb-lever-head .sb-badge { white-space: normal; max-width: 100%; }
+
+/* Stress-tests macroéconomiques (bloc dédié + bandeau ambré distinct du comparateur bleu) */
+.sb-stress-wrap { margin-top: 1.15rem; padding-top: 1rem; border-top: 1px dashed var(--color-border, #e0e0e0); }
+.sb-stress-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.35rem; }
+.sb-stress-head h3 { font-family: var(--font-serif); font-weight: 400; font-size: 1.125rem; margin: 0; }
+.sb-stress-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.65rem; }
+@media (min-width: 640px) { .sb-stress-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.sb-stress-btn:hover { border-color: #b45309; background: #fffbeb; }
+.sb-stress-btn .sb-preset-meta { color: #b45309; }
+.sb-stress-active { border-color: #b45309; box-shadow: inset 0 0 0 1px #b45309; background: #fef3c7; }
+.sb-stress-banner { margin: 1rem 0 0; padding: 0.85rem 1rem; border: 1px solid #b45309; border-radius: 6px; background: #fffbeb; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.sb-stress-banner .sb-btn { border-color: #b45309; color: #92400e; }
+.sb-stress-banner .sb-btn:hover { background: #fef3c7; }
+
+/* Bouton de copie Markdown de la note de synthèse */
+.sb-brief-copy { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; min-width: 0; }
+.sb-brief-fallback { font-family: monospace; font-size: 0.75rem; }
+
+/* Feuille d'impression A4 « Note de synthèse » : masquée à l'écran, rendue en Page 1 sous @media print */
+.sb-print-sheet { display: none; }
+
+@media print {
+  @page { size: A4 portrait; margin: 11mm 13mm; }
+  .sb-screen-only { display: none !important; }
+  .sb-layout { display: block !important; }
+  .sb-page { max-width: none !important; padding: 0 !important; }
+  .sb-print-sheet {
+    display: block !important;
+    font-size: 8.5pt;
+    line-height: 1.35;
+    color: #111;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .sb-print-header { border-bottom: 1.5px solid #222; padding-bottom: 4pt; margin-bottom: 6pt; }
+  .sb-print-header h1 { font-family: var(--font-serif); font-size: 14pt; margin: 0 0 2pt; }
+  .sb-print-meta { margin: 1pt 0; font-size: 8pt; color: #333; }
+  .sb-print-url { margin: 2pt 0 0; font-size: 7pt; color: #555; word-break: break-all; }
+  .sb-print-exec { background: #f6f7fb; border: 1px solid #d5d9ea; border-radius: 3pt; padding: 5pt 7pt; margin-bottom: 6pt; }
+  .sb-print-exec h2, .sb-print-sec h2 { font-family: var(--font-serif); font-size: 10pt; margin: 0 0 3pt; color: #111; }
+  .sb-print-exec ul { margin: 0; padding-left: 13pt; }
+  .sb-print-alerts { margin-top: 4pt; }
+  .sb-print-alert { margin: 2pt 0 0; padding: 3pt 5pt; border-left: 2.5pt solid #b45309; background: #fff7ed; font-size: 7.8pt; }
+  .sb-print-alert-critique { border-left-color: #b71c1c; background: #fdecea; }
+  .sb-print-sec { margin-bottom: 6pt; break-inside: avoid; }
+  .sb-print-empty { margin: 2pt 0; color: #555; }
+  .sb-print-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8pt; align-items: start; }
+  .sb-print-table { width: 100%; border-collapse: collapse; font-size: 7.7pt; font-variant-numeric: tabular-nums; margin-bottom: 3pt; }
+  .sb-print-table th, .sb-print-table td { border-bottom: 0.5pt solid #ccc; padding: 2pt 3pt; text-align: left; }
+  .sb-print-table thead th { font-size: 7pt; text-transform: uppercase; color: #444; border-bottom: 1pt solid #999; }
+  .sb-print-table tfoot th, .sb-print-table tfoot td { font-weight: 700; border-top: 1pt solid #333; }
+  .sb-print-table .sb-num { text-align: right; white-space: nowrap; }
+  .sb-print-stress { margin-top: 4pt; }
+  .sb-print-incid, .sb-print-anchors, .sb-print-flagged { margin: 2pt 0 0; font-size: 7.6pt; line-height: 1.3; }
+  .sb-print-charts { break-before: page; }
+  .sb-print-charts .sb-section { border-bottom: none; padding: 0; }
+  .sb-print-charts .sb-charts { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8pt !important; }
+  .sb-print-charts .recharts-responsive-container { height: 175px !important; }
+}
