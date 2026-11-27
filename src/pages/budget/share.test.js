@@ -117,4 +117,32 @@ describe('liens de scénario', () => {
     expect(dirty.pinned.label).toBe('ABC')
     expect(dirty.pinned.values).toEqual({ tva_normal: 5 })
   })
+  it('stress-tests (choc=) : aller-retour, priorité sur m=, rejet prototype, clés par défaut inchangées', () => {
+    expect(Object.keys(decodeScenario(''))).toEqual(['values', 'horizon', 'ysCase', 'macroId'])
+    const s = {
+      values: { tva_normal: 2 },
+      horizon: 'dixAns',
+      ysCase: 'haut',
+      macroId: null,
+      stressId: 'taux_100pb',
+      pinned: {
+        label: 'Plan sous OAT',
+        ysCase: 'central',
+        values: { dep_affaires_eco: -5 },
+        macroId: null,
+        stressId: 'spread_oat',
+      },
+    }
+    expect(encodeScenario(s)).toContain('&choc=taux_100pb')
+    expect(encodeScenario(s)).toContain('&a.choc=spread_oat')
+    expect(decodeScenario(encodeScenario(s))).toEqual(s)
+
+    // Priorité stricte de choc= sur m= et neutralisation des clés invalides / prototype
+    const conflict = decodeScenario('m=gouv_resf_2027&choc=recession_2027&tva_normal=1')
+    expect(conflict.stressId).toBe('recession_2027')
+    expect(conflict.macroId).toBeNull()
+    for (const bad of ['choc=__proto__', 'choc=constructor', 'choc=inconnu']) {
+      expect(decodeScenario(bad)).not.toHaveProperty('stressId')
+    }
+  })
 })

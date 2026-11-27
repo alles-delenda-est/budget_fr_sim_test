@@ -5,22 +5,23 @@ import { fmt, niceAxis, FISCAL_BENCHMARKS } from './helpers'
 import { splitSeriesAtYear, chartYDomain } from './warnings'
 
 const CHARTS = [
-  { id: 'debt', titre: 'Dette publique', unite: '% du PIB', key: 'debt', ref: 'debtRef', pin: 'debtPin', dec: 1, higherIsBetter: false },
-  { id: 'balance', titre: 'Solde public', unite: '% du PIB', key: 'balance', ref: 'balanceRef', pin: 'balancePin', dec: 2, higherIsBetter: true },
-  { id: 'interest', titre: 'Charge d\'intérêts', unite: '% du PIB', key: 'interest', ref: 'interestRef', pin: 'interestPin', dec: 2, higherIsBetter: false },
-  { id: 'gdp', titre: 'Écart de PIB à la référence', unite: '%', key: 'gdpGap', ref: 'gdpGapRef', pin: 'gdpGapPin', dec: 2, higherIsBetter: true },
-  { id: 'unemployment', titre: 'Chômage', unite: '% de la population active', key: 'unemployment', ref: 'unemploymentRef', pin: 'unemploymentPin', dec: 1, tickDec: 1, higherIsBetter: false },
+  { id: 'debt', titre: 'Dette publique', unite: '% du PIB', key: 'debt', ref: 'debtRef', centralRef: 'debtCentralRef', pin: 'debtPin', dec: 1, higherIsBetter: false },
+  { id: 'balance', titre: 'Solde public', unite: '% du PIB', key: 'balance', ref: 'balanceRef', centralRef: 'balanceCentralRef', pin: 'balancePin', dec: 2, higherIsBetter: true },
+  { id: 'interest', titre: 'Charge d\'intérêts', unite: '% du PIB', key: 'interest', ref: 'interestRef', centralRef: 'interestCentralRef', pin: 'interestPin', dec: 2, higherIsBetter: false },
+  { id: 'gdp', titre: 'Écart de PIB à la référence', unite: '%', key: 'gdpGap', ref: 'gdpGapRef', centralRef: 'gdpGapCentralRef', pin: 'gdpGapPin', dec: 2, higherIsBetter: true },
+  { id: 'unemployment', titre: 'Chômage', unite: '% de la population active', key: 'unemployment', ref: 'unemploymentRef', centralRef: 'unemploymentCentralRef', pin: 'unemploymentPin', dec: 1, tickDec: 1, higherIsBetter: false },
 ]
 
 /** Unité affichée dans l'infobulle : « % du PIB » tel quel, « % » pour les autres séries en pourcentage. */
 const tooltipUnit = (spec) => (spec.unite.startsWith('% du PIB') ? spec.unite : '%')
 
 /** Minimum et maximum à représenter : bornes du palier 2 si elles existent, sinon toutes les valeurs finies (avec inclusion du repère UE −3 % sur le solde public). */
-function extent(data, spec, domain, showBand = false, hasPin = false) {
+function extent(data, spec, domain, showBand = false, hasPin = false, hasStressTest = false) {
   let base = domain
   if (!base) {
     const vals = data.flatMap((r) => {
       const list = [r[spec.key], r[spec.ref]]
+      if (hasStressTest && spec.centralRef) list.push(r[spec.centralRef])
       if (hasPin && spec.pin) list.push(r[spec.pin])
       if (showBand && Array.isArray(r[`${spec.key}Band`])) list.push(...r[`${spec.key}Band`])
       return list
@@ -63,7 +64,7 @@ const shortPinName = (lbl) => {
   return s.length > 22 ? `${s.slice(0, 21)}…` : s
 }
 
-function SimpleChart({ spec, data, tier1, tier2, showBand, bandTier2Year, pinnedLabel, tier2A }) {
+function SimpleChart({ spec, data, tier1, tier2, showBand, bandTier2Year, pinnedLabel, tier2A, hasStressTest }) {
   const tick = { fontSize: 11 }
   const hasPin = Boolean(pinnedLabel)
   const beyond = tier2 ? `${spec.key}Beyond` : null
@@ -76,12 +77,12 @@ function SimpleChart({ spec, data, tier1, tier2, showBand, bandTier2Year, pinned
   })
   // Graduations rondes sur l'axe de la dette, du solde public (repère −3 % toujours visible) et sur tout graphique borné par le palier 2.
   const nice = (domain !== null || spec.id === 'debt' || spec.id === 'balance')
-    ? niceAxis(...extent(data, spec, domain, showBand, hasPin), { minStep: spec.id === 'debt' ? 10 : 1 })
+    ? niceAxis(...extent(data, spec, domain, showBand, hasPin, hasStressTest), { minStep: spec.id === 'debt' ? 10 : 1 })
     : null
   const firstYear = data.length ? data[0].year : null
   const lastYear = data.length ? data[data.length - 1].year : null
   const showTier2Label = tier2 && lastYear > tier2.year && firstYear !== null && (lastYear - tier2.year) / Math.max(1, lastYear - firstYear) >= 0.22
-  const maxDebt = spec.id === 'debt' ? Math.max(...data.flatMap((r) => [r[spec.key], r[spec.ref], hasPin ? r[spec.pin] : NaN]).filter(Number.isFinite), 0) : 0
+  const maxDebt = spec.id === 'debt' ? Math.max(...data.flatMap((r) => [r[spec.key], r[spec.ref], hasStressTest ? r[spec.centralRef] : NaN, hasPin ? r[spec.pin] : NaN]).filter(Number.isFinite), 0) : 0
   return (
     <figure className="sb-chart" aria-label={`${spec.titre} (${spec.unite})`}>
       <figcaption>{spec.titre} <span className="sb-muted">({spec.unite})</span></figcaption>
@@ -159,7 +160,10 @@ function SimpleChart({ spec, data, tier1, tier2, showBand, bandTier2Year, pinned
               isAnimationActive={false}
             />
           )}
-          <Line type="monotone" dataKey={spec.ref} name="Référence (sans levier)" stroke="#6b6b6b" strokeWidth={1.75} strokeDasharray="5 4" legendType="plainline" dot={false} connectNulls={false} isAnimationActive={false} />
+          <Line type="monotone" dataKey={spec.ref} name={hasStressTest ? 'Référence sous choc (sans levier)' : 'Référence (sans levier)'} stroke="#6b6b6b" strokeWidth={1.75} strokeDasharray="5 4" legendType="plainline" dot={false} connectNulls={false} isAnimationActive={false} />
+          {hasStressTest && (
+            <Line type="monotone" dataKey={spec.centralRef} name="Référence centrale (hors choc)" stroke="#a3a3a3" strokeWidth={1.25} strokeDasharray="2 3" legendType="plainline" dot={false} connectNulls={false} isAnimationActive={false} />
+          )}
         </ComposedChart>
       </ResponsiveContainer>
     </figure>
@@ -171,6 +175,7 @@ const Charts = memo(function Charts({
   tier1 = null,
   tier2 = null,
   hasMacroOverride = false,
+  hasStressTest = false,
   showBand = false,
   bandTier2Year = null,
   pinnedLabel = null,
@@ -184,7 +189,9 @@ const Charts = memo(function Charts({
         Trait plein : {pinnedLabel ? 'votre scénario actif (B)' : 'votre scénario'}.{' '}
         {pinnedLabel && 'Tiret-point vert foncé : scénario épinglé (A). '}
         {showBand && 'Zone ombrée : fourchette paramétrique déterministe des effets d\'offre (bas à haut, non probabiliste). '}
-        Pointillés longs : la référence, sans aucun levier. Tirets verts sur le solde public : seuil européen de {fmt(FISCAL_BENCHMARKS.maastrichtDeficitPct, 0)} % du PIB (Maastricht).
+        Pointillés longs : {hasStressTest ? 'la référence sous le même choc, sans aucun levier.' : 'la référence, sans aucun levier.'}{' '}
+        {hasStressTest && 'Pointillés fins gris clair : référence centrale hors choc. '}
+        Tirets verts sur le solde public : seuil européen de {fmt(FISCAL_BENCHMARKS.maastrichtDeficitPct, 0)} % du PIB (Maastricht).
         {hasMacroOverride && ' Avec un comparateur macroéconomique actif, le graphique « Écart de PIB à la référence » isole l\'effet des seuls leviers budgétaires (yD + yS, soit 0,00 % sans levier) par rapport au PIB nominal du comparateur.'}
         {tier1 && ` Pointillé orangé : seuil de ${W.tier1DebtPct} % de dette (record du Japon) et année où il est franchi.`}
         {tier2 && ' Trait gris pointillé après la ligne rouge : trajectoire hors de toute expérience historique (le modèle ne décrit plus une situation réaliste) ; l\'axe vertical l\'ignore, les valeurs restent lisibles au survol et dans l\'export CSV.'}
@@ -201,6 +208,7 @@ const Charts = memo(function Charts({
             bandTier2Year={bandTier2Year}
             pinnedLabel={pinnedLabel}
             tier2A={tier2A}
+            hasStressTest={hasStressTest}
           />
         ))}
       </div>

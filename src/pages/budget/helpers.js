@@ -6,6 +6,7 @@ import { PARAM_BY_ID } from '../../engine/params.js'
 import { SUPPLY_BY_LEVER, impliedJobs, roundJobs, supplyForCase } from '../../engine/supply.js'
 import { LVT_SCENARIO_BY_CODE } from '../../engine/lvt-snapshot.js'
 import { MACRO_VARIANT_BY_ID, matchesScenario, NEUTRAL_SCENARIOS } from './presets.js'
+import { STRESS_TEST_BY_ID } from './stressTests.js'
 
 const NF = (d) => new Intl.NumberFormat('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d })
 const FORMATS = { 0: NF(0), 1: NF(1), 2: NF(2), 3: NF(3) }
@@ -106,8 +107,8 @@ export function mayHaveSupplySpread(values, lvtSetting = null) {
   return hasSupplyLever || hasLvtSupply
 }
 
-/** Séries des graphiques : scénario actif B, fourchette optionnelle d'offre (bas–haut), scénario épinglé optionnel A et référence. */
-export function buildSeries(result, reference, { envelope = null, resultA = null } = {}) {
+/** Séries des graphiques : scénario actif B, fourchette optionnelle d'offre (bas–haut), scénario épinglé optionnel A, référence et référence centrale hors choc. */
+export function buildSeries(result, reference, { envelope = null, resultA = null, centralReference = null } = {}) {
   const bandTuple = (getVal) => {
     if (!envelope) return null
     const vb = getVal(envelope.bas)
@@ -122,6 +123,7 @@ export function buildSeries(result, reference, { envelope = null, resultA = null
   }
   return result.total.map((r, t) => {
     const b = reference.total[t]
+    const c = centralReference?.total?.[t] ?? null
     const a = resultA?.total?.[t] ?? null
     const debtB = bandTuple((e) => pct(e.total[t].debtRatio))
     const balB = bandTuple((e) => pct(e.total[t].balanceRatio))
@@ -131,19 +133,24 @@ export function buildSeries(result, reference, { envelope = null, resultA = null
     return {
       year: r.year,
       debt: pct(r.debtRatio), debtRef: pct(b.debtRatio),
+      ...(c ? { debtCentralRef: pct(c.debtRatio) } : {}),
       ...(a ? { debtPin: pct(a.debtRatio) } : {}),
       ...(debtB ? { debtBand: debtB.band, debtBas: debtB.bas, debtHaut: debtB.haut } : {}),
       balance: pct(r.balanceRatio), balanceRef: pct(b.balanceRatio),
+      ...(c ? { balanceCentralRef: pct(c.balanceRatio) } : {}),
       ...(a ? { balancePin: pct(a.balanceRatio) } : {}),
       ...(balB ? { balanceBand: balB.band, balanceBas: balB.bas, balanceHaut: balB.haut } : {}),
       interest: pct(r.interestRatio), interestRef: pct(b.interestRatio),
+      ...(c ? { interestCentralRef: pct(c.interestRatio) } : {}),
       ...(a ? { interestPin: pct(a.interestRatio), interestMdPin: num(a.interest) } : {}),
       ...(intB ? { interestBand: intB.band, interestBas: intB.bas, interestHaut: intB.haut } : {}),
       interestMd: num(r.interest), interestMdRef: num(b.interest),
       gdpGap: pct(r.gdpEffect), gdpGapRef: pct(b.gdpEffect),
+      ...(c ? { gdpGapCentralRef: pct(c.gdpEffect) } : {}),
       ...(a ? { gdpGapPin: pct(a.gdpEffect) } : {}),
       ...(gdpB ? { gdpGapBand: gdpB.band, gdpGapBas: gdpB.bas, gdpGapHaut: gdpB.haut } : {}),
       unemployment: num(r.unemployment), unemploymentRef: num(b.unemployment),
+      ...(c ? { unemploymentCentralRef: num(c.unemployment) } : {}),
       ...(a ? { unemploymentPin: num(a.unemployment) } : {}),
       ...(unempB ? { unemploymentBand: unempB.band, unemploymentBas: unempB.bas, unemploymentHaut: unempB.haut } : {}),
     }
@@ -503,15 +510,16 @@ const SHORT_LEVER_NAMES = {
 }
 
 /** Génère automatiquement un libellé court (≤ 40 car.) pour un scénario épinglé A. */
-export function defaultScenarioLabel({ values = {}, macroId = null, lvt = null } = {}) {
+export function defaultScenarioLabel({ values = {}, macroId = null, stressId = null, lvt = null } = {}) {
   const lvtActive = Boolean(lvt && lvt.scenario > 0)
-  const matched = NEUTRAL_SCENARIOS.find((sc) => matchesScenario(sc, values, macroId, lvtActive))
+  const matched = !stressId && NEUTRAL_SCENARIOS.find((sc) => matchesScenario(sc, values, macroId, lvtActive))
   if (matched) {
     const t = matched.titre.replace(/\s*\([^)]*\)\s*/g, ' ').trim()
     return t.length <= 40 ? t : `${t.slice(0, 39)}…`
   }
   const parts = []
-  if (macroId && MACRO_VARIANT_BY_ID[macroId]) parts.push('RESF 2027')
+  if (stressId && Object.hasOwn(STRESS_TEST_BY_ID, stressId)) parts.push(STRESS_TEST_BY_ID[stressId].shortLabel)
+  else if (macroId && MACRO_VARIANT_BY_ID[macroId]) parts.push('RESF 2027')
   for (const l of LEVERS) {
     const v = values?.[l.id]
     if (typeof v === 'number' && Number.isFinite(v) && v !== 0) {
@@ -524,11 +532,12 @@ export function defaultScenarioLabel({ values = {}, macroId = null, lvt = null }
   return head.length <= 40 ? head : `${head.slice(0, 39)}…`
 }
 
-/** Vrai si deux configurations de scénarios (leviers, cas, macro, LVT, régime, inflation, étalement) coïncident. */
+/** Vrai si deux configurations de scénarios (leviers, cas, macro, stress-test, LVT, régime, inflation, étalement) coïncident. */
 export function scenariosEqual(a, b) {
   if (!a || !b) return false
   if ((a.ysCase ?? 'central') !== (b.ysCase ?? 'central')) return false
   if ((a.macroId ?? null) !== (b.macroId ?? null)) return false
+  if ((a.stressId ?? null) !== (b.stressId ?? null)) return false
   if ((a.demandRegime ?? 'normal') !== (b.demandRegime ?? 'normal')) return false
   if (Boolean(a.endogenousInflation) !== Boolean(b.endogenousInflation)) return false
   if ((a.phasingYears ?? 1) !== (b.phasingYears ?? 1)) return false
@@ -552,10 +561,11 @@ export function moduleBlockRows(result, t, moduleId) {
   })
 }
 
-/** Identifiants de paramètres à expliquer pour les leviers actifs, les effets d'offre et un éventuel comparateur macroéconomique. */
-export function paramIdsFor(values, result, macroId = null) {
+/** Identifiants de paramètres à expliquer pour les leviers actifs, les effets d'offre, un comparateur macroéconomique ou un stress-test. */
+export function paramIdsFor(values, result, macroId = null, stressId = null) {
   const ids = ['dem.lambda', 'fisc.eps', 'fisc.eps_offre', 'emploi.kappa', 'dette.M', 'dette.beta']
   if (macroId && Object.hasOwn(MACRO_VARIANT_BY_ID, macroId)) ids.push(...MACRO_VARIANT_BY_ID[macroId].paramIds)
+  if (stressId && Object.hasOwn(STRESS_TEST_BY_ID, stressId)) ids.push(...STRESS_TEST_BY_ID[stressId].paramIds)
   for (const l of LEVERS) {
     if (!values?.[l.id]) continue
     if (l.rendParams) ids.push(...l.rendParams)

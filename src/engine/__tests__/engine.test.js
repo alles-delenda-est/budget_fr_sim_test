@@ -1382,6 +1382,18 @@ describe('montée en charge pluriannuelle (phasingYears : 1, 3, 5 ans)', () => {
       }
     }
   })
+
+  it('options.yDExog : bit-identique quand omis et déclenche stabilisateurs + Okun lorsqu\'il est fourni', () => {
+    const base = projectScenario({ levers: { tva_normal: 2 }, horizon: 'dixAns' })
+    const undefYD = projectScenario({ levers: { tva_normal: 2 }, horizon: 'dixAns', yDExog: undefined })
+    expect(undefYD.total).toEqual(base.total)
+
+    const choc = projectScenario({ levers: {}, horizon: 'dixAns', yDExog: [0, -0.015, -0.0105] })
+    const ref0 = projectScenario({ levers: {}, horizon: 'dixAns' })
+    expect(choc.total[1].yD).toBeCloseTo(-0.015, 10)
+    expect(choc.total[1].unemployment).toBeGreaterThan(ref0.total[1].unemployment)
+    expect(choc.total[1].balance).toBeLessThan(ref0.total[1].balance)
+  })
 })
 
 

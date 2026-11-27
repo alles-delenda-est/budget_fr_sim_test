@@ -66,7 +66,7 @@ export function buildExportRows(result, reference, eps, epsOffre) {
  * Contenu complet du CSV (avec BOM) : bloc d'en-tête (version, lien, horizon, cas, variante macro éventuelle, dynamiques avancées, modules actifs, leviers),
  * ligne vide, tableau. `modules` : [[libellé du module, réglage]] des modules actifs (p. ex. taxe sur la valeur du sol).
  */
-export function buildCsv({ stamp, url, horizonLabel, ysCase, phasingYears = 1, macroLabel = null, dynamicsLabel = null, pinnedMeta = null, modules = [], values, rows, columns = COLUMNS }) {
+export function buildCsv({ stamp, url, horizonLabel, ysCase, phasingYears = 1, macroLabel = null, stressLabel = null, dynamicsLabel = null, pinnedMeta = null, modules = [], values, rows, columns = COLUMNS }) {
   const headerRows = [
     [pinnedMeta ? 'Simulateur Budget France : comparaison scénario B vs scénario A' : 'Simulateur Budget France : export du scénario'],
     ['Version', stamp],
@@ -78,6 +78,7 @@ export function buildCsv({ stamp, url, horizonLabel, ysCase, phasingYears = 1, m
     headerRows.push(['Montée en charge des leviers', `Progressive sur ${phasingYears} ans (2027–${2026 + phasingYears}, hors calendrier légal retraites)`])
   }
   if (macroLabel) headerRows.push(['Hypothèses macroéconomiques', macroLabel])
+  if (stressLabel) headerRows.push(['Choc macroéconomique (stress-test)', stressLabel])
   if (dynamicsLabel) headerRows.push(['Dynamiques avancées (Day 1)', dynamicsLabel])
   if (pinnedMeta) {
     headerRows.push(['Scénario épinglé (A)', pinnedMeta.label])
@@ -91,7 +92,7 @@ export function buildCsv({ stamp, url, horizonLabel, ysCase, phasingYears = 1, m
   const lines = headerRows.map((cells) => cells.map(csvText).join(SEP))
   const active = LEVERS.filter((l) => typeof values?.[l.id] === 'number' && Number.isFinite(values[l.id]) && values[l.id] !== 0)
   if (active.length === 0) {
-    const why = modules?.length ? 'Aucun levier actif (modules seuls)' : macroLabel ? 'Aucun levier actif (comparateur macroéconomique seul)' : 'Aucun levier actif (scénario identique à la référence)'
+    const why = modules?.length ? 'Aucun levier actif (modules seuls)' : stressLabel ? 'Aucun levier actif (stress-test macroéconomique seul)' : macroLabel ? 'Aucun levier actif (comparateur macroéconomique seul)' : 'Aucun levier actif (scénario identique à la référence)'
     lines.push(csvText(why))
   }
   for (const l of active) lines.push([csvText(l.titre), csvNumber(values[l.id], 2), csvText(l.unite)].join(SEP))

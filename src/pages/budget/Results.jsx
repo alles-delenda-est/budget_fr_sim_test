@@ -3,6 +3,7 @@ import { PARAM_BY_ID } from '../../engine/params.js'
 import { LEVERS } from '../../engine/levers.js'
 import { LVT_SCENARIO_BY_CODE } from '../../engine/lvt-snapshot.js'
 import { MACRO_VARIANT_BY_ID } from './presets'
+import { STRESS_TEST_BY_ID } from './stressTests'
 import { fmt, deltaTone, visibleLines, HIDE_BELOW, debtMovesAgainstBalance, YEAR1_PARADOX_TEXT } from './helpers'
 import { betaRegimeText, tier1Text, tier2Text, tier2Explanation } from './warnings'
 import { InfoPopover, StatusBadge, ParamInfo } from './InfoPopover'
@@ -15,7 +16,8 @@ function Delta({ value, unit, lowerIsBetter, vsLabel = 'réf.', className = '' }
 function summarizePinnedScenario(pinned) {
   if (!pinned) return ''
   const parts = []
-  if (pinned.macroId && MACRO_VARIANT_BY_ID[pinned.macroId]) parts.push(MACRO_VARIANT_BY_ID[pinned.macroId].label)
+  if (pinned.stressId && Object.hasOwn(STRESS_TEST_BY_ID, pinned.stressId)) parts.push(STRESS_TEST_BY_ID[pinned.stressId].titre)
+  else if (pinned.macroId && MACRO_VARIANT_BY_ID[pinned.macroId]) parts.push(MACRO_VARIANT_BY_ID[pinned.macroId].label)
   for (const l of LEVERS) {
     const v = pinned.values?.[l.id]
     if (typeof v === 'number' && Number.isFinite(v) && v !== 0) parts.push(`${l.titre} ${fmt(v, 1, { signed: true })}`)

@@ -151,4 +151,18 @@ describe('buildCsv : module actif', () => {
     expect(csv).toContain("'=CMD(\"\"calc\"\")")
     expect(csv).toContain('Écart de solde total B − A (Md€)')
   })
+  it('inclut le libellé du stress-test (Choc macroéconomique) dans l\'en-tête CSV', () => {
+    const { r, ref } = scen({})
+    const csv = buildCsv({
+      stamp: 'v',
+      url: 'u',
+      horizonLabel: '10 ans',
+      ysCase: 'central',
+      stressLabel: 'Choc de taux (+100 pb)',
+      values: {},
+      rows: buildExportRows(r, ref, EPS, EPS_OFFRE),
+    })
+    expect(csv).toContain('Choc macroéconomique (stress-test);Choc de taux (+100 pb)')
+    expect(csv).toContain('Aucun levier actif (stress-test macroéconomique seul)')
+  })
 })
