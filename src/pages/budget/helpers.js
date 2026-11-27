@@ -54,6 +54,26 @@ export const DEMAND_REGIME_OPTIONS = [
   { id: 'endogene', label: 'Endogène (transition logistique sur chômage)' },
 ]
 
+export const PHASING_OPTIONS = [
+  { id: 1, label: 'Immédiate dès 2027 (1 an — défaut)' },
+  { id: 3, label: 'Progressive sur 3 ans (2027–2029)' },
+  { id: 5, label: 'Progressive sur 5 ans (2027–2031, type PSMT)' },
+]
+
+/** Repères budgétaires européens lus directement dans PARAMS (aucune constante économique dupliquée dans l'UI). */
+export const FISCAL_BENCHMARKS = Object.freeze({
+  maastrichtDeficitPct: PARAM_BY_ID['cmp.ue.solde_seuil'].value,
+  maastrichtDebtPct: PARAM_BY_ID['cmp.ue.dette_seuil'].value,
+  netExpCeilingsPct: Object.freeze({
+    2026: PARAM_BY_ID['cmp.ue.dpn_plafond.2026_2028'].value,
+    2027: PARAM_BY_ID['cmp.ue.dpn_plafond.2026_2028'].value,
+    2028: PARAM_BY_ID['cmp.ue.dpn_plafond.2026_2028'].value,
+    2029: PARAM_BY_ID['cmp.ue.dpn_plafond.2029'].value,
+  }),
+})
+
+const TARGET_EPS = 1e-9
+
 /** Pas du curseur d'un levier : 0,5 si l'amplitude est faible, 1 sinon. */
 export const sliderStep = (lever) => (lever.max - lever.min <= 10 ? 0.5 : 1)
 
@@ -151,12 +171,10 @@ export function deltaTone(delta, lowerIsBetter) {
 }
 
 /**
- * Décomposition, en Md€, de l'écart de solde (scénario − référence) l'année t. Exacte : la somme des lignes
- * (avant masquage) égale `ecart`. Niveaux, non variations annuelles : mesure ex ante, réaction des contribuables,
- * demande (stabilisateurs), effets d'offre (un par mesure et par cas), intérêts (taux et dette supplémentaire).
+ * Décomposition, en Md€, de l'écart de solde (scénario − référence / scénario de comparaison) l'année t. Exacte :
+ * la somme des lignes (avant masquage) égale `ecart` pour toute paire de scénarios issus de `projectScenario`.
  * @param {number} eps  paramètre fisc.eps : passage au solde de l'écart de PIB dû à la demande (E7)
- * @param {number} epsOffre  paramètre fisc.eps_offre (taux de prélèvements obligatoires, D13) : passage au solde de chaque effet d'offre ;
- *   doit être le même que dans le moteur pour que la décomposition reste exacte
+ * @param {number} epsOffre  paramètre fisc.eps_offre (taux de prélèvements obligatoires, D13) : passage au solde de chaque effet d'offre
  */
 export function decomposeAtYear(result, reference, t, eps, epsOffre) {
   const tot = result.total[t]
@@ -175,8 +193,11 @@ export function decomposeAtYear(result, reference, t, eps, epsOffre) {
       montant: macroRefDelta,
     })
   }
-  const modById = Object.fromEntries((result.modules ?? []).map((m) => [m.id, m]))
-  for (const [id, v] of Object.entries(tot.byInstrument)) {
+  const modById = Object.fromEntries([...(reference.modules ?? []), ...(result.modules ?? [])].map((m) => [m.id, m]))
+  const instIds = [...new Set([...Object.keys(tot.byInstrument ?? {}), ...Object.keys(refTot.byInstrument ?? {})])]
+  for (const id of instIds) {
+    const vB = tot.byInstrument?.[id] ?? { exAnte: 0, exPost: 0 }
+    const vA = refTot.byInstrument?.[id] ?? { exAnte: 0, exPost: 0 }
     const lever = LEVER_BY_ID[id]
     const titre = lever?.titre ?? modById[id]?.titre ?? id
     let behavSuffix = 'réaction des contribuables'
@@ -184,20 +205,38 @@ export function decomposeAtYear(result, reference, t, eps, epsOffre) {
     else if (lever?.offsetParam === 'comp.offset.age_legal') behavSuffix = 'effets de report (autres prestations)'
     else if (lever?.offsetGroup === 'prestations' || id === 'comptes_notionnels') behavSuffix = 'retour fiscal et aides (IR/CSG/ASPA/APL)'
     else if (lever?.type === 'depense') behavSuffix = 'effets de report (autres prestations)'
-    lines.push({ key: `static:${id}`, kind: 'statique', leverId: id, label: `${titre} : effet statique`, montant: v.exAnte })
-    lines.push({ key: `behav:${id}`, kind: 'comportement', leverId: id, label: `${titre} : ${behavSuffix}`, montant: v.exPost - v.exAnte })
+    lines.push({ key: `static:${id}`, kind: 'statique', leverId: id, label: `${titre} : effet statique`, montant: vB.exAnte - vA.exAnte })
+    lines.push({ key: `behav:${id}`, kind: 'comportement', leverId: id, label: `${titre} : ${behavSuffix}`, montant: (vB.exPost - vB.exAnte) - (vA.exPost - vA.exAnte) })
   }
-  let offreTotal = 0
-  const offreLines = result.supply.lignes.map((l) => {
-    const montant = epsOffre * l.yS[t] * tot.gdpBase
-    offreTotal += montant
-    const titre = LEVER_BY_ID[l.id]?.titre ?? l.libelle
+  const bSupplyById = Object.fromEntries((result.supply?.lignes ?? []).map((l) => [l.id, l]))
+  const aSupplyById = Object.fromEntries((reference.supply?.lignes ?? []).map((l) => [l.id, l]))
+  const supplyIds = [...new Set([...Object.keys(bSupplyById), ...Object.keys(aSupplyById)])]
+  let offreTotalB = 0
+  let offreTotalA = 0
+  const offreLines = supplyIds.map((sid) => {
+    const lB = bSupplyById[sid]
+    const lA = aSupplyById[sid]
+    const meta = lB ?? lA
+    const mB = lB ? epsOffre * lB.yS[t] * tot.gdpBase : 0
+    const mA = lA ? epsOffre * lA.yS[t] * refTot.gdpBase : 0
+    offreTotalB += mB
+    offreTotalA += mA
+    const ySDelta = (lB ? lB.yS[t] : 0) - (lA ? lA.yS[t] : 0)
+    const titre = LEVER_BY_ID[meta.id]?.titre ?? meta.libelle
     // Effet d'offre non validé (IR) : le libellé le dit, pour que le relecteur le voie dans la décomposition.
-    const label = l.statut === 'non validé' ? `${l.nomCourt ?? 'Effet d\'offre'} (cas ${l.cas}) : non validé — avis demandé` : `Effet d'offre (cas ${l.cas}) : ${titre}`
-    return { key: `offre:${l.id}`, kind: 'offre', leverId: l.id, label, detail: l.libelle, gdpPct: l.yS[t] * 100, montant }
+    const label = meta.statut === 'non validé' ? `${meta.nomCourt ?? 'Effet d\'offre'} (cas ${meta.cas}) : non validé — avis demandé` : `Effet d'offre (cas ${meta.cas}) : ${titre}`
+    return { key: `offre:${meta.id}`, kind: 'offre', leverId: meta.id, label, detail: meta.libelle, gdpPct: ySDelta * 100, montant: mB - mA }
   })
-  const stab = BLOCKS.reduce((s, b) => s + result.blocks[b][t].stabilisers, 0)
-  lines.push({ key: 'demande', kind: 'demande', label: 'Effet de demande (stabilisateurs automatiques)', detail: 'Part de l\'écart de PIB due à la demande, avant effets d\'offre.', gdpPct: tot.yD * 100, montant: stab - offreTotal })
+  const stabB = BLOCKS.reduce((s, b) => s + result.blocks[b][t].stabilisers, 0)
+  const stabA = BLOCKS.reduce((s, b) => s + reference.blocks[b][t].stabilisers, 0)
+  lines.push({
+    key: 'demande',
+    kind: 'demande',
+    label: 'Effet de demande (stabilisateurs automatiques)',
+    detail: 'Part de l\'écart de PIB due à la demande, avant effets d\'offre.',
+    gdpPct: (tot.yD - refTot.yD) * 100,
+    montant: (stabB - offreTotalB) - (stabA - offreTotalA),
+  })
   lines.push(...offreLines)
   const inflDelta = (tot.inflFiscal ?? 0) - (refTot.inflFiscal ?? 0) + inflRefDelta
   if (Math.abs(inflDelta) > 1e-12) {
@@ -212,6 +251,176 @@ export function decomposeAtYear(result, reference, t, eps, epsOffre) {
   lines.push({ key: 'interets', kind: 'interets', label: 'Intérêts (taux et dette supplémentaire, boule de neige)', detail: 'Variation de la charge d\'intérêts par rapport à la référence ; une charge plus basse améliore le solde.', montant: -(tot.interest - refTot.interest) })
   const ecart = tot.balance - refTot.balance
   return { year: tot.year, ecart, lines }
+}
+
+/**
+ * Solde primaire stabilisant le ratio dette/PIB en temps discret exact (E11) à l'année `t` (0 = 2026) :
+ *   SP*(t) = INT(t) − g_nom(t) × D(t−1),  sp*(t) = SP*(t) / Y(t).
+ * Par identité comptable exacte : Δ(D/Y)_t ≡ d_t − d_{t−1} = sp*(t) − sp(t) = effortGapMd / Y(t).
+ * Calcule aussi la cible tendancielle `spStarStruct` évaluée sur la croissance nominale de référence `g_t + π_t` (`gdpBaseExog`),
+ * insensible aux sauts ponctuels d'écart de PIB (paradoxe du dénominateur en Année 1).
+ */
+export function debtStabilizingAt(result, P, t) {
+  const row = result?.total?.[t]
+  if (!row || !P) return null
+  const prevGdp = t === 0 ? P['base.pib.2025'] : result.total[t - 1]?.gdp
+  const prevGdpExog = t === 0 ? P['base.pib.2025'] : (result.total[t - 1]?.gdpBaseExog ?? result.total[t - 1]?.gdpBase)
+  const prevDebt = t === 0 ? P['base.dette.2025'] : result.total[t - 1]?.debt
+  const curGdpExog = row.gdpBaseExog ?? row.gdpBase
+  if (!(prevGdp > 0) || !(row.gdp > 0) || !(prevGdpExog > 0) || !(curGdpExog > 0) || !Number.isFinite(prevDebt)) return null
+
+  const debtRatioPrev = prevDebt / prevGdp
+  const gNom = row.gdp / prevGdp - 1
+  const gNomExog = curGdpExog / prevGdpExog - 1
+  const iEff = prevDebt > 0 ? row.interest / prevDebt : 0
+  const spStarMd = row.interest - gNom * prevDebt
+  const spStarRatio = spStarMd / row.gdp
+  const spActualMd = row.primaryBalance
+  const spActualRatio = row.primaryBalanceRatio
+  const effortGapMd = spStarMd - spActualMd
+  const effortGapRatio = spStarRatio - spActualRatio
+
+  const spStarStructRatio = prevDebt > 0 && 1 + gNomExog > 0
+    ? ((iEff - gNomExog) / (1 + gNomExog)) * debtRatioPrev
+    : 0
+  const spStarStructMd = spStarStructRatio * row.gdp
+  const effortGapStructRatio = spStarStructRatio - spActualRatio
+  const effortGapStructMd = effortGapStructRatio * row.gdp
+
+  return {
+    year: row.year,
+    debtRatioPrevPct: pct(debtRatioPrev),
+    gNomPct: pct(gNom),
+    gNomExogPct: pct(gNomExog),
+    iEffPct: pct(iEff),
+    spActualMd: num(spActualMd),
+    spActualPct: pct(spActualRatio),
+    spStarMd: num(spStarMd),
+    spStarPct: pct(spStarRatio),
+    effortGapMd: num(effortGapMd),
+    effortGapPct: pct(effortGapRatio),
+    spStarStructMd: num(spStarStructMd),
+    spStarStructPct: pct(spStarStructRatio),
+    effortGapStructMd: num(effortGapStructMd),
+    effortGapStructPct: pct(effortGapStructRatio),
+  }
+}
+
+/**
+ * Classe une condition booléenne sur `t = 1..N` en 3 états mutuellement exclusifs :
+ * - `'sustained'` : condition vérifiée en fin d'horizon `N`, continûment depuis `year` ;
+ * - `'transient'` : vérifiée au moins une année `t < N`, mais reperdue en fin d'horizon (`firstYear`..`lastYear`) ;
+ * - `'unreached'` : jamais vérifiée sur `1..N`.
+ */
+export function classifyTrajectoryMilestone(flagsByT, years) {
+  const N = years.length - 1
+  if (N < 1) return { status: 'unreached' }
+  if (flagsByT[N]) {
+    let tStart = N
+    while (tStart > 1 && flagsByT[tStart - 1]) tStart -= 1
+    return { status: 'sustained', year: years[tStart] }
+  }
+  let firstIdx = -1
+  let lastIdx = -1
+  for (let t = 1; t < N; t++) {
+    if (flagsByT[t]) {
+      if (firstIdx === -1) firstIdx = t
+      lastIdx = t
+    }
+  }
+  if (firstIdx !== -1) {
+    return { status: 'transient', firstYear: years[firstIdx], lastYear: years[lastIdx] }
+  }
+  return { status: 'unreached' }
+}
+
+/**
+ * Évalue les repères budgétaires français et européens sur une trajectoire projetée :
+ * 1. Solde primaire stabilisant la dette en fin d'horizon (`endYearTarget`) ;
+ * 2. Jalon de stabilisation du ratio dette/PIB (`debtStabilization`, protégé contre le paradoxe de relance de 2027) ;
+ * 3. Jalon de retour du solde public consolidé au-dessus de −3,0 % du PIB (`deficit3Pct`, Protocole n° 12) ;
+ * 4. Proxy reconstitué de la règle européenne en dépense primaire nette sur la fenêtre du PSMT 2026–2029 (`euNetExpenditure`, statut `calculé (estimation)`).
+ */
+export function evaluateFiscalTargets(result, P) {
+  if (!result?.total?.length || !P) return null
+  const N = result.total.length - 1
+  const endYearTarget = debtStabilizingAt(result, P, N)
+
+  const d0 = result.total[0].debtRatio
+  const sp0 = result.total[0].primaryBalanceRatio
+  const row1 = result.total[1]
+  const paradox2027 = Boolean(
+    row1
+    && Number.isFinite(row1.debtRatio)
+    && row1.debtRatio - d0 <= TARGET_EPS
+    && row1.primaryBalanceRatio < sp0 - TARGET_EPS
+    && row1.yD > TARGET_EPS,
+  )
+
+  const stabFlags = result.total.map((row, t) => {
+    if (t === 0) return false
+    const prev = result.total[t - 1]
+    if (!Number.isFinite(row.debtRatio) || !Number.isFinite(prev.debtRatio)) return false
+    if (t === 1 && paradox2027) return false
+    return row.debtRatio - prev.debtRatio <= TARGET_EPS
+  })
+  const stabClass = classifyTrajectoryMilestone(stabFlags, result.years)
+  const endDeltaPp = N >= 1 ? pct(result.total[N].debtRatio - result.total[N - 1].debtRatio) : null
+
+  const thresholdRatio = FISCAL_BENCHMARKS.maastrichtDeficitPct / 100
+  const def3Flags = result.total.map((row, t) => t > 0 && Number.isFinite(row.balanceRatio) && row.balanceRatio >= thresholdRatio - TARGET_EPS)
+  const def3Class = classifyTrajectoryMilestone(def3Flags, result.years)
+
+  let euNetExpenditure = null
+  if (N >= 3 && P['base.pib.2025'] > 0 && Number.isFinite(P['base.recettes.apu']) && Number.isFinite(P['ref.spb_2026'])) {
+    const gPrim0 = P['base.recettes.apu'] / P['base.pib.2025'] - P['ref.spb_2026'] / 100
+    const dA0 = result.total[0].driftA
+    const dB0 = result.total[0].driftB
+    const ne = [0, 1, 2, 3].map((t) => {
+      const row = result.total[t]
+      const refPrimSpend = (gPrim0 + (row.driftA - dA0) + (row.driftB - dB0)) * row.gdpBase
+      const discEffort = Object.entries(row.byInstrument ?? {}).reduce((sum, [id, v]) => {
+        if (id === 'taxe_valeur_sol') return sum
+        if (id === 'age_legal') return sum + v.exPost
+        return sum + v.exAnte
+      }, 0)
+      return Math.max(1e-6, refPrimSpend - discEffort)
+    })
+    const c27 = FISCAL_BENCHMARKS.netExpCeilingsPct[2027] / 100
+    const c28 = FISCAL_BENCHMARKS.netExpCeilingsPct[2028] / 100
+    const c29 = FISCAL_BENCHMARKS.netExpCeilingsPct[2029] / 100
+    const cumCeiling = (1 + c27) * (1 + c28) * (1 + c29) - 1
+    const avgCeiling = (1 + cumCeiling) ** (1 / 3) - 1
+    const cumGrowth = ne[3] / ne[0] - 1
+    const avgGrowth = (ne[3] / ne[0]) ** (1 / 3) - 1
+    euNetExpenditure = {
+      baseYear: result.years[0],
+      endYear: result.years[3],
+      annualGrowthPct: {
+        2027: pct(ne[1] / ne[0] - 1),
+        2028: pct(ne[2] / ne[1] - 1),
+        2029: pct(ne[3] / ne[2] - 1),
+      },
+      cumGrowthPct: pct(cumGrowth),
+      cumCeilingPct: pct(cumCeiling),
+      avgGrowthPct: pct(avgGrowth),
+      avgCeilingPct: pct(avgCeiling),
+      withinCeiling: cumGrowth <= cumCeiling + TARGET_EPS,
+      status: 'calculé (estimation)',
+    }
+  }
+
+  return {
+    endYear: result.years[N],
+    endYearTarget,
+    debtStabilization: { ...stabClass, endDeltaPp, paradox2027 },
+    deficit3Pct: {
+      ...def3Class,
+      endBalancePct: pct(result.total[N].balanceRatio),
+      thresholdPct: FISCAL_BENCHMARKS.maastrichtDeficitPct,
+    },
+    euNetExpenditure,
+  }
 }
 
 /** Vrai si au moins une ligne d'offre du résultat a un effet non nul dans le cas choisi (sinon bas / central / haut sont sans effet). */

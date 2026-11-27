@@ -23,10 +23,12 @@ import {
   decomposeAtYear,
   blocksAt,
   hasSupplyEffect,
+  evaluateFiscalTargets,
+  FISCAL_BENCHMARKS,
   SUPPLY_CASES,
 } from './budget/helpers'
 import { evaluateWarnings, splitSeriesAtYear, visibleDomain } from './budget/warnings'
-import { WarningBanner, DecompositionTable, BlocksTable } from './budget/Results'
+import { WarningBanner, DecompositionTable, BlocksTable, TargetsSummary } from './budget/Results'
 import { InfoPopover, ParamInfo, StatusBadge } from './budget/InfoPopover'
 import JobsNote from './budget/JobsNote'
 import {
@@ -79,17 +81,23 @@ function DeltaLine({ value, unit, lowerIsBetter }) {
   return <span className={`sb-delta sb-delta-${tone}`}>{fmt(value, 1, { signed: true })} {unit} vs réf.</span>
 }
 
-function extentOf(data, key, refKey, domain) {
-  if (domain) return domain
-  const vals = data.flatMap((r) => [r[key], r[refKey]]).filter(Number.isFinite)
-  return vals.length ? [Math.min(...vals), Math.max(...vals)] : [NaN, NaN]
+function extentOf(data, key, refKey, domain, isBalance = false) {
+  let base = domain
+  if (!base) {
+    const vals = data.flatMap((r) => [r[key], r[refKey]]).filter(Number.isFinite)
+    base = vals.length ? [Math.min(...vals), Math.max(...vals)] : [NaN, NaN]
+  }
+  if (isBalance && Number.isFinite(base[0]) && Number.isFinite(base[1])) {
+    return [base[0], Math.max(base[1], FISCAL_BENCHMARKS.maastrichtDeficitPct + 0.5)]
+  }
+  return base
 }
 
-function DualLineChart({ id, titre, unite, data, dataKey, refKey, dec = 1, tier1 = null, tier2 = null, isDebt = false }) {
+function DualLineChart({ id, titre, unite, data, dataKey, refKey, dec = 1, tier1 = null, tier2 = null, isDebt = false, isBalance = false }) {
   const tick = { fontSize: 11 }
   const beyond = tier2 ? `${dataKey}Beyond` : null
   const domain = visibleDomain(data, dataKey, refKey, tier2?.year)
-  const nice = (domain !== null || isDebt) ? niceAxis(...extentOf(data, dataKey, refKey, domain), { minStep: isDebt ? 10 : 1 }) : null
+  const nice = (domain !== null || isDebt || isBalance) ? niceAxis(...extentOf(data, dataKey, refKey, domain, isBalance), { minStep: isDebt ? 10 : 1 }) : null
   const firstYear = data.length ? data[0].year : null
   const lastYear = data.length ? data[data.length - 1].year : null
   const showTier2Label = tier2 && lastYear > tier2.year && firstYear !== null && (lastYear - tier2.year) / Math.max(1, lastYear - firstYear) >= 0.22
@@ -133,6 +141,17 @@ function DualLineChart({ id, titre, unite, data, dataKey, refKey, dec = 1, tier1
             />
           )}
           {isDebt && tier1 && <ReferenceLine x={tier1.year} stroke="#bf4000" strokeDasharray="2 4" />}
+          {isBalance && (
+            <ReferenceLine
+              y={FISCAL_BENCHMARKS.maastrichtDeficitPct}
+              stroke="#2e7d32"
+              strokeOpacity={0.75}
+              strokeWidth={1.25}
+              strokeDasharray="4 3"
+              ifOverflow="hidden"
+              label={{ value: `Seuil UE ${fmt(FISCAL_BENCHMARKS.maastrichtDeficitPct, 0)} %`, position: 'insideTopLeft', fontSize: 10, fill: '#2e7d32' }}
+            />
+          )}
           {tier2 && <ReferenceLine x={tier2.year} stroke="#b71c1c" strokeWidth={1.5} />}
           <Line type="monotone" dataKey={dataKey} name="Scénario" stroke="#5c6bc0" strokeWidth={2.5} dot={false} connectNulls={false} isAnimationActive={false} />
           {beyond && (
@@ -203,6 +222,7 @@ export default function SimulateurRetraitesPage() {
   const yearIdx = Math.min(Math.max(yearIdxRaw, 1), N)
 
   const warnings = useMemo(() => evaluateWarnings(result), [result])
+  const targets = useMemo(() => evaluateFiscalTargets(result, activeP), [result, activeP])
   const series = useMemo(() => buildPensionSeries(result, reference, activeP), [result, reference, activeP])
   const splitSeries = useMemo(() => splitSeriesAtYear(series, warnings.tier2?.year), [series, warnings.tier2?.year])
   const snapshots = useMemo(() => buildPensionSnapshots(result, reference, activeP), [result, reference, activeP])
@@ -571,6 +591,7 @@ export default function SimulateurRetraitesPage() {
                 </div>
               ))}
             </div>
+            <TargetsSummary targets={targets} showEuNetExp={false} />
           </section>
 
           {/* GRAPHIQUES */}
@@ -646,6 +667,7 @@ export default function SimulateurRetraitesPage() {
                 dec={2}
                 tier1={warnings.tier1}
                 tier2={warnings.tier2}
+                isBalance
               />
             </div>
           </section>

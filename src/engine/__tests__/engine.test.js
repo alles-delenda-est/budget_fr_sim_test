@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { PARAMS, PARAM_BY_ID, STATUSES, resolveParams } from '../params.js'
-import { LEVERS, LEVER_BY_ID, STRUCTURAL_LEVERS, QUALITATIVE_NOTES, staticYield, thetaElasticity, thetaAtRate, leverTheta, BLOCKS } from '../levers.js'
-import { projectScenario, HORIZONS, issuanceRate, deepFreeze, effectiveMultiplier, DEMAND_REGIMES, DECOMPOSITION_LABELS } from '../project.js'
+import { LEVERS, LEVER_BY_ID, STRUCTURAL_LEVERS, QUALITATIVE_NOTES, staticYield, thetaElasticity, thetaAtRate, leverTheta, effectiveRampFor, BLOCKS } from '../levers.js'
+import { projectScenario, HORIZONS, issuanceRate, deepFreeze, effectiveMultiplier, DEMAND_REGIMES, PHASING_YEARS, DEFAULT_PHASING_YEARS, DECOMPOSITION_LABELS } from '../project.js'
 import { TEST_MODULE, validateModuleDefinition, runModule } from '../modules.js'
 import { NDC_MODULE } from '../ndc-module.js'
 import { LVT_MODULE } from '../lvt-module.js'
@@ -1306,6 +1306,81 @@ describe('Phase 3 (opt-in) : multiplicateurs de récession et inflation endogèn
     const zeroInt = projectScenario({ overrides: { 'dette.i_moy_2025': 0, 'dette.y_btf': 0, 'dette.y_moyen': 0, 'dette.y_long': 0, 'dette.beta': 0 } })
     expect(zeroInt.total[2].interest).toBe(0)
     expect(zeroInt.decomposition[2].interetsStock).toBe(0)
+  })
+})
+
+describe('montée en charge pluriannuelle (phasingYears : 1, 3, 5 ans)', () => {
+  it('phasingYears = 1 par défaut est bit-identique à l\'option omise ; rejette les valeurs invalides', () => {
+    expect(PHASING_YEARS).toEqual([1, 3, 5])
+    expect(DEFAULT_PHASING_YEARS).toBe(1)
+    const a = projectScenario({ levers: { tva_normal: 3, dep_affaires_eco: -15, age_legal: 1 }, horizon: 'trenteAns' })
+    const b = projectScenario({ levers: { tva_normal: 3, dep_affaires_eco: -15, age_legal: 1 }, horizon: 'trenteAns', phasingYears: 1 })
+    expect(b).toEqual(a)
+    for (const bad of [0, -1, 1.5, NaN, Infinity, '3', 31]) {
+      expect(() => projectScenario({ phasingYears: bad })).toThrow(/phasingYears/)
+    }
+  })
+
+  it('étale linéairement les leviers ordinaires sur 3 et 5 ans, lisse le choc de demande E4 et préserve strictement age_legal (LFSS 2026)', () => {
+    const o = { 'fisc.eps': 0, 'fisc.eps_offre': 0 }
+    const r3 = projectScenario({ levers: { dep_defense: -15, age_legal: 1 }, overrides: o, phasingYears: 3 })
+    const r1 = projectScenario({ levers: { dep_defense: -15, age_legal: 1 }, overrides: o, phasingYears: 1 })
+    // dep_defense (centrales seul) monte à 1/3, 2/3, 3/3 en 2027..2029
+    const defExAnte = (r, t) => r.blocks.centrales[t].leversExAnte / r.total[t].gdpBase * Y0
+    const fullDef = staticYield(LEVER_BY_ID.dep_defense, -15, P)
+    expect(defExAnte(r3, 0)).toBe(0)
+    expect(defExAnte(r3, 1)).toBeCloseTo(fullDef / 3, 8)
+    expect(defExAnte(r3, 2)).toBeCloseTo((2 * fullDef) / 3, 8)
+    expect(defExAnte(r3, 3)).toBeCloseTo(fullDef, 8)
+    expect(defExAnte(r3, 8)).toBeCloseTo(fullDef, 8)
+    // age_legal (securiteSociale seul) conserve intégralement son calendrier légal LFSS 2026 et son yS sans double rampe
+    for (let t = 0; t <= 10; t++) {
+      expect(r3.blocks.securiteSociale[t].leversExAnte).toBeCloseTo(r1.blocks.securiteSociale[t].leversExAnte, 12)
+      expect(r3.total[t].yS).toBeCloseTo(r1.total[t].yS, 12)
+    }
+    expect(effectiveRampFor(LEVER_BY_ID.age_legal, 1, 5)).toEqual(LEVER_BY_ID.age_legal.defaultRamp)
+    expect(effectiveRampFor(LEVER_BY_ID.age_legal, -1, 5)).toEqual(LEVER_BY_ID.age_legal.defaultRampDown)
+    expect(effectiveRampFor(LEVER_BY_ID.tva_normal, 2, 5)).toEqual({ start: 1, years: 5 })
+    expect(effectiveRampFor(LEVER_BY_ID.tva_normal, 2, 1)).toBeNull()
+
+    // Lissage du pic de demande E4 : sur 3 ans et 5 ans, le creux d'activité maximal |yD| est nettement réduit
+    const shock1 = projectScenario({ levers: { dep_affaires_eco: -20 }, phasingYears: 1 })
+    const shock3 = projectScenario({ levers: { dep_affaires_eco: -20 }, phasingYears: 3 })
+    const shock5 = projectScenario({ levers: { dep_affaires_eco: -20 }, phasingYears: 5 })
+    const peakAbsYd = (r) => Math.max(...r.total.map((row) => Math.abs(row.yD)))
+    expect(Math.abs(shock3.total[1].yD)).toBeCloseTo(Math.abs(shock1.total[1].yD) / 3, 10)
+    expect(Math.abs(shock5.total[1].yD)).toBeCloseTo(Math.abs(shock1.total[1].yD) / 5, 10)
+    expect(peakAbsYd(shock3)).toBeCloseTo(peakAbsYd(shock1) * (1 + 0.7 + 0.49) / 3, 6)
+    expect(peakAbsYd(shock5)).toBeLessThan(peakAbsYd(shock1) * 0.57)
+  })
+
+  it('évalue θ au taux effectif de l\'année pendant la rampe et conserve les identités de blocs et de décomposition', () => {
+    // IS n'a pas de θ_réel dominant θ : θ(IS +10 pts) > θ(IS +2 pts en année 1 d'une rampe 5 ans)
+    const is5 = projectScenario({ levers: { is: 10 }, phasingYears: 5, overrides: { 'offre.is.eps_k': 0 } })
+    const thY1 = 1 - is5.total[1].byInstrument.is.exPost / is5.total[1].byInstrument.is.exAnte
+    const thY5 = 1 - is5.total[5].byInstrument.is.exPost / is5.total[5].byInstrument.is.exAnte
+    expect(thY1).toBeCloseTo(leverTheta(LEVER_BY_ID.is, 2, P), 10)
+    expect(thY5).toBeCloseTo(leverTheta(LEVER_BY_ID.is, 10, P), 10)
+    expect(thY1).toBeLessThan(thY5)
+
+    for (const k of [3, 5]) {
+      const r = projectScenario({
+        levers: { tva_normal: 3, ir: 15, is: 5, dep_enseignement: -15, age_legal: 1 },
+        horizon: 'trenteAns',
+        phasingYears: k,
+        demandRegime: 'recession',
+        endogenousInflation: true,
+      })
+      for (let t = 0; t < r.total.length; t++) {
+        const sumBal = BLOCKS.reduce((s, b) => s + r.blocks[b][t].balance, 0)
+        expect(sumBal).toBeCloseTo(r.total[t].balance, 8)
+        if (t > 0) {
+          const d = r.decomposition[t]
+          const s = d.refGrowth + d.refDrift + d.leviers + d.comportement + d.stabilisateurs + d.offre.reduce((a, o) => a + o.montant, 0) + d.inflation + d.interetsTaux + d.interetsStock
+          expect(s).toBeCloseTo(d.total, 6)
+        }
+      }
+    }
   })
 })
 

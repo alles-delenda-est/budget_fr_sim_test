@@ -61,6 +61,18 @@
 .sb-delta-moins-bien { color: var(--color-negative, #b71c1c); }
 .sb-delta-neutre { color: var(--color-ink-muted, #6b6b6b); }
 
+/* Repères budgétaires français et européens (sous les fiches Résultats clés) */
+.sb-targets { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 0.6rem; margin-top: 0.75rem; }
+.sb-target { border: 1px solid var(--color-border, #e0e0e0); border-radius: 6px; padding: 0.6rem 0.7rem; background: var(--color-background, #fafafa); min-width: 0; }
+.sb-target-head { display: flex; align-items: center; justify-content: space-between; gap: 0.35rem; margin-bottom: 0.25rem; }
+.sb-target-title { font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-ink-muted, #6b6b6b); min-width: 0; }
+.sb-target-val { font-size: 0.875rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.3; margin-bottom: 0.2rem; }
+.sb-target-sub { font-size: 0.75rem; line-height: 1.35; color: var(--color-ink-muted, #6b6b6b); font-variant-numeric: tabular-nums; }
+.sb-target-sub .sb-badge { font-size: 0.6875rem; padding: 0.05rem 0.35rem; margin-right: 0.25rem; white-space: normal; }
+.sb-target-ok { color: var(--color-positive, #2e7d32); }
+.sb-target-warn { color: var(--color-warning, #bf4000); }
+.sb-target-unmet { color: var(--color-ink-light, #4a4a4a); }
+
 .sb-charts { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
 @media (min-width: 700px) { .sb-charts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .sb-chart { margin: 0; min-width: 0; }

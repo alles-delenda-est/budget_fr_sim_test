@@ -85,4 +85,16 @@ describe('liens de scénario', () => {
     expect(decodeScenario('reg=bad&inf=yes')).not.toHaveProperty('endogenousInflation')
     expect(decodeScenario('reg=normal&inf=0')).not.toHaveProperty('demandRegime')
   })
+  it('étalement pluriannuel (rampe=3|5) : omis à 1 an, aller-retour, valeurs invalides ignorées', () => {
+    expect(encodeScenario({ values: { tva_normal: 2 }, phasingYears: 1 })).toBe('h=dixAns&cas=central&tva_normal=2')
+    for (const ry of [3, 5]) {
+      const s = { values: { tva_normal: 2 }, horizon: 'dixAns', ysCase: 'central', macroId: null, phasingYears: ry }
+      expect(encodeScenario(s)).toBe(`h=dixAns&cas=central&rampe=${ry}&tva_normal=2`)
+      expect(decodeScenario(encodeScenario(s))).toEqual(s)
+    }
+    for (const bad of ['rampe=1', 'rampe=2', 'rampe=4', 'rampe=0', 'rampe=-3', 'rampe=3.5', 'rampe=abc', 'rampe=']) {
+      expect(decodeScenario(bad)).not.toHaveProperty('phasingYears')
+      expect(decodeScenario(bad).values).toEqual({})
+    }
+  })
 })
