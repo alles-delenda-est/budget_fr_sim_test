@@ -4,28 +4,30 @@
 // Fonctions pures, testées dans share.test.js.
 
 import { LEVERS, LEVER_BY_ID } from '../../engine/levers.js'
-import { HORIZONS, DEMAND_REGIMES } from '../../engine/project.js'
+import { HORIZONS, DEMAND_REGIMES, PHASING_YEARS, DEFAULT_PHASING_YEARS } from '../../engine/project.js'
 import { LVT_SCENARIO_CODES } from '../../engine/lvt-module.js'
 import { MACRO_VARIANT_BY_ID } from './presets.js'
 
 export const DEFAULT_HORIZON = 'dixAns'
 export const DEFAULT_CASE = 'central'
 export const DEFAULT_REGIME = 'normal'
+export const DEFAULT_PHASING = DEFAULT_PHASING_YEARS
 const CASES = ['bas', 'central', 'haut']
-const RESERVED = new Set(['h', 'cas', 'm', 'lvt', 'lvt_ocde', 'reg', 'inf'])
+const RESERVED = new Set(['h', 'cas', 'm', 'lvt', 'lvt_ocde', 'reg', 'inf', 'rampe'])
 /** Module « taxe sur la valeur du sol » inactif (défaut) : scénario 0, borne OCDE non incluse. */
 export const DEFAULT_LVT = Object.freeze({ scenario: 0, ocde: 0 })
 const lvtActive = (lvt) => Number.isInteger(lvt?.scenario) && lvt.scenario > 0 && LVT_SCENARIO_CODES.includes(lvt.scenario)
 
 /**
  * Chaîne de requête (sans « ? ») d'un scénario. Seuls les leviers non nuls, une éventuelle variante macroéconomique valide,
- * les dynamiques avancées opt-in (reg, inf=1) et le module « taxe sur la valeur du sol » s'il est actif sont écrits.
+ * l'étalement pluriannuel non immédiat (`rampe=3|5`), les dynamiques avancées opt-in (`reg`, `inf=1`) et le module LVT actif sont écrits.
  */
-export function encodeScenario({ values = {}, horizon = DEFAULT_HORIZON, ysCase = DEFAULT_CASE, macroId = null, lvt = null, demandRegime = DEFAULT_REGIME, endogenousInflation = false } = {}) {
+export function encodeScenario({ values = {}, horizon = DEFAULT_HORIZON, ysCase = DEFAULT_CASE, macroId = null, lvt = null, demandRegime = DEFAULT_REGIME, endogenousInflation = false, phasingYears = DEFAULT_PHASING } = {}) {
   const q = new URLSearchParams()
   q.set('h', horizon)
   q.set('cas', ysCase)
   if (macroId && Object.hasOwn(MACRO_VARIANT_BY_ID, macroId)) q.set('m', macroId)
+  if (PHASING_YEARS.includes(phasingYears) && phasingYears !== DEFAULT_PHASING) q.set('rampe', String(phasingYears))
   if (demandRegime && demandRegime !== DEFAULT_REGIME && DEMAND_REGIMES.includes(demandRegime)) q.set('reg', demandRegime)
   if (endogenousInflation === true) q.set('inf', '1')
   for (const l of LEVERS) {
@@ -61,6 +63,11 @@ export function decodeScenario(query) {
   const reg = q.get('reg')
   if (reg && reg !== DEFAULT_REGIME && DEMAND_REGIMES.includes(reg)) out.demandRegime = reg
   if (q.get('inf') === '1') out.endogenousInflation = true
+  const rampeRaw = q.get('rampe')
+  if (rampeRaw && /^\d+$/.test(rampeRaw.trim())) {
+    const ry = Number(rampeRaw.trim())
+    if (PHASING_YEARS.includes(ry) && ry !== DEFAULT_PHASING) out.phasingYears = ry
+  }
   for (const [key, raw] of q.entries()) {
     if (RESERVED.has(key) || !Object.hasOwn(LEVER_BY_ID, key) || raw.trim() === '') continue
     const x = Number(raw)

@@ -7,9 +7,10 @@ import { LVT_MODULE } from '../../engine/lvt-module.js'
 import {
   fmt, num, buildSeries, snapshotAt, decomposeAtYear, visibleLines, blocksAt, paramIdsFor, groupedLevers,
   extremeLevers, hasSupplyEffect, moduleBlockRows, deltaTone, isFlagged, paramRange, leverGroup, sliderStep, debtMovesAgainstBalance, niceAxis, YEAR1_PARADOX_TEXT,
-  fmtJobs, jobsNote,
+  fmtJobs, jobsNote, FISCAL_BENCHMARKS, debtStabilizingAt, evaluateFiscalTargets,
 } from './helpers.js'
-import { overridesForMacro } from './presets.js'
+import { resolveParams } from '../../engine/params.js'
+import { NEUTRAL_SCENARIOS, overridesForMacro } from './presets.js'
 
 const EPS = PARAM_BY_ID['fisc.eps'].value
 const EPS_OFFRE = PARAM_BY_ID['fisc.eps_offre'].value
@@ -347,5 +348,141 @@ describe('note « emplois implicites » du levier âge légal', () => {
     expect(jobsNote('age_legal', -2, P, 'haut')).toMatchObject({ sigma: 0.3, jobsPerUnit: 90000, jobsForX: -190000 })
     expect(jobsNote('age_legal', -1, P, 'bas')).toMatchObject({ sigma: 0.7, jobsPerUnit: 220000, jobsForX: -220000 })
     expect(jobsNote('tva_normal', 1, P)).toBeNull()
+  })
+})
+
+describe('repères budgétaires français et européens (sp*, Maastricht −3 %, règle UE DPN 2026–2029)', () => {
+  const P0 = resolveParams()
+
+  it('vérifie l\'identité exacte en temps discret Δ(D/Y)_t ≡ sp*(t) − sp(t) sur tous les horizons, régimes, modules et inflations', () => {
+    expect(FISCAL_BENCHMARKS.maastrichtDeficitPct).toBe(-3)
+    expect(FISCAL_BENCHMARKS.maastrichtDebtPct).toBe(60)
+    expect(FISCAL_BENCHMARKS.netExpCeilingsPct).toEqual({ 2026: 1.2, 2027: 1.2, 2028: 1.2, 2029: 1.1 })
+
+    const configs = [
+      { levers: {}, horizon: 'dixAns' },
+      { levers: extremeLevers('min'), horizon: 'dixAns', ysCase: 'bas' },
+      { levers: extremeLevers('max'), horizon: 'trenteAns', ysCase: 'haut' },
+      { levers: { tva_tous_taux: 3, dep_affaires_eco: -20 }, horizon: 'jusqua2040', demandRegime: 'recession', endogenousInflation: true, phasingYears: 3 },
+      { levers: { age_legal: 1 }, modules: [{ module: NDC_MODULE, levers: { actif: 1 } }, { module: LVT_MODULE, levers: { scenario: 4 } }], horizon: 'trenteAns' },
+    ]
+    for (const cfg of configs) {
+      const r = projectScenario(cfg)
+      const baseRatio2025 = P0['base.dette.2025'] / P0['base.pib.2025']
+      for (let t = 0; t < r.total.length; t++) {
+        const sp = debtStabilizingAt(r, P0, t)
+        const prevRatio = t === 0 ? baseRatio2025 : r.total[t - 1].debtRatio
+        const actualDeltaPp = (r.total[t].debtRatio - prevRatio) * 100
+        expect(sp.effortGapPct).toBeCloseTo(actualDeltaPp, 11)
+        expect((sp.effortGapMd / r.total[t].gdp) * 100).toBeCloseTo(sp.effortGapPct, 11)
+      }
+    }
+    // Sur la référence sans levier ni inflation endogène : sp* ex post et sp* tendanciel coïncident exactement
+    const ref = projectScenario({ horizon: 'dixAns' })
+    for (let t = 0; t < ref.total.length; t++) {
+      const sp = debtStabilizingAt(ref, P0, t)
+      expect(sp.spStarPct).toBeCloseTo(sp.spStarStructPct, 11)
+      expect(sp.effortGapMd).toBeCloseTo(sp.effortGapStructMd, 11)
+    }
+    const sp2026 = debtStabilizingAt(ref, P0, 0)
+    const sp2036 = debtStabilizingAt(ref, P0, 10)
+    expect(sp2026.spStarPct).toBeCloseTo(-0.52, 2)
+    expect(sp2026.effortGapMd).toBeCloseTo(70.0, 1)
+    expect(sp2036.spStarPct).toBeCloseTo(2.65, 2)
+    expect(sp2036.effortGapMd).toBeCloseTo(242.5, 1)
+  })
+
+  it('distingue sp* réalisé et sp* tendanciel lors d\'un choc d\'Année 1 et filtre les fausses stabilisations de relance en récession/ELB', () => {
+    const stimRec = projectScenario({
+      levers: { dep_enseignement: 30, dep_defense: 30, dep_ordre_securite: 30, dep_affaires_eco: 30 },
+      demandRegime: 'elb',
+      horizon: 'dixAns',
+    })
+    // En 2027 sous relance ELB, le ratio dette/PIB baisse ponctuellement (effortGapPct < 0), mais la cible tendancielle démasque le déficit
+    const y1 = debtStabilizingAt(stimRec, P0, 1)
+    expect(y1.effortGapPct).toBeLessThan(0)
+    expect(y1.effortGapStructPct).toBeGreaterThan(2.5)
+    expect(y1.effortGapStructPct - y1.effortGapPct).toBeGreaterThan(5)
+    const evalStim = evaluateFiscalTargets(stimRec, P0)
+    expect(evalStim.debtStabilization.paradox2027).toBe(true)
+    expect(evalStim.debtStabilization.status).toBe('unreached')
+    expect(evalStim.deficit3Pct.status).toBe('unreached')
+  })
+
+  it('classe les jalons en unreached, transient (rechute post-2030) et sustained (consolidation durable)', () => {
+    // 1. Référence et scénarios neutres : non atteints à 10 ans
+    for (const sc of NEUTRAL_SCENARIOS) {
+      const overrides = overridesForMacro(sc.macroId)
+      const pSc = resolveParams(overrides)
+      const r = projectScenario({ levers: sc.levers, overrides, horizon: 'dixAns' })
+      const ev = evaluateFiscalTargets(r, pSc)
+      expect(ev.debtStabilization.status).toBe('unreached')
+      expect(ev.deficit3Pct.status).toBe('unreached')
+    }
+    // 2. Stabilisation temporaire 2028–2029 suivie d'une rechute par renouvellement du stock et vieillissement
+    const rTrans = projectScenario({
+      levers: { tva_normal: 5, csg: 2.5, dep_affaires_eco: -14, ondam: -5, indexation_pensions: -2, age_legal: 1 },
+      horizon: 'trenteAns',
+    })
+    const evTrans = evaluateFiscalTargets(rTrans, P0)
+    expect(evTrans.debtStabilization).toMatchObject({ status: 'transient', firstYear: 2028, lastYear: 2029 })
+    // 3. Consolidation forte : hausse transitoire du ratio en 2027 (contraction PIB) puis baisse continue dès 2028 et solde ≥ −3 %
+    const rSust = projectScenario({
+      levers: { dep_enseignement: -30, dep_defense: -30, dep_ordre_securite: -30, dep_affaires_eco: -30, ondam: -10 },
+      horizon: 'dixAns',
+    })
+    const evSust = evaluateFiscalTargets(rSust, P0)
+    expect(evSust.debtStabilization).toMatchObject({ status: 'sustained', year: 2028 })
+    expect(evSust.deficit3Pct).toMatchObject({ status: 'sustained', year: 2028 })
+  })
+
+  it('reconstitue le proxy de dépense primaire nette UE 2026–2029 avec symétrie recettes/dépenses, lissage 3 ans et exclusion LVT', () => {
+    const refEv = evaluateFiscalTargets(projectScenario({ horizon: 'dixAns' }), P0)
+    expect(refEv.euNetExpenditure.status).toBe('calculé (estimation)')
+    expect(refEv.euNetExpenditure.avgCeilingPct).toBeCloseTo(1.17, 2)
+    expect(refEv.euNetExpenditure.cumCeilingPct).toBeCloseTo(3.54, 2)
+    expect(refEv.euNetExpenditure.avgGrowthPct).toBeCloseTo(2.96, 2)
+    expect(refEv.euNetExpenditure.withinCeiling).toBe(false)
+
+    // Symétrie Règlement UE 2024/1263 art. 2(2) : +15 Md€ de TVA ex ante (+2 pts) et +15 Md€ de baisse COFOG réduisent identiquement la DPN
+    const rTax = projectScenario({ levers: { tva_normal: 2 } }) // +15,0 Md€ ex ante
+    const rExp = projectScenario({ levers: { dep_defense: -15 / 0.54 } }) // +15,0 Md€ ex ante
+    expect(evaluateFiscalTargets(rTax, P0).euNetExpenditure.cumGrowthPct).toBeCloseTo(
+      evaluateFiscalTargets(rExp, P0).euNetExpenditure.cumGrowthPct,
+      8,
+    )
+    // LVT seul (échange d'impôts) ne déplace pas la DPN reconstituée
+    const rLvt = projectScenario({ modules: [{ module: LVT_MODULE, levers: { scenario: 4 } }] })
+    expect(evaluateFiscalTargets(rLvt, P0).euNetExpenditure.cumGrowthPct).toBeCloseTo(refEv.euNetExpenditure.cumGrowthPct, 10)
+    // Avec étalement 3 ans (2027–2029), le profil annuel est lissé sur les 3 années mais rejoint le même cumul 2029
+    const rImm = projectScenario({ levers: { tva_normal: 3, dep_affaires_eco: -15 }, phasingYears: 1 })
+    const rPh3 = projectScenario({ levers: { tva_normal: 3, dep_affaires_eco: -15 }, phasingYears: 3 })
+    const dpnImm = evaluateFiscalTargets(rImm, P0).euNetExpenditure
+    const dpnPh3 = evaluateFiscalTargets(rPh3, P0).euNetExpenditure
+    expect(dpnPh3.annualGrowthPct[2027]).toBeGreaterThan(dpnImm.annualGrowthPct[2027])
+    expect(dpnPh3.annualGrowthPct[2028]).toBeLessThan(dpnImm.annualGrowthPct[2028])
+    expect(dpnPh3.annualGrowthPct[2029]).toBeLessThan(dpnImm.annualGrowthPct[2029])
+    expect(dpnPh3.cumGrowthPct).toBeCloseTo(dpnImm.cumGrowthPct, 8)
+  })
+
+  it('decomposeAtYear reste exact à 1e-9 Md€ entre deux scénarios quelconques avec leviers et modules différents', () => {
+    const scenA = projectScenario({
+      levers: { tva_normal: 2, dep_enseignement: -10, age_legal: 1 },
+      modules: [{ module: LVT_MODULE, levers: { scenario: 2 } }],
+      horizon: 'trenteAns',
+      ysCase: 'haut',
+    })
+    const scenB = projectScenario({
+      levers: { csg: 1.5, ir: 10, ondam: -4, indexation_pensions: -1 },
+      modules: [{ module: NDC_MODULE, levers: { actif: 1 } }],
+      horizon: 'trenteAns',
+      ysCase: 'haut',
+      phasingYears: 3,
+    })
+    for (const t of [0, 1, 2, 5, 10, 20, 30]) {
+      const d = decomposeAtYear(scenB, scenA, t, EPS, EPS_OFFRE)
+      expect(d.ecart).toBeCloseTo(scenB.total[t].balance - scenA.total[t].balance, 9)
+      expect(d.lines.reduce((s, l) => s + l.montant, 0)).toBeCloseTo(d.ecart, 9)
+    }
   })
 })

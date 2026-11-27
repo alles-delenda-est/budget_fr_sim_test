@@ -1,5 +1,5 @@
 import { useId, memo } from 'react'
-import { staticYield, defaultRampFor, STRUCTURAL_LEVERS, QUALITATIVE_NOTES } from '../../engine/levers.js'
+import { staticYield, effectiveRampFor, STRUCTURAL_LEVERS, QUALITATIVE_NOTES } from '../../engine/levers.js'
 import { START_YEAR } from '../../engine/project.js'
 import { SUPPLY_BY_LEVER } from '../../engine/supply.js'
 import { PARAM_BY_ID } from '../../engine/params.js'
@@ -9,12 +9,12 @@ import JobsNote from './JobsNote'
 
 const GROUPED_LEVERS = groupedLevers()
 
-const LeverSlider = memo(function LeverSlider({ lever, value, onChange, P, ysCase }) {
+const LeverSlider = memo(function LeverSlider({ lever, value, onChange, P, ysCase, phasingYears = 1 }) {
   const id = useId()
   const yieldMd = staticYield(lever, value, P)
   const rendIds = lever.rendParams ?? [`rend.${lever.id}`]
   const params = [...rendIds, lever.offsetParam, lever.theta?.id, lever.categorie && `dem.m.${lever.categorie}`, SUPPLY_BY_LEVER[lever.id]?.emplois].filter((p) => p && PARAM_BY_ID[p])
-  const activeRamp = defaultRampFor(lever, value)
+  const activeRamp = effectiveRampFor(lever, value, phasingYears)
   const startYear = activeRamp ? START_YEAR + activeRamp.start : null
   const fullYear = activeRamp ? startYear + activeRamp.years - 1 : null
   const rampNote = activeRamp ? ` (entrée en vigueur en ${startYear}, plein effet en ${fullYear})` : ''
@@ -57,11 +57,14 @@ const LeverSlider = memo(function LeverSlider({ lever, value, onChange, P, ysCas
   )
 })
 
-export default function LeverPanel({ values, onChange, onReset, onExtreme, P, ysCase = 'central', children }) {
+export default function LeverPanel({ values, onChange, onReset, onExtreme, P, ysCase = 'central', phasingYears = 1, children }) {
+  const phasingDesc = phasingYears > 1
+    ? `progressivement sur ${phasingYears} ans (2027–${START_YEAR + phasingYears})`
+    : 'dès 2027'
   return (
     <section className="sb-section" aria-labelledby="sb-leviers">
       <h2 id="sb-leviers">Leviers</h2>
-      <p className="sb-help">Chaque curseur change une mesure à partir de 2027 (sauf l'âge légal de retraite : dès janvier 2028 en hausse ou 2029 en baisse selon le calendrier LFSS 2026). L'étalon statique est l'effet brut en régime permanent sur le solde, avant reports et réaction comportementale : signe positif = solde amélioré.</p>
+      <p className="sb-help">Chaque curseur change une mesure {phasingDesc} (sauf l&apos;âge légal de retraite : dès janvier 2028 en hausse ou 2029 en baisse selon le calendrier LFSS 2026). L&apos;étalon statique est l&apos;effet brut en régime permanent sur le solde, avant reports et réaction comportementale : signe positif = solde amélioré.</p>
       <div className="sb-toolbar">
         <button type="button" className="sb-btn" onClick={onReset}>Tout remettre à zéro</button>
         <button type="button" className="sb-btn" onClick={() => onExtreme('min')}>Tout au minimum</button>
@@ -71,7 +74,7 @@ export default function LeverPanel({ values, onChange, onReset, onExtreme, P, ys
         <fieldset key={g.id} className="sb-group">
           <legend>{g.titre}</legend>
           <p className="sb-help">{g.aide}</p>
-          {g.leviers.map((l) => <LeverSlider key={l.id} lever={l} value={values[l.id] ?? 0} onChange={onChange} P={P} ysCase={ysCase} />)}
+          {g.leviers.map((l) => <LeverSlider key={l.id} lever={l} value={values[l.id] ?? 0} onChange={onChange} P={P} ysCase={ysCase} phasingYears={phasingYears} />)}
         </fieldset>
       ))}
       <fieldset className="sb-group sb-group-disabled">

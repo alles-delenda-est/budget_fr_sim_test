@@ -56,7 +56,7 @@ export function buildExportRows(result, reference, eps, epsOffre) {
  * Contenu complet du CSV (avec BOM) : bloc d'en-tête (version, lien, horizon, cas, variante macro éventuelle, dynamiques avancées, modules actifs, leviers),
  * ligne vide, tableau. `modules` : [[libellé du module, réglage]] des modules actifs (p. ex. taxe sur la valeur du sol).
  */
-export function buildCsv({ stamp, url, horizonLabel, ysCase, macroLabel = null, dynamicsLabel = null, modules = [], values, rows }) {
+export function buildCsv({ stamp, url, horizonLabel, ysCase, phasingYears = 1, macroLabel = null, dynamicsLabel = null, modules = [], values, rows }) {
   const headerRows = [
     ['Simulateur Budget France : export du scénario'],
     ['Version', stamp],
@@ -64,10 +64,16 @@ export function buildCsv({ stamp, url, horizonLabel, ysCase, macroLabel = null, 
     ['Horizon', horizonLabel],
     ['Cas des effets d\'offre', ysCase],
   ]
+  if (Number.isInteger(phasingYears) && phasingYears > 1) {
+    headerRows.push(['Montée en charge des leviers', `Progressive sur ${phasingYears} ans (2027–${2026 + phasingYears}, hors calendrier légal retraites)`])
+  }
   if (macroLabel) headerRows.push(['Hypothèses macroéconomiques', macroLabel])
   if (dynamicsLabel) headerRows.push(['Dynamiques avancées (Day 1)', dynamicsLabel])
   for (const m of modules ?? []) headerRows.push(m.map(String))
-  headerRows.push(['Leviers (dès 2027, âge légal dès 2028 en hausse [2028–2034] ou 2029 en baisse [2029–2033])'])
+  const leverHeading = Number.isInteger(phasingYears) && phasingYears > 1
+    ? `Leviers (étalés sur ${phasingYears} ans [2027–${2026 + phasingYears}], âge légal dès 2028 en hausse [2028–2034] ou 2029 en baisse [2029–2033])`
+    : 'Leviers (dès 2027, âge légal dès 2028 en hausse [2028–2034] ou 2029 en baisse [2029–2033])'
+  headerRows.push([leverHeading])
   const lines = headerRows.map((cells) => cells.map(csvText).join(SEP))
   const active = LEVERS.filter((l) => typeof values?.[l.id] === 'number' && Number.isFinite(values[l.id]) && values[l.id] !== 0)
   if (active.length === 0) {

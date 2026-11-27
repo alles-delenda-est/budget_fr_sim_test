@@ -143,11 +143,24 @@ export function defaultRampFor(lever, x = 1) {
 }
 
 /**
+ * Rampe effective d'un levier lorsque l'utilisateur choisit un étalement pluriannuel (`phasingYears` = 1, 3 ou 5 ans) :
+ * s'applique uniquement aux leviers dépourvus de calendrier légal explicite (`defaultRamp` / `defaultRampDown`), afin de
+ * préserver les profils de cohortes LFSS 2026 du levier `age_legal`.
+ */
+export function effectiveRampFor(lever, x = 1, phasingYears = 1) {
+  const def = defaultRampFor(lever, x)
+  if (def) return def
+  if (Number.isInteger(phasingYears) && phasingYears > 1) return { start: 1, years: phasingYears }
+  return null
+}
+
+/**
  * Rampe : part de l'effet en vigueur l'année t (t = 0 pour 2026). Défaut : plein effet dès t = 1 (2027).
  * Accepte soit une rampe linéaire `{ start, years }`, soit un profil annuel explicite `{ start, profile }`
  * (ex. chevauchement mensuel de cohortes pour l'âge légal ; plateau sur la dernière valeur au-delà).
  */
-export function ramp(t, { start = 1, years = 1, profile = null } = {}) {
+export function ramp(t, opts) {
+  const { start = 1, years = 1, profile = null } = opts ?? {}
   if (!Number.isFinite(t) || t < start) return 0
   if (Array.isArray(profile) && profile.length > 0) {
     const idx = t - start
@@ -186,14 +199,18 @@ export function leversToInstruments(values, P, nYears, rampOpts, supply = {}) {
     if (x === 0) continue
     const shares = lever.blocs(P)
     const total = staticYield(lever, x, P) / P['base.pib.2025']
-    const theta = leverTheta(lever, x, P)
+    const thetaFull = leverTheta(lever, x, P)
     // θ ne garde que sa part non réelle quand le levier porte un effet d'offre σ ≠ 0 (pas de double compte avec E5 + E7), au rythme
-    // de montée en charge de l'effet d'offre : θ_non_réel(t) = max(0, θ − θ_réel × phase(t)). Sans σ, θ est inchangé.
+    // de montée en charge de l'effet d'offre : θ_non_réel(t) = max(0, θ(t) − θ_réel × phase(t)). Sans σ, θ est inchangé.
     const sup = lever.type === 'recette' ? supplyForCase(lever.id, x, P, supply.sigma, supply.ysCase) : null
     const thReel = sup ? partReelle(lever.id, sup.sigma, lever.rendement(P, x), P) : 0
-    const leverRamp = rampOpts ?? defaultRampFor(lever, x)
+    const leverRamp = rampOpts ?? effectiveRampFor(lever, x, supply.phasingYears)
     const start = leverRamp?.start ?? 1
-    const thetaByYear = Array.from({ length: nYears + 1 }, (_, t) => (thReel > 0 ? thetaNonReel(theta, thReel * supplyPhase(t - start, sup.L, sup.t0)) : theta))
+    const thetaByYear = Array.from({ length: nYears + 1 }, (_, t) => {
+      const r = ramp(t, leverRamp)
+      const theta = r === 1 ? thetaFull : (r === 0 ? 0 : leverTheta(lever, x * r, P))
+      return thReel > 0 ? thetaNonReel(theta, thReel * supplyPhase(t - start, sup.L, sup.t0)) : theta
+    })
     const aBlocks = { centrales: [], securiteSociale: [], locales: [] }
     for (let t = 0; t <= nYears; t++) for (const b of BLOCKS) aBlocks[b].push(total * shares[b] * ramp(t, leverRamp))
     // x : valeur signée du levier ; start : année (t) d'entrée en vigueur ; sizeByYear : taille de la mesure

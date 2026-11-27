@@ -21,6 +21,9 @@ export const RATE_MAX = 0.25
 
 /** Régimes de multiplicateurs de demande (Phase 3, opt-in ; 'normal' par défaut = identique au Day 0). */
 export const DEMAND_REGIMES = ['normal', 'recession', 'elb', 'endogene']
+/** Durées prédéfinies d'étalement pluriannuel des mesures nouvelles (1 = dès 2027 par défaut, 3 = 2027–2029, 5 = 2027–2031 type PSMT). */
+export const PHASING_YEARS = [1, 3, 5]
+export const DEFAULT_PHASING_YEARS = 1
 
 const DEMAND_CAPS = {
   achats_invest: 1.60,
@@ -86,7 +89,8 @@ export function issuanceRate(P) {
  * @param {number[]} [options.yS]       chemin yS externe supplémentaire (fraction du PIB), t = 0..N
  * @param {object} [options.sigma]      { idLevier: { sigma | sigmaHausse, sigmaBaisse, L, t0 } } remplace les paramètres offre.* d'un levier (E5) ;
  *                                      σ en % du PIB par unité du levier, t0 = 0 par défaut (voir supply.js)
- * @param {object} [options.ramp]       { start, years } rampe commune des leviers natifs
+ * @param {object} [options.ramp]       { start, years } rampe commune forcée sur tous les leviers natifs (usage bas niveau)
+ * @param {number} [options.phasingYears] étalement linéaire en années dès 2027 (défaut : 1) pour les leviers sans calendrier légal propre (`age_legal` préservé)
  * @param {'normal'|'recession'|'elb'|'endogene'} [options.demandRegime] régime des multiplicateurs E4 (défaut : 'normal')
  * @param {boolean} [options.endogenousInflation] active la boucle réduite d'inflation endogène et répercussion TVA (défaut : false)
  */
@@ -100,6 +104,10 @@ export function projectScenario(options = {}) {
   if (!['bas', 'central', 'haut'].includes(ysCase)) throw new Error(`ysCase invalide « ${ysCase} »`)
   const demandRegime = options.demandRegime ?? 'normal'
   if (!DEMAND_REGIMES.includes(demandRegime)) throw new Error(`demandRegime invalide « ${demandRegime} »`)
+  const phasingYears = options.phasingYears ?? DEFAULT_PHASING_YEARS
+  if (!Number.isInteger(phasingYears) || phasingYears < 1 || phasingYears > 30) {
+    throw new Error(`phasingYears invalide « ${options.phasingYears} »`)
+  }
   const endogenousInflation = Boolean(options.endogenousInflation)
 
   // ---- Instruments : leviers natifs + modules ----
@@ -110,7 +118,7 @@ export function projectScenario(options = {}) {
   const context = hasModules
     ? deepFreeze(structuredClone({ startYear: START_YEAR, endYear: horizon.endYear, nYears: N, years, gdpBase2025: P['base.pib.2025'], params: P }))
     : null
-  const instruments = leversToInstruments(options.levers, P, N, options.ramp, { sigma: options.sigma, ysCase })
+  const instruments = leversToInstruments(options.levers, P, N, options.ramp, { sigma: options.sigma, ysCase, phasingYears })
   const moduleRuns = []
   for (const { module, levers } of options.modules ?? []) {
     const inst = runModule(module, levers, context)
@@ -348,7 +356,7 @@ export function projectScenario(options = {}) {
 
   return {
     horizon: horizon.id, startYear: START_YEAR, endYear: horizon.endYear, years, total, blocks, decomposition,
-    demandRegime, endogenousInflation,
+    demandRegime, endogenousInflation, phasingYears,
     supply: { cas: ysCase, lignes: ysLines.map(({ id, libelle, origine, statut, nomCourt, sigma, L, t0, yS }) => ({ id, libelle, origine, statut, nomCourt, cas: ysCase, sigma, L, t0, yS })) },
     modules: moduleRuns.map(({ id, titre, statut, flux, explications }) => ({ id, titre, statut, flux, explications })),
     instruments: instruments.map(({ id, source }) => ({ id, source })),
