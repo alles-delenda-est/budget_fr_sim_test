@@ -97,4 +97,24 @@ describe('liens de scénario', () => {
       expect(decodeScenario(bad).values).toEqual({})
     }
   })
+  it('scénario épinglé A (a=1&a.*) : encodé seulement si épinglé, aller-retour complet, caractères de contrôle et prototype neutralisés', () => {
+    expect(encodeScenario({ values: { ir: 5 }, pinned: null })).toBe('h=dixAns&cas=central&ir=5')
+    const pinned = {
+      label: 'Recettes 2027 (test)',
+      ysCase: 'haut',
+      values: { tva_normal: 2, ir: 10 },
+      macroId: 'gouv_resf_2027',
+      phasingYears: 3,
+      demandRegime: 'recession',
+      endogenousInflation: true,
+      lvt: { scenario: 3, ocde: 1 },
+    }
+    const s = { values: { dep_defense: -10 }, horizon: 'trenteAns', ysCase: 'bas', macroId: null, pinned }
+    const back = decodeScenario(encodeScenario(s))
+    expect(back).toEqual(s)
+    expect(decodeScenario('a=0&a.tva_normal=2')).not.toHaveProperty('pinned')
+    const dirty = decodeScenario('a=1&a.lbl=%00ABC%07&a.__proto__=1&a.tva_normal=99&a.constructor=2')
+    expect(dirty.pinned.label).toBe('ABC')
+    expect(dirty.pinned.values).toEqual({ tva_normal: 5 })
+  })
 })

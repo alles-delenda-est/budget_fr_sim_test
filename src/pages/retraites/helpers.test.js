@@ -138,6 +138,16 @@ describe('Simulateur Retraites : âge légal, indexation et décomposition exact
     // Effet d'offre identique (le module NDC n'ajoute pas d'effet d'offre propre)
     expect(sNdc[last].supplyGdpPct).toBeCloseTo(sAge[last].supplyGdpPct, 9)
 
+    const ageBas = projectScenario({ levers: { age_legal: 1 }, horizon: 'trenteAns', ysCase: 'bas', overrides })
+    const ageHaut = projectScenario({ levers: { age_legal: 1 }, horizon: 'trenteAns', ysCase: 'haut', overrides })
+    const sBand = buildPensionSeries(ageOnly, ref, P, { bas: ageBas, central: ageOnly, haut: ageHaut })
+    for (const r of sBand) {
+      expect(r.debtBand[0]).toBeLessThanOrEqual(r.debt + 1e-12)
+      expect(r.debt).toBeLessThanOrEqual(r.debtBand[1] + 1e-12)
+      expect(r.balanceBand[0]).toBeLessThanOrEqual(r.balance + 1e-12)
+      expect(r.balance).toBeLessThanOrEqual(r.balanceBand[1] + 1e-12)
+    }
+
     const d = decomposeAtYear(ndcPreset, ref, last, EPS, EPS_OFFRE)
     expect(d.lines.reduce((s, l) => s + l.montant, 0)).toBeCloseTo(d.ecart, 6)
     expect(d.lines.some((l) => l.key === `static:${NDC_MODULE.id}` && l.label === `${NDC_MODULE.titre} : effet statique`)).toBe(true)

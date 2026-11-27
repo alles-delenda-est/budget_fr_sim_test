@@ -6,8 +6,8 @@ import { NDC_MODULE } from '../../engine/ndc-module.js'
 import { LVT_MODULE } from '../../engine/lvt-module.js'
 import {
   fmt, num, buildSeries, snapshotAt, decomposeAtYear, visibleLines, blocksAt, paramIdsFor, groupedLevers,
-  extremeLevers, hasSupplyEffect, moduleBlockRows, deltaTone, isFlagged, paramRange, leverGroup, sliderStep, debtMovesAgainstBalance, niceAxis, YEAR1_PARADOX_TEXT,
-  fmtJobs, jobsNote, FISCAL_BENCHMARKS, debtStabilizingAt, evaluateFiscalTargets,
+  extremeLevers, hasSupplyEffect, mayHaveSupplySpread, moduleBlockRows, deltaTone, isFlagged, paramRange, leverGroup, sliderStep, debtMovesAgainstBalance, niceAxis, YEAR1_PARADOX_TEXT,
+  fmtJobs, jobsNote, FISCAL_BENCHMARKS, debtStabilizingAt, evaluateFiscalTargets, defaultScenarioLabel, scenariosEqual,
 } from './helpers.js'
 import { resolveParams } from '../../engine/params.js'
 import { NEUTRAL_SCENARIOS, overridesForMacro } from './presets.js'
@@ -484,5 +484,40 @@ describe('repères budgétaires français et européens (sp*, Maastricht −3 %,
       expect(d.ecart).toBeCloseTo(scenB.total[t].balance - scenA.total[t].balance, 9)
       expect(d.lines.reduce((s, l) => s + l.montant, 0)).toBeCloseTo(d.ecart, 9)
     }
+  })
+
+  it('comparaison A/B et faisceau bas–haut : détecte dep_enseignement/LVT OCDE, borne sans inversion [lo, mid, hi] et étend snapshotAt/blocksAt', () => {
+    expect(mayHaveSupplySpread({ dep_defense: -10 }, null)).toBe(false)
+    expect(mayHaveSupplySpread({ dep_enseignement: 20 }, null)).toBe(true)
+    expect(mayHaveSupplySpread({}, { scenario: 2, ocde: 0 })).toBe(false)
+    expect(mayHaveSupplySpread({}, { scenario: 2, ocde: 1 })).toBe(true)
+
+    const bas = projectScenario({ levers: { tva_normal: 2, age_legal: 1 }, ysCase: 'bas', horizon: 'trenteAns' })
+    const central = projectScenario({ levers: { tva_normal: 2, age_legal: 1 }, ysCase: 'central', horizon: 'trenteAns' })
+    const haut = projectScenario({ levers: { tva_normal: 2, age_legal: 1 }, ysCase: 'haut', horizon: 'trenteAns' })
+    const ref = projectScenario({ levers: {}, ysCase: 'central', horizon: 'trenteAns' })
+    const resA = projectScenario({ levers: { dep_affaires_eco: -8 }, ysCase: 'central', horizon: 'trenteAns' })
+    const series = buildSeries(central, ref, { envelope: { bas, central, haut }, resultA: resA })
+    for (const r of series) {
+      for (const [k, bKey] of [['debt', 'debtBand'], ['balance', 'balanceBand'], ['interest', 'interestBand'], ['gdpGap', 'gdpGapBand'], ['unemployment', 'unemploymentBand']]) {
+        expect(r[bKey][0]).toBeLessThanOrEqual(r[k] + 1e-12)
+        expect(r[k]).toBeLessThanOrEqual(r[bKey][1] + 1e-12)
+      }
+      expect(r.debtPin).toBeTypeOf('number')
+    }
+    const last = series.at(-1)
+    expect(last.debtBand[1]).toBeCloseTo(last.debtBas, 9)
+    expect(last.debtBand[0]).toBeCloseTo(last.debtHaut, 9)
+    expect(last.balanceBand[0]).toBeCloseTo(last.balanceBas, 9)
+    expect(last.balanceBand[1]).toBeCloseTo(last.balanceHaut, 9)
+
+    const snap = snapshotAt(central, ref, 10, resA)
+    expect(snap.debtDeltaVsA).toBeCloseTo((central.total[10].debtRatio - resA.total[10].debtRatio) * 100, 9)
+    const blk = blocksAt(central, ref, 10, resA)
+    expect(blk.reduce((s, b) => s + b.deltaVsA, 0)).toBeCloseTo(central.total[10].balance - resA.total[10].balance, 9)
+
+    expect(defaultScenarioLabel({ values: NEUTRAL_SCENARIOS[4].levers })).toContain('Ajustement par les recettes')
+    expect(scenariosEqual({ values: { ir: 5 }, ysCase: 'central' }, { values: { ir: 5 }, ysCase: 'central' })).toBe(true)
+    expect(scenariosEqual({ values: { ir: 5 }, ysCase: 'central' }, { values: { ir: 6 }, ysCase: 'central' })).toBe(false)
   })
 })

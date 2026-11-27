@@ -3,17 +3,23 @@ import { projectScenario, HORIZONS } from '../engine/project.js'
 import { resolveParams, PARAM_BY_ID } from '../engine/params.js'
 import LeverPanel from './budget/LeverPanel'
 import Charts from './budget/Charts'
-import { Snapshots, DecompositionTable, BlocksTable, WarningBanner } from './budget/Results'
+import { Snapshots, DecompositionTable, BlocksTable, WarningBanner, ComparisonBanner } from './budget/Results'
+import IncidencePanel from './budget/IncidencePanel'
+import { computeIncidenceAtYear } from './budget/incidence'
 import { evaluateWarnings } from './budget/warnings'
 import ShareButton from './budget/ShareButton'
-import { buildCsv, buildExportRows, downloadCsv } from './budget/exportCsv'
+import { buildCsv, buildExportRows, downloadCsv, COLUMNS_VS_A } from './budget/exportCsv'
 import { versionStamp } from '../version'
 import { decodeScenario, queryFromHash, scenarioHash, scenarioUrl, DEFAULT_LVT, DEFAULT_REGIME, DEFAULT_PHASING } from './budget/share'
 import { LvtModuleControl, LvtModuleResults } from './budget/LvtModule'
 import { LVT_MODULE, LVT_PARAM_IDS } from '../engine/lvt-module.js'
 import { LVT_SCENARIO_BY_CODE } from '../engine/lvt-snapshot.js'
 import { InfoPopover, ParamInfo, StatusBadge } from './budget/InfoPopover'
-import { buildSeries, snapshotAt, decomposeAtYear, hasSupplyEffect, blocksAt, paramIdsFor, extremeLevers, fmt, evaluateFiscalTargets, SUPPLY_CASES, DEMAND_REGIME_OPTIONS, PHASING_OPTIONS, FLAGGED_STATUSES } from './budget/helpers'
+import {
+  buildSeries, snapshotAt, decomposeAtYear, hasSupplyEffect, mayHaveSupplySpread, blocksAt, paramIdsFor,
+  extremeLevers, fmt, evaluateFiscalTargets, defaultScenarioLabel, scenariosEqual,
+  SUPPLY_CASES, DEMAND_REGIME_OPTIONS, PHASING_OPTIONS, FLAGGED_STATUSES,
+} from './budget/helpers'
 import { NEUTRAL_SCENARIOS, MACRO_VARIANT_BY_ID, overridesForMacro, matchesScenario } from './budget/presets'
 import './SimulateurBudgetPage.css'
 
@@ -33,6 +39,10 @@ export default function SimulateurBudgetPage() {
   const [lvt, setLvt] = useState(initial.lvt ?? DEFAULT_LVT)
   const [demandRegime, setDemandRegime] = useState(initial.demandRegime ?? DEFAULT_REGIME)
   const [endogenousInflation, setEndogenousInflation] = useState(Boolean(initial.endogenousInflation))
+  const [showBand, setShowBand] = useState(true)
+  const [pinnedScenario, setPinnedScenario] = useState(() => initial.pinned ?? null)
+  const [decompBase, setDecompBase] = useState('ref')
+  const [compareLiveMsg, setCompareLiveMsg] = useState('')
   const [yearIdxRaw, setYearIdx] = useState(DEFAULT_YEAR_IDX)
 
   const macroVariant = macroId && Object.hasOwn(MACRO_VARIANT_BY_ID, macroId) ? MACRO_VARIANT_BY_ID[macroId] : null
@@ -50,31 +60,97 @@ export default function SimulateurBudgetPage() {
   const reference = useMemo(() => projectScenario({ levers: {}, horizon, ysCase, demandRegime, endogenousInflation }), [horizon, ysCase, demandRegime, endogenousInflation])
   const result = useMemo(() => projectScenario({ levers: deferredValues, overrides, horizon, ysCase, phasingYears, modules, demandRegime, endogenousInflation }), [deferredValues, overrides, horizon, ysCase, phasingYears, modules, demandRegime, endogenousInflation])
 
+  // Éventail paramétrique des effets d'offre (bas / central / haut) : réutilise `result` pour le cas actif (au plus 2 appels différés).
+  const potentialSpread = useMemo(() => mayHaveSupplySpread(deferredValues, lvtSetting), [deferredValues, lvtSetting])
+  const supplyEnvelope = useMemo(() => {
+    if (!potentialSpread) return null
+    const runCase = (c) => (c === ysCase
+      ? result
+      : projectScenario({ levers: deferredValues, overrides, horizon, ysCase: c, phasingYears, modules, demandRegime, endogenousInflation }))
+    const bas = runCase('bas')
+    const central = runCase('central')
+    const haut = runCase('haut')
+    const spreadExists = bas.total.some((r, t) => Math.abs(haut.total[t].gdpEffect - r.gdpEffect) > 1e-6)
+    return spreadExists ? { bas, central, haut } : null
+  }, [potentialSpread, ysCase, result, deferredValues, overrides, horizon, phasingYears, modules, demandRegime, endogenousInflation])
+
+  // Scénario épinglé A (calculé à l'horizon courant ; invariant pendant le glissement des curseurs de B).
+  const resultA = useMemo(() => {
+    if (!pinnedScenario) return null
+    const ovA = overridesForMacro(pinnedScenario.macroId)
+    const lvtScA = LVT_SCENARIO_BY_CODE[pinnedScenario.lvt?.scenario] ?? null
+    const modA = lvtScA
+      ? [{ module: LVT_MODULE, levers: { scenario: lvtScA.code, offre_ocde: lvtScA.code >= 2 && pinnedScenario.lvt.ocde === 1 ? 1 : 0 } }]
+      : []
+    return projectScenario({
+      levers: pinnedScenario.values ?? {},
+      overrides: ovA,
+      horizon,
+      ysCase: pinnedScenario.ysCase ?? 'central',
+      phasingYears: pinnedScenario.phasingYears ?? DEFAULT_PHASING,
+      modules: modA,
+      demandRegime: pinnedScenario.demandRegime ?? DEFAULT_REGIME,
+      endogenousInflation: Boolean(pinnedScenario.endogenousInflation),
+    })
+  }, [pinnedScenario, horizon])
+
   const N = result.years.length - 1
   const yearIdx = Math.min(Math.max(yearIdxRaw, 1), N)
 
   const warnings = useMemo(() => evaluateWarnings(result), [result])
+  const warningsA = useMemo(() => (resultA ? evaluateWarnings(resultA) : null), [resultA])
+  const warningsBas = useMemo(() => (supplyEnvelope ? evaluateWarnings(supplyEnvelope.bas) : null), [supplyEnvelope])
+  const activeShowBand = Boolean(showBand && supplyEnvelope)
+
   const targets = useMemo(() => evaluateFiscalTargets(result, activeP), [result, activeP])
-  const series = useMemo(() => buildSeries(result, reference), [result, reference])
+  const series = useMemo(
+    () => buildSeries(result, reference, { envelope: activeShowBand ? supplyEnvelope : null, resultA }),
+    [result, reference, activeShowBand, supplyEnvelope, resultA],
+  )
   const snaps = useMemo(() => [
-    { titre: 'Année 1', snap: snapshotAt(result, reference, 1) },
-    { titre: 'Année 5', snap: snapshotAt(result, reference, Math.min(5, N)) },
-    { titre: 'Fin d\'horizon', snap: snapshotAt(result, reference, N) },
-  ], [result, reference, N])
-  const decomposition = useMemo(() => decomposeAtYear(result, reference, yearIdx, EPS, EPS_OFFRE), [result, reference, yearIdx])
-  const blocks = useMemo(() => blocksAt(result, reference, yearIdx), [result, reference, yearIdx])
-  const paramIds = useMemo(() => [...new Set([...paramIdsFor(deferredValues, result, macroId), ...(lvtSetting ? LVT_PARAM_IDS : [])])].filter((id) => PARAM_BY_ID[id]), [deferredValues, result, macroId, lvtSetting])
+    { titre: 'Année 1', snap: snapshotAt(result, reference, 1, resultA) },
+    { titre: 'Année 5', snap: snapshotAt(result, reference, Math.min(5, N), resultA) },
+    { titre: 'Fin d\'horizon', snap: snapshotAt(result, reference, N, resultA) },
+  ], [result, reference, N, resultA])
+
+  const effectiveDecompBase = resultA && decompBase === 'pinned' ? 'pinned' : 'ref'
+  const decompBaseline = effectiveDecompBase === 'pinned' ? resultA : reference
+  const decomposition = useMemo(() => decomposeAtYear(result, decompBaseline, yearIdx, EPS, EPS_OFFRE), [result, decompBaseline, yearIdx])
+  const incidence = useMemo(
+    () => computeIncidenceAtYear(result, yearIdx, activeP, { lvtScenario, lvtCompanyShiftMd: lvtScenario?.companyLandMd ?? 0 }),
+    [result, yearIdx, activeP, lvtScenario],
+  )
+  const blocks = useMemo(() => blocksAt(result, reference, yearIdx, resultA), [result, reference, yearIdx, resultA])
+  const paramIds = useMemo(() => {
+    const idsB = paramIdsFor(deferredValues, result, macroId)
+    const idsA = pinnedScenario && resultA ? paramIdsFor(pinnedScenario.values, resultA, pinnedScenario.macroId) : []
+    const lvtB = lvtSetting ? LVT_PARAM_IDS : []
+    const lvtA = pinnedScenario?.lvt?.scenario > 0 ? LVT_PARAM_IDS : []
+    return [...new Set([...idsB, ...idsA, ...lvtB, ...lvtA])].filter((id) => PARAM_BY_ID[id])
+  }, [deferredValues, result, macroId, lvtSetting, pinnedScenario, resultA])
 
   // Aucune ligne d'offre non nulle dans le résultat du moteur : le choix bas / central / haut ne change rien.
   const noSupplyEffect = !hasSupplyEffect(result)
 
+  const isIdenticalToA = useMemo(() => {
+    if (!pinnedScenario) return false
+    return scenariosEqual(
+      { values: deferredValues, ysCase, macroId, lvt: lvtSetting, demandRegime, endogenousInflation, phasingYears },
+      pinnedScenario,
+    )
+  }, [pinnedScenario, deferredValues, ysCase, macroId, lvtSetting, demandRegime, endogenousInflation, phasingYears])
+
   // Adresse du scénario mise à jour sans entrée d'historique, avec un délai pour ne pas écrire à chaque cran de curseur.
   useEffect(() => {
     const timer = setTimeout(() => {
-      window.history.replaceState(window.history.state, '', scenarioHash({ values, horizon, ysCase, phasingYears, macroId, lvt: lvtSetting, demandRegime, endogenousInflation }))
+      window.history.replaceState(
+        window.history.state,
+        '',
+        scenarioHash({ values, horizon, ysCase, phasingYears, macroId, lvt: lvtSetting, demandRegime, endogenousInflation, pinned: pinnedScenario }),
+      )
     }, 300)
     return () => clearTimeout(timer)
-  }, [values, horizon, ysCase, phasingYears, macroId, lvtSetting, demandRegime, endogenousInflation])
+  }, [values, horizon, ysCase, phasingYears, macroId, lvtSetting, demandRegime, endogenousInflation, pinnedScenario])
 
   const dynamicsLabel = useMemo(() => {
     const parts = []
@@ -85,11 +161,25 @@ export default function SimulateurBudgetPage() {
 
   const exportCsv = () => {
     const csv = buildCsv({
-      stamp: versionStamp(), url: scenarioUrl(window.location, { values, horizon, ysCase, phasingYears, macroId, lvt: lvtSetting, demandRegime, endogenousInflation }),
-      horizonLabel: HORIZONS[horizon].label, ysCase, phasingYears, macroLabel: macroVariant?.label ?? null, dynamicsLabel, values, rows: buildExportRows(result, reference, EPS, EPS_OFFRE),
+      stamp: versionStamp(), url: scenarioUrl(window.location, { values, horizon, ysCase, phasingYears, macroId, lvt: lvtSetting, demandRegime, endogenousInflation, pinned: pinnedScenario }),
+      horizonLabel: HORIZONS[horizon].label, ysCase, phasingYears, macroLabel: macroVariant?.label ?? null, dynamicsLabel,
+      pinnedMeta: pinnedScenario ? { label: pinnedScenario.label } : null,
+      values, rows: buildExportRows(result, reference, EPS, EPS_OFFRE),
       modules: lvtScenario ? [[`Module ${LVT_MODULE.titre}`, `${lvtScenario.libelle}${lvtSetting.ocde ? ' ; borne haute OCDE incluse dans le cas « haut »' : ''}`]] : [],
     })
     downloadCsv(csv, `simulateur-budget-${horizon}-${ysCase}${phasingYears > 1 ? `-rampe${phasingYears}a` : ''}${macroId ? `-${macroId}` : ''}${lvtScenario ? `-lvt-${lvtScenario.id}` : ''}.csv`)
+  }
+
+  const exportCsvVsA = () => {
+    if (!resultA || !pinnedScenario) return
+    const csv = buildCsv({
+      stamp: versionStamp(), url: scenarioUrl(window.location, { values, horizon, ysCase, phasingYears, macroId, lvt: lvtSetting, demandRegime, endogenousInflation, pinned: pinnedScenario }),
+      horizonLabel: HORIZONS[horizon].label, ysCase, phasingYears, macroLabel: macroVariant?.label ?? null, dynamicsLabel,
+      pinnedMeta: { label: pinnedScenario.label },
+      values, rows: buildExportRows(result, resultA, EPS, EPS_OFFRE), columns: COLUMNS_VS_A,
+      modules: lvtScenario ? [[`Module ${LVT_MODULE.titre}`, `${lvtScenario.libelle}${lvtSetting.ocde ? ' ; borne haute OCDE incluse dans le cas « haut »' : ''}`]] : [],
+    })
+    downloadCsv(csv, `simulateur-budget-comparaison-${horizon}.csv`)
   }
 
   const setLever = useCallback((id, x) => setValues((v) => ({ ...v, [id]: x })), [])
@@ -99,6 +189,49 @@ export default function SimulateurBudgetPage() {
     setValues({ ...scenario.levers })
     setMacroId(scenario.macroId ?? null)
     setLvt(DEFAULT_LVT)
+  }
+
+  const captureCurrentAsPin = useCallback((labelOverride = null) => ({
+    label: labelOverride || defaultScenarioLabel({ values, macroId, lvt: lvtSetting, phasingYears }),
+    values: { ...values },
+    ysCase,
+    macroId,
+    lvt: lvtSetting ? { ...lvtSetting } : DEFAULT_LVT,
+    demandRegime,
+    endogenousInflation,
+    phasingYears,
+  }), [values, macroId, lvtSetting, phasingYears, ysCase, demandRegime, endogenousInflation])
+
+  const handlePinCurrent = () => {
+    const nextPin = captureCurrentAsPin()
+    setPinnedScenario(nextPin)
+    setCompareLiveMsg(`Scénario « ${nextPin.label} » épinglé en A.`)
+  }
+
+  const handleSwapPin = () => {
+    if (!pinnedScenario) return
+    const prevB = captureCurrentAsPin('Ancien scénario B')
+    setValues({ ...(pinnedScenario.values ?? {}) })
+    setYsCase(pinnedScenario.ysCase ?? 'central')
+    setMacroId(pinnedScenario.macroId ?? null)
+    setLvt(pinnedScenario.lvt ? { ...pinnedScenario.lvt } : DEFAULT_LVT)
+    setDemandRegime(pinnedScenario.demandRegime ?? DEFAULT_REGIME)
+    setEndogenousInflation(Boolean(pinnedScenario.endogenousInflation))
+    setPhasingYears(pinnedScenario.phasingYears ?? DEFAULT_PHASING)
+    setPinnedScenario(prevB)
+    setCompareLiveMsg('Scénarios A et B échangés.')
+  }
+
+  const handleReplacePin = () => {
+    const nextPin = captureCurrentAsPin(pinnedScenario?.label)
+    setPinnedScenario(nextPin)
+    setCompareLiveMsg(`Scénario A remplacé par les réglages courants.`)
+  }
+
+  const handleClearPin = () => {
+    setPinnedScenario(null)
+    setDecompBase('ref')
+    setCompareLiveMsg('Comparaison avec le scénario A effacée.')
   }
 
   return (
@@ -122,7 +255,8 @@ export default function SimulateurBudgetPage() {
               <select id="sb-case" aria-describedby={noSupplyEffect ? 'sb-case-hint' : undefined} value={ysCase} onChange={(e) => setYsCase(e.target.value)}>
                 {SUPPLY_CASES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
               </select>
-              {noSupplyEffect && <p className="sb-hint" id="sb-case-hint">Sans effet pour les leviers choisis</p>}
+              {noSupplyEffect && !supplyEnvelope && <p className="sb-hint" id="sb-case-hint">Sans effet pour les leviers choisis</p>}
+              {noSupplyEffect && supplyEnvelope && <p className="sb-hint" id="sb-case-hint">Nul au cas central, mais non nul en bas/haut (voir faisceau)</p>}
             </div>
             <div>
               <label htmlFor="sb-phasing">Montée en charge des mesures</label>
@@ -131,7 +265,14 @@ export default function SimulateurBudgetPage() {
               </select>
             </div>
           </div>
-          <p className="sb-help">Bas et haut désignent les résultats les moins et les plus favorables pour le PIB, et non l&apos;ordre statistique des valeurs (σ). L&apos;étalement sur 3 ou 5 ans lisse le choc de demande initial (E4) et la trajectoire de dépense nette sans modifier les calendriers légaux par génération (âge légal).</p>
+          <div className="sb-module-check">
+            <input id="sb-band" type="checkbox" checked={showBand} disabled={!supplyEnvelope} onChange={(e) => setShowBand(e.target.checked)} />
+            <label htmlFor="sb-band">
+              Afficher la fourchette paramétrique des effets d&apos;offre (bas–haut) sur les graphiques
+              {!supplyEnvelope && ' — aucun écart d\'offre actif'}
+            </label>
+          </div>
+          <p className="sb-help">Bas et haut désignent les résultats les moins et les plus favorables pour le PIB, et non l&apos;ordre statistique des valeurs (σ). Au-delà de dix ans, lisez les trois cas ensemble : le modèle reste déterministe. L&apos;étalement sur 3 ou 5 ans lisse le choc de demande initial (E4) et la trajectoire de dépense nette sans modifier les calendriers légaux par génération (âge légal).</p>
         <details className="sb-module-details" open={demandRegime !== DEFAULT_REGIME || endogenousInflation}>
           <summary>
             Dynamiques avancées (Day 1, optionnelles){dynamicsLabel ? ` — actives : ${dynamicsLabel}` : ' — désactivées par défaut'}
@@ -156,8 +297,12 @@ export default function SimulateurBudgetPage() {
         <h2 id="sb-partage">Partager et exporter</h2>
         <p className="sb-help">Le lien reprend les leviers, l'horizon, le cas des effets d'offre, l'éventuel comparateur macroéconomique, les dynamiques avancées et le module « taxe sur la valeur du sol » s'il est actif ; il rouvre exactement ce scénario. L'export CSV (séparateur « ; », virgule décimale, ouverture directe dans Excel) donne, année par année, le scénario, la référence et la décomposition par cause.</p>
         <div className="sb-toolbar">
-          <ShareButton getUrl={() => scenarioUrl(window.location, { values, horizon, ysCase, phasingYears, macroId, lvt: lvtSetting, demandRegime, endogenousInflation })} />
+          <ShareButton getUrl={() => scenarioUrl(window.location, { values, horizon, ysCase, phasingYears, macroId, lvt: lvtSetting, demandRegime, endogenousInflation, pinned: pinnedScenario })} />
           <button type="button" className="sb-btn" onClick={exportCsv}>Exporter (CSV)</button>
+          {resultA && <button type="button" className="sb-btn" onClick={exportCsvVsA}>Exporter B vs A (CSV)</button>}
+          <button type="button" className="sb-btn" onClick={pinnedScenario ? handleReplacePin : handlePinCurrent}>
+            {pinnedScenario ? 'Mettre à jour A avec B' : 'Épingler ce scénario pour comparer (A)'}
+          </button>
         </div>
       </section>
 
@@ -193,10 +338,38 @@ export default function SimulateurBudgetPage() {
               <button type="button" className="sb-btn" onClick={() => setMacroId(null)}>Revenir à la référence indépendante</button>
             </div>
           )}
+          <ComparisonBanner
+            pinned={pinnedScenario}
+            isIdentical={isIdenticalToA}
+            onLabelChange={(label) => setPinnedScenario((prev) => (prev ? { ...prev, label: label.slice(0, 40) } : null))}
+            onSwap={handleSwapPin}
+            onReplace={handleReplacePin}
+            onClear={handleClearPin}
+            liveMessage={compareLiveMsg}
+          />
           <WarningBanner warnings={warnings} />
           <Snapshots snaps={snaps} targets={targets} />
-          <Charts data={series} tier1={warnings.tier1} tier2={warnings.tier2} hasMacroOverride={Boolean(macroVariant)} />
-          <DecompositionTable decomposition={decomposition} years={result.years} yearIdx={yearIdx} onYear={setYearIdx} />
+          <Charts
+            data={series}
+            tier1={warnings.tier1}
+            tier2={warnings.tier2}
+            hasMacroOverride={Boolean(macroVariant)}
+            showBand={activeShowBand}
+            bandTier2Year={warningsBas?.tier2?.year ?? null}
+            pinnedLabel={pinnedScenario?.label ?? null}
+            tier2A={warningsA?.tier2 ?? null}
+          />
+          <DecompositionTable
+            decomposition={decomposition}
+            years={result.years}
+            yearIdx={yearIdx}
+            onYear={setYearIdx}
+            hasComparison={Boolean(resultA)}
+            decompBase={effectiveDecompBase}
+            onDecompBase={setDecompBase}
+            pinnedLabel={pinnedScenario?.label ?? null}
+          />
+          <IncidencePanel incidence={incidence} year={result.years[yearIdx]} />
           <BlocksTable blocks={blocks} year={result.years[yearIdx]} />
           <LvtModuleResults result={result} yearIdx={yearIdx} />
           <section className="sb-section" aria-labelledby="sb-params">

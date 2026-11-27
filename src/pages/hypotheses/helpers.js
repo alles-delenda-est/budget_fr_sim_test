@@ -188,6 +188,7 @@ export const PARAM_GROUP_DEFS = [
   { id: 'offre', titre: 'Effets d\'offre (E5)', match: (id) => id.startsWith('offre.') },
   { id: 'lvt', titre: 'Module taxe sur la valeur du sol (D11, D12)', match: (id) => id.startsWith('lvt.') },
   { id: 'fisc', titre: 'Stabilisateurs et prélèvements obligatoires (E7, D13)', match: (id) => id.startsWith('fisc.') },
+  { id: 'incid', titre: 'Incidence statutaire et repères démographiques (Vue « Qui paie ? »)', match: (id) => id.startsWith('incid.') || id.startsWith('demog.') },
   { id: 'dette', titre: 'Dette et taux d\'intérêt (E9–E10)', match: (id) => id.startsWith('dette.') },
   { id: 'rend', titre: 'Rendements statiques et étalons (§3.1)', match: (id) => id.startsWith('rend.') },
   { id: 'base', titre: 'Comptes de base 2025, agrégats et clés de bloc (§1)', match: (id) => (id.startsWith('base.') && !id.startsWith('base.cofog.') && id !== 'base.chomage' && id !== 'base.chomage_ref') || id.startsWith('bloc.') },

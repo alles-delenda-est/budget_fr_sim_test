@@ -4,7 +4,8 @@
 import { LEVERS, LEVER_BY_ID, BLOCKS } from '../../engine/levers.js'
 import { PARAM_BY_ID } from '../../engine/params.js'
 import { SUPPLY_BY_LEVER, impliedJobs, roundJobs, supplyForCase } from '../../engine/supply.js'
-import { MACRO_VARIANT_BY_ID } from './presets.js'
+import { LVT_SCENARIO_BY_CODE } from '../../engine/lvt-snapshot.js'
+import { MACRO_VARIANT_BY_ID, matchesScenario, NEUTRAL_SCENARIOS } from './presets.js'
 
 const NF = (d) => new Intl.NumberFormat('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d })
 const FORMATS = { 0: NF(0), 1: NF(1), 2: NF(2), 3: NF(3) }
@@ -96,32 +97,73 @@ export function groupedLevers() {
 /** Valeurs de tous les leviers au minimum ou au maximum (test de robustesse). */
 export const extremeLevers = (which) => Object.fromEntries(LEVERS.map((l) => [l.id, which === 'min' ? l.min : l.max]))
 
-/** Séries des graphiques : scénario et référence, en % (ratios) ou en Md€. */
-export function buildSeries(result, reference) {
+/** Vrai si au moins un levier actif ou le module LVT OCDE peut ouvrir une fourchette d'offre bas ≠ haut. */
+export function mayHaveSupplySpread(values, lvtSetting = null) {
+  const hasSupplyLever = Object.entries(values ?? {}).some(
+    ([id, v]) => typeof v === 'number' && Number.isFinite(v) && v !== 0 && Boolean(SUPPLY_BY_LEVER[id]),
+  )
+  const hasLvtSupply = Boolean(lvtSetting && lvtSetting.scenario >= 2 && lvtSetting.ocde === 1)
+  return hasSupplyLever || hasLvtSupply
+}
+
+/** Séries des graphiques : scénario actif B, fourchette optionnelle d'offre (bas–haut), scénario épinglé optionnel A et référence. */
+export function buildSeries(result, reference, { envelope = null, resultA = null } = {}) {
+  const bandTuple = (getVal) => {
+    if (!envelope) return null
+    const vb = getVal(envelope.bas)
+    const vc = getVal(envelope.central)
+    const vh = getVal(envelope.haut)
+    if (!Number.isFinite(vb) || !Number.isFinite(vc) || !Number.isFinite(vh)) return null
+    return {
+      band: [Math.min(vb, vc, vh), Math.max(vb, vc, vh)],
+      bas: vb,
+      haut: vh,
+    }
+  }
   return result.total.map((r, t) => {
     const b = reference.total[t]
+    const a = resultA?.total?.[t] ?? null
+    const debtB = bandTuple((e) => pct(e.total[t].debtRatio))
+    const balB = bandTuple((e) => pct(e.total[t].balanceRatio))
+    const intB = bandTuple((e) => pct(e.total[t].interestRatio))
+    const gdpB = bandTuple((e) => pct(e.total[t].gdpEffect))
+    const unempB = bandTuple((e) => num(e.total[t].unemployment))
     return {
       year: r.year,
       debt: pct(r.debtRatio), debtRef: pct(b.debtRatio),
+      ...(a ? { debtPin: pct(a.debtRatio) } : {}),
+      ...(debtB ? { debtBand: debtB.band, debtBas: debtB.bas, debtHaut: debtB.haut } : {}),
       balance: pct(r.balanceRatio), balanceRef: pct(b.balanceRatio),
+      ...(a ? { balancePin: pct(a.balanceRatio) } : {}),
+      ...(balB ? { balanceBand: balB.band, balanceBas: balB.bas, balanceHaut: balB.haut } : {}),
       interest: pct(r.interestRatio), interestRef: pct(b.interestRatio),
+      ...(a ? { interestPin: pct(a.interestRatio), interestMdPin: num(a.interest) } : {}),
+      ...(intB ? { interestBand: intB.band, interestBas: intB.bas, interestHaut: intB.haut } : {}),
       interestMd: num(r.interest), interestMdRef: num(b.interest),
       gdpGap: pct(r.gdpEffect), gdpGapRef: pct(b.gdpEffect),
+      ...(a ? { gdpGapPin: pct(a.gdpEffect) } : {}),
+      ...(gdpB ? { gdpGapBand: gdpB.band, gdpGapBas: gdpB.bas, gdpGapHaut: gdpB.haut } : {}),
       unemployment: num(r.unemployment), unemploymentRef: num(b.unemployment),
+      ...(a ? { unemploymentPin: num(a.unemployment) } : {}),
+      ...(unempB ? { unemploymentBand: unempB.band, unemploymentBas: unempB.bas, unemploymentHaut: unempB.haut } : {}),
     }
   })
 }
 
-/** Fiche d'une année (t = 0 pour 2026) : valeurs du scénario, de la référence et écarts. */
-export function snapshotAt(result, reference, t) {
+/** Fiche d'une année (t = 0 pour 2026) : valeurs du scénario, de la référence et écarts (inclut vs A si `resultA` est fourni). */
+export function snapshotAt(result, reference, t, resultA = null) {
   const r = result.total[t]
   const b = reference.total[t]
+  const a = resultA?.total?.[t] ?? null
   const d = (x, y) => (num(x) === null || num(y) === null ? null : x - y)
   return {
     year: r.year,
     debtRatio: pct(r.debtRatio), debtRatioRef: pct(b.debtRatio), debtDelta: pct(d(r.debtRatio, b.debtRatio)),
+    ...(a ? { debtDeltaVsA: pct(d(r.debtRatio, a.debtRatio)) } : {}),
     balanceRatio: pct(r.balanceRatio), balanceRatioRef: pct(b.balanceRatio), balanceDelta: pct(d(r.balanceRatio, b.balanceRatio)),
+    ...(a ? { balanceDeltaVsA: pct(d(r.balanceRatio, a.balanceRatio)) } : {}),
     interest: num(r.interest), interestRef: num(b.interest), interestDelta: d(r.interest, b.interest),
+    ...(a ? { interestDeltaVsA: d(r.interest, a.interest) } : {}),
     interestRatio: pct(r.interestRatio),
   }
 }
@@ -194,23 +236,31 @@ export function decomposeAtYear(result, reference, t, eps, epsOffre) {
     })
   }
   const modById = Object.fromEntries([...(reference.modules ?? []), ...(result.modules ?? [])].map((m) => [m.id, m]))
-  const instIds = [...new Set([...Object.keys(tot.byInstrument ?? {}), ...Object.keys(refTot.byInstrument ?? {})])]
+  const bInst = tot.byInstrument ?? {}
+  const aInst = refTot.byInstrument ?? {}
+  const instIds = [
+    ...LEVERS.map((l) => l.id).filter((id) => Object.hasOwn(bInst, id) || Object.hasOwn(aInst, id)),
+    ...Object.keys({ ...bInst, ...aInst }).filter((id) => !Object.hasOwn(LEVER_BY_ID, id)),
+  ]
   for (const id of instIds) {
-    const vB = tot.byInstrument?.[id] ?? { exAnte: 0, exPost: 0 }
-    const vA = refTot.byInstrument?.[id] ?? { exAnte: 0, exPost: 0 }
+    const vB = bInst[id] ?? { exAnte: 0, exPost: 0 }
+    const vA = aInst[id] ?? { exAnte: 0, exPost: 0 }
     const lever = LEVER_BY_ID[id]
     const titre = lever?.titre ?? modById[id]?.titre ?? id
     let behavSuffix = 'réaction des contribuables'
     if (lever?.offsetParam === 'comp.offset.pensions_hautes') behavSuffix = 'retour fiscal hautes pensions (IR/CSG)'
     else if (lever?.offsetParam === 'comp.offset.age_legal') behavSuffix = 'effets de report (autres prestations)'
-    else if (lever?.offsetGroup === 'prestations' || id === 'comptes_notionnels') behavSuffix = 'retour fiscal et aides (IR/CSG/ASPA/APL)'
+    else if (lever?.offsetGroup === 'prestations' || id === 'comptes_notionnels' || id === 'comptes_notionnels_ndc') behavSuffix = 'retour fiscal et aides (IR/CSG/ASPA/APL)'
     else if (lever?.type === 'depense') behavSuffix = 'effets de report (autres prestations)'
     lines.push({ key: `static:${id}`, kind: 'statique', leverId: id, label: `${titre} : effet statique`, montant: vB.exAnte - vA.exAnte })
     lines.push({ key: `behav:${id}`, kind: 'comportement', leverId: id, label: `${titre} : ${behavSuffix}`, montant: (vB.exPost - vB.exAnte) - (vA.exPost - vA.exAnte) })
   }
   const bSupplyById = Object.fromEntries((result.supply?.lignes ?? []).map((l) => [l.id, l]))
   const aSupplyById = Object.fromEntries((reference.supply?.lignes ?? []).map((l) => [l.id, l]))
-  const supplyIds = [...new Set([...Object.keys(bSupplyById), ...Object.keys(aSupplyById)])]
+  const supplyIds = [
+    ...LEVERS.map((l) => l.id).filter((id) => Object.hasOwn(bSupplyById, id) || Object.hasOwn(aSupplyById, id)),
+    ...Object.keys({ ...bSupplyById, ...aSupplyById }).filter((id) => !Object.hasOwn(LEVER_BY_ID, id)),
+  ]
   let offreTotalB = 0
   let offreTotalA = 0
   const offreLines = supplyIds.map((sid) => {
@@ -222,9 +272,10 @@ export function decomposeAtYear(result, reference, t, eps, epsOffre) {
     offreTotalB += mB
     offreTotalA += mA
     const ySDelta = (lB ? lB.yS[t] : 0) - (lA ? lA.yS[t] : 0)
+    const casText = lB && lA && lB.cas !== lA.cas ? `cas ${lB.cas} vs ${lA.cas}` : `cas ${meta.cas}`
     const titre = LEVER_BY_ID[meta.id]?.titre ?? meta.libelle
     // Effet d'offre non validé (IR) : le libellé le dit, pour que le relecteur le voie dans la décomposition.
-    const label = meta.statut === 'non validé' ? `${meta.nomCourt ?? 'Effet d\'offre'} (cas ${meta.cas}) : non validé — avis demandé` : `Effet d'offre (cas ${meta.cas}) : ${titre}`
+    const label = meta.statut === 'non validé' ? `${meta.nomCourt ?? 'Effet d\'offre'} (${casText}) : non validé — avis demandé` : `Effet d'offre (${casText}) : ${titre}`
     return { key: `offre:${meta.id}`, kind: 'offre', leverId: meta.id, label, detail: meta.libelle, gdpPct: ySDelta * 100, montant: mB - mA }
   })
   const stabB = BLOCKS.reduce((s, b) => s + result.blocks[b][t].stabilisers, 0)
@@ -430,16 +481,61 @@ export const hasSupplyEffect = (result) => result.supply.lignes.some((l) => l.yS
 export const visibleLines = (lines, threshold = HIDE_BELOW) =>
   lines.filter((l) => Number.isFinite(l.montant) && Math.abs(l.montant) >= threshold)
 
-/** Répartition par bloc l'année t : solde, ratio, écart à la référence. */
-export function blocksAt(result, reference, t) {
+/** Répartition par bloc l'année t : solde, ratio, écart à la référence et (si `resultA` est fourni) écart à A. */
+export function blocksAt(result, reference, t, resultA = null) {
   return BLOCKS.map((b) => {
     const r = result.blocks[b][t]
     const q = reference.blocks[b][t]
+    const a = resultA?.blocks?.[b]?.[t] ?? null
     return {
       id: b, label: BLOCK_LABELS[b], balance: num(r.balance), balanceRatio: pct(r.balanceRatio),
       refBalance: num(q.balance), refRatio: pct(q.balanceRatio), delta: num(r.balance - q.balance),
+      ...(a ? { pinBalance: num(a.balance), pinRatio: pct(a.balanceRatio), deltaVsA: num(r.balance - a.balance) } : {}),
     }
   })
+}
+
+const SHORT_LEVER_NAMES = {
+  tva_normal: 'TVA', tva_tous_taux: 'TVA tous taux', csg: 'CSG', ir: 'IR', is: 'IS', cotis_patronales: 'Cotis.',
+  dep_enseignement: 'Éduc.', dep_defense: 'Déf.', dep_ordre_securite: 'Sécu.', dep_affaires_eco: 'Aff. éco.',
+  ondam: 'ONDAM', travail_assurance_chomage: 'Chômage', indexation_pensions: 'Pensions', sous_indexation_ciblee: 'Pensions >2k',
+  age_legal: 'Âge légal',
+}
+
+/** Génère automatiquement un libellé court (≤ 40 car.) pour un scénario épinglé A. */
+export function defaultScenarioLabel({ values = {}, macroId = null, lvt = null } = {}) {
+  const lvtActive = Boolean(lvt && lvt.scenario > 0)
+  const matched = NEUTRAL_SCENARIOS.find((sc) => matchesScenario(sc, values, macroId, lvtActive))
+  if (matched) {
+    const t = matched.titre.replace(/\s*\([^)]*\)\s*/g, ' ').trim()
+    return t.length <= 40 ? t : `${t.slice(0, 39)}…`
+  }
+  const parts = []
+  if (macroId && MACRO_VARIANT_BY_ID[macroId]) parts.push('RESF 2027')
+  for (const l of LEVERS) {
+    const v = values?.[l.id]
+    if (typeof v === 'number' && Number.isFinite(v) && v !== 0) {
+      parts.push(`${SHORT_LEVER_NAMES[l.id] ?? l.titre} ${fmt(v, 1, { signed: true })}`)
+    }
+  }
+  if (lvtActive && LVT_SCENARIO_BY_CODE[lvt.scenario]) parts.push(`LVT ${LVT_SCENARIO_BY_CODE[lvt.scenario].id}`)
+  if (parts.length === 0) return 'Scénario A'
+  const head = parts.slice(0, 2).join(', ') + (parts.length > 2 ? ` (+${parts.length - 2})` : '')
+  return head.length <= 40 ? head : `${head.slice(0, 39)}…`
+}
+
+/** Vrai si deux configurations de scénarios (leviers, cas, macro, LVT, régime, inflation, étalement) coïncident. */
+export function scenariosEqual(a, b) {
+  if (!a || !b) return false
+  if ((a.ysCase ?? 'central') !== (b.ysCase ?? 'central')) return false
+  if ((a.macroId ?? null) !== (b.macroId ?? null)) return false
+  if ((a.demandRegime ?? 'normal') !== (b.demandRegime ?? 'normal')) return false
+  if (Boolean(a.endogenousInflation) !== Boolean(b.endogenousInflation)) return false
+  if ((a.phasingYears ?? 1) !== (b.phasingYears ?? 1)) return false
+  const lvtA = a.lvt?.scenario > 0 ? `${a.lvt.scenario}:${a.lvt.ocde ? 1 : 0}` : '0'
+  const lvtB = b.lvt?.scenario > 0 ? `${b.lvt.scenario}:${b.lvt.ocde ? 1 : 0}` : '0'
+  if (lvtA !== lvtB) return false
+  return LEVERS.every((l) => Math.abs((a.values?.[l.id] ?? 0) - (b.values?.[l.id] ?? 0)) < 1e-9)
 }
 
 /**

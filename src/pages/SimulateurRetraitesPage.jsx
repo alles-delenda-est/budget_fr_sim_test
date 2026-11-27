@@ -1,6 +1,8 @@
 import { useState, useMemo, useId } from 'react'
 import {
   LineChart,
+  ComposedChart,
+  Area,
   Line,
   XAxis,
   YAxis,
@@ -27,8 +29,10 @@ import {
   FISCAL_BENCHMARKS,
   SUPPLY_CASES,
 } from './budget/helpers'
-import { evaluateWarnings, splitSeriesAtYear, visibleDomain } from './budget/warnings'
+import { evaluateWarnings, splitSeriesAtYear, chartYDomain } from './budget/warnings'
 import { WarningBanner, DecompositionTable, BlocksTable, TargetsSummary } from './budget/Results'
+import IncidencePanel from './budget/IncidencePanel'
+import { computeIncidenceAtYear } from './budget/incidence'
 import { InfoPopover, ParamInfo, StatusBadge } from './budget/InfoPopover'
 import JobsNote from './budget/JobsNote'
 import {
@@ -81,10 +85,14 @@ function DeltaLine({ value, unit, lowerIsBetter }) {
   return <span className={`sb-delta sb-delta-${tone}`}>{fmt(value, 1, { signed: true })} {unit} vs réf.</span>
 }
 
-function extentOf(data, key, refKey, domain, isBalance = false) {
+function extentOf(data, key, refKey, domain, isBalance = false, showBand = false) {
   let base = domain
   if (!base) {
-    const vals = data.flatMap((r) => [r[key], r[refKey]]).filter(Number.isFinite)
+    const vals = data.flatMap((r) => {
+      const list = [r[key], r[refKey]]
+      if (showBand && Array.isArray(r[`${key}Band`])) list.push(...r[`${key}Band`])
+      return list
+    }).filter(Number.isFinite)
     base = vals.length ? [Math.min(...vals), Math.max(...vals)] : [NaN, NaN]
   }
   if (isBalance && Number.isFinite(base[0]) && Number.isFinite(base[1])) {
@@ -93,11 +101,38 @@ function extentOf(data, key, refKey, domain, isBalance = false) {
   return base
 }
 
-function DualLineChart({ id, titre, unite, data, dataKey, refKey, dec = 1, tier1 = null, tier2 = null, isDebt = false, isBalance = false }) {
+function formatDualTooltip(v, name, item, dataKey, dec, unite) {
+  if (Array.isArray(v)) {
+    const [lo, hi] = v
+    if (!Number.isFinite(lo) || !Number.isFinite(hi) || Math.abs(hi - lo) < 0.005) return null
+    const row = item?.payload
+    const vBas = row?.[`${dataKey}Bas`]
+    const vHaut = row?.[`${dataKey}Haut`]
+    let loTag = ''
+    let hiTag = ''
+    if (Number.isFinite(vBas) && Number.isFinite(vHaut)) {
+      if (vHaut >= vBas) {
+        loTag = ' (bas)'
+        hiTag = ' (haut)'
+      } else {
+        loTag = ' (haut)'
+        hiTag = ' (bas)'
+      }
+    }
+    return [`${fmt(lo, dec)}${loTag} à ${fmt(hi, dec)} ${unite}${hiTag}`, name]
+  }
+  if (!Number.isFinite(v)) return null
+  return [`${fmt(v, dec)} ${unite}`, name]
+}
+
+function DualLineChart({ id, titre, unite, data, dataKey, refKey, dec = 1, tier1 = null, tier2 = null, bandTier2Year = null, showBand = false, isDebt = false, isBalance = false }) {
   const tick = { fontSize: 11 }
   const beyond = tier2 ? `${dataKey}Beyond` : null
-  const domain = visibleDomain(data, dataKey, refKey, tier2?.year)
-  const nice = (domain !== null || isDebt || isBalance) ? niceAxis(...extentOf(data, dataKey, refKey, domain, isBalance), { minStep: isDebt ? 10 : 1 }) : null
+  const domain = chartYDomain(data, { key: dataKey, ref: refKey }, {
+    tier2Year: tier2?.year ?? null,
+    bandTier2Year: showBand ? bandTier2Year : null,
+  })
+  const nice = (domain !== null || isDebt || isBalance) ? niceAxis(...extentOf(data, dataKey, refKey, domain, isBalance, showBand), { minStep: isDebt ? 10 : 1 }) : null
   const firstYear = data.length ? data[0].year : null
   const lastYear = data.length ? data[data.length - 1].year : null
   const showTier2Label = tier2 && lastYear > tier2.year && firstYear !== null && (lastYear - tier2.year) / Math.max(1, lastYear - firstYear) >= 0.22
@@ -107,7 +142,7 @@ function DualLineChart({ id, titre, unite, data, dataKey, refKey, dec = 1, tier1
     <figure className="sb-chart" aria-label={`${titre} (${unite})`} data-chart-id={id}>
       <figcaption>{titre} <span className="sb-muted">({unite})</span></figcaption>
       <ResponsiveContainer width="100%" height={tier2 ? 260 : 235}>
-        <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+        <ComposedChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
           <XAxis dataKey="year" tick={tick} minTickGap={24} />
           <YAxis
@@ -118,7 +153,11 @@ function DualLineChart({ id, titre, unite, data, dataKey, refKey, dec = 1, tier1
             ticks={nice?.ticks}
             allowDataOverflow={domain !== null || nice !== null}
           />
-          <Tooltip formatter={(v) => `${fmt(v, dec)} ${unite}`} labelFormatter={(y) => `Année ${y}`} />
+          <Tooltip
+            formatter={(v, name, item) => formatDualTooltip(v, name, item, dataKey, dec, unite)}
+            labelFormatter={(y) => `Année ${y}`}
+            contentStyle={{ whiteSpace: 'normal', maxWidth: 280, fontSize: 12 }}
+          />
           <Legend wrapperStyle={{ fontSize: 12 }} />
           {tier2 && lastYear > tier2.year && (
             <ReferenceArea
@@ -153,7 +192,25 @@ function DualLineChart({ id, titre, unite, data, dataKey, refKey, dec = 1, tier1
             />
           )}
           {tier2 && <ReferenceLine x={tier2.year} stroke="#b71c1c" strokeWidth={1.5} />}
-          <Line type="monotone" dataKey={dataKey} name="Scénario" stroke="#5c6bc0" strokeWidth={2.5} dot={false} connectNulls={false} isAnimationActive={false} />
+          {showBand && (
+            <Area
+              type="monotone"
+              dataKey={`${dataKey}Band`}
+              name="Fourchette d'offre (bas–haut)"
+              fill="#5c6bc0"
+              fillOpacity={0.15}
+              stroke="#5c6bc0"
+              strokeOpacity={0.32}
+              strokeWidth={1}
+              strokeDasharray="2 2"
+              legendType="rect"
+              dot={false}
+              activeDot={false}
+              connectNulls={false}
+              isAnimationActive={false}
+            />
+          )}
+          <Line type="monotone" dataKey={dataKey} name="Scénario" stroke="#5c6bc0" strokeWidth={2.5} legendType="plainline" dot={false} connectNulls={false} isAnimationActive={false} />
           {beyond && (
             <Line
               type="monotone"
@@ -162,13 +219,14 @@ function DualLineChart({ id, titre, unite, data, dataKey, refKey, dec = 1, tier1
               stroke="#9e9e9e"
               strokeWidth={2}
               strokeDasharray="1 4"
+              legendType="plainline"
               dot={false}
               connectNulls={false}
               isAnimationActive={false}
             />
           )}
-          <Line type="monotone" dataKey={refKey} name="Référence (sans levier)" stroke="#6b6b6b" strokeWidth={1.75} strokeDasharray="5 4" dot={false} connectNulls={false} isAnimationActive={false} />
-        </LineChart>
+          <Line type="monotone" dataKey={refKey} name="Référence (sans levier)" stroke="#6b6b6b" strokeWidth={1.75} strokeDasharray="5 4" legendType="plainline" dot={false} connectNulls={false} isAnimationActive={false} />
+        </ComposedChart>
       </ResponsiveContainer>
     </figure>
   )
@@ -183,12 +241,14 @@ export default function SimulateurRetraitesPage() {
   const [indexDelta, setIndexDelta] = useState(0)
   const [targetedIndexDelta, setTargetedIndexDelta] = useState(0)
   const [ndcActive, setNdcActive] = useState(false)
+  const [showBand, setShowBand] = useState(true)
   const [yearIdxRaw, setYearIdx] = useState(10)
 
   const ageId = useId()
   const idxId = useId()
   const targetedIdxId = useId()
   const ndcId = useId()
+  const bandId = useId()
 
   const overrides = useMemo(
     () => buildPensionOverrides({ corVariant, healthVariant }),
@@ -218,15 +278,29 @@ export default function SimulateurRetraitesPage() {
     [levers, modules, horizon, ysCase, overrides],
   )
 
+  const supplyEnvelope = useMemo(() => {
+    if (ageDelta === 0) return null
+    const runCase = (c) => (c === ysCase
+      ? result
+      : projectScenario({ levers, modules, horizon, ysCase: c, overrides }))
+    return { bas: runCase('bas'), central: runCase('central'), haut: runCase('haut') }
+  }, [ageDelta, ysCase, result, levers, modules, horizon, overrides])
+
   const N = result.years.length - 1
   const yearIdx = Math.min(Math.max(yearIdxRaw, 1), N)
 
   const warnings = useMemo(() => evaluateWarnings(result), [result])
+  const warningsBas = useMemo(() => (supplyEnvelope ? evaluateWarnings(supplyEnvelope.bas) : null), [supplyEnvelope])
+  const activeShowBand = Boolean(showBand && supplyEnvelope)
   const targets = useMemo(() => evaluateFiscalTargets(result, activeP), [result, activeP])
-  const series = useMemo(() => buildPensionSeries(result, reference, activeP), [result, reference, activeP])
+  const series = useMemo(
+    () => buildPensionSeries(result, reference, activeP, activeShowBand ? supplyEnvelope : null),
+    [result, reference, activeP, activeShowBand, supplyEnvelope],
+  )
   const splitSeries = useMemo(() => splitSeriesAtYear(series, warnings.tier2?.year), [series, warnings.tier2?.year])
   const snapshots = useMemo(() => buildPensionSnapshots(result, reference, activeP), [result, reference, activeP])
   const decomposition = useMemo(() => decomposeAtYear(result, reference, yearIdx, EPS, EPS_OFFRE), [result, reference, yearIdx])
+  const incidence = useMemo(() => computeIncidenceAtYear(result, yearIdx, activeP), [result, yearIdx, activeP])
   const blocks = useMemo(() => blocksAt(result, reference, yearIdx), [result, reference, yearIdx])
   const noSupplyEffect = !hasSupplyEffect(result)
 
@@ -309,6 +383,13 @@ export default function SimulateurRetraitesPage() {
             </select>
             {noSupplyEffect && <p className="sb-hint" id="ret-case-hint">Sans effet tant que l'âge légal reste à {LEGAL_AGE_BASE} ans</p>}
           </div>
+        </div>
+        <div className="sb-module-check">
+          <input id={bandId} type="checkbox" checked={showBand} disabled={ageDelta === 0} onChange={(e) => setShowBand(e.target.checked)} />
+          <label htmlFor={bandId}>
+            Afficher la fourchette d&apos;offre emploi seniors (bas–haut) sur les graphiques
+            {ageDelta === 0 && ` — sans effet tant que l'âge légal reste à ${LEGAL_AGE_BASE} ans`}
+          </label>
         </div>
         <p className="sb-help">
           La variante COR et la dérive santé s'appliquent à la fois à la référence et au scénario : les écarts affichés
@@ -640,6 +721,8 @@ export default function SimulateurRetraitesPage() {
                 dec={2}
                 tier1={warnings.tier1}
                 tier2={warnings.tier2}
+                showBand={activeShowBand}
+                bandTier2Year={warningsBas?.tier2?.year ?? null}
               />
 
               {/* Graphique 3 : Dette publique */}
@@ -653,6 +736,8 @@ export default function SimulateurRetraitesPage() {
                 dec={1}
                 tier1={warnings.tier1}
                 tier2={warnings.tier2}
+                showBand={activeShowBand}
+                bandTier2Year={warningsBas?.tier2?.year ?? null}
                 isDebt
               />
 
@@ -667,13 +752,16 @@ export default function SimulateurRetraitesPage() {
                 dec={2}
                 tier1={warnings.tier1}
                 tier2={warnings.tier2}
+                showBand={activeShowBand}
+                bandTier2Year={warningsBas?.tier2?.year ?? null}
                 isBalance
               />
             </div>
           </section>
 
-          {/* DÉCOMPOSITION & BLOCS */}
+          {/* DÉCOMPOSITION, INCIDENCE & BLOCS */}
           <DecompositionTable decomposition={decomposition} years={result.years} yearIdx={yearIdx} onYear={setYearIdx} />
+          <IncidencePanel incidence={incidence} year={result.years[yearIdx]} />
           <BlocksTable blocks={blocks} year={result.years[yearIdx]} />
 
           {/* CONTEXTE DÉMOGRAPHIQUE V2 */}

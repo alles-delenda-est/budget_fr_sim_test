@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { projectScenario } from '../../engine/project.js'
 import { PARAM_BY_ID } from '../../engine/params.js'
-import { csvNumber, csvText, buildExportRows, buildCsv, COLUMNS } from './exportCsv.js'
+import { csvNumber, csvText, buildExportRows, buildCsv, COLUMNS, COLUMNS_VS_A } from './exportCsv.js'
 import { overridesForMacro, MACRO_VARIANT_BY_ID } from './presets.js'
 
 const EPS = PARAM_BY_ID['fisc.eps'].value
@@ -137,5 +137,18 @@ describe('buildCsv : module actif', () => {
     expect(csv3).toContain('Leviers (étalés sur 3 ans [2027–2029]')
     const csv1 = buildCsv({ stamp: 'v', url: 'u', horizonLabel: '10 ans', ysCase: 'central', phasingYears: 1, values: { tva_normal: 3 }, rows })
     expect(csv1).not.toContain('Montée en charge des leviers')
+  })
+  it('export B vs A (COLUMNS_VS_A) : préserve la somme des causes et neutralise CWE-1236 sur le libellé A', () => {
+    const a = projectScenario({ levers: { tva_normal: 2 }, horizon: 'dixAns' })
+    const b = projectScenario({ levers: { dep_affaires_eco: -10, ir: 5 }, horizon: 'dixAns' })
+    const rows = buildExportRows(b, a, EPS, EPS_OFFRE)
+    for (const row of rows) expect(row.slice(12).reduce((s, v) => s + v, 0)).toBeCloseTo(row[11], 6)
+    const csv = buildCsv({
+      stamp: 'v', url: 'u', horizonLabel: '10 ans', ysCase: 'central',
+      pinnedMeta: { label: '=CMD("calc")' },
+      values: { dep_affaires_eco: -10, ir: 5 }, rows, columns: COLUMNS_VS_A,
+    })
+    expect(csv).toContain("'=CMD(\"\"calc\"\")")
+    expect(csv).toContain('Écart de solde total B − A (Md€)')
   })
 })
